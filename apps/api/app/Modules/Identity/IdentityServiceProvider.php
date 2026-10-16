@@ -4,6 +4,8 @@ namespace App\Modules\Identity;
 
 use App\Modules\Identity\Actions\CreateNewUser;
 use App\Modules\Identity\Actions\ResetUserPassword;
+use App\Modules\Identity\Console\SetPlatformRoleCommand;
+use App\Modules\Identity\Enums\PlatformAbility;
 use App\Modules\Identity\Http\Responses\FailedPasswordResetResponse;
 use App\Modules\Identity\Http\Responses\LoginResponse;
 use App\Modules\Identity\Http\Responses\PasswordResetLinkResponse;
@@ -67,6 +69,11 @@ class IdentityServiceProvider extends ServiceProvider
 
         Gate::policy(Profile::class, ProfilePolicy::class);
         Gate::policy(User::class, UserPolicy::class);
+        $this->definePlatformGates();
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([SetPlatformRoleCommand::class]);
+        }
 
         $this->configureEmailLinks();
         $this->configureRateLimiting();
@@ -75,6 +82,19 @@ class IdentityServiceProvider extends ServiceProvider
             ->prefix('api/v1')
             ->name('v1.')
             ->group(__DIR__.'/routes.php');
+    }
+
+    /**
+     * Um Gate por capacidade de plataforma, a partir da matriz de PlatformRole (ADR 0012).
+     *
+     * Visitantes não passam: o Gate exige um User. Não há `Gate::before`: nenhum papel libera
+     * tudo, e o acesso a dados de equipes nunca vem de um papel de plataforma (ADR 0007).
+     */
+    private function definePlatformGates(): void
+    {
+        foreach (PlatformAbility::cases() as $ability) {
+            Gate::define($ability->value, fn (User $user): bool => $user->platform_role->grants($ability));
+        }
     }
 
     /**

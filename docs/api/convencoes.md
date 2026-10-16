@@ -118,13 +118,14 @@ Sem corpo. Resposta **204**. Invalida a sessão e troca o token CSRF (o cookie `
     "email": "ana@example.com",
     "email_verified": false,
     "platform_role": "user",
+    "abilities": [],
     "profile": { "nickname": "AnaAWP", "country_code": "BR", "timezone": "America/Sao_Paulo", "bio": null },
     "created_at": "2026-10-16T05:12:30Z"
   }
 }
 ```
 
-Lista fechada de campos (`UserResource`): senha, `remember_token` e datas internas nunca saem. `pending_email` (desde a etapa 1.5) é o novo e-mail aguardando confirmação, ou `null`. Sem sessão: 401. Limite: 120/min por usuário.
+Lista fechada de campos (`UserResource`): senha, `remember_token` e datas internas nunca saem. `pending_email` (desde a etapa 1.5) é o novo e-mail aguardando confirmação, ou `null`. `abilities` (etapa 1.6) lista as capacidades de plataforma efetivas (`manage-academy-content`, `administer-platform`), calculadas pelos Gates; serve só para a interface, nunca como autorização ([ADR 0012](../decisions/0012-autorizacao-por-capacidades-e-policies.md)). Sem sessão: 401. Limite: 120/min por usuário.
 
 ### `GET /api/v1/health`
 

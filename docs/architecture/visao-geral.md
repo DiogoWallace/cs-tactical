@@ -41,7 +41,7 @@ Regras:
 3. Controllers não contêm regra de negócio nem escrevem em models diretamente; chamam Actions.
 4. Leitura entre módulos via relacionamentos Eloquent é permitida. Escrita em dados de outro módulo passa pela Action desse módulo ou por evento.
 5. Código transversal (formato de erro em `app/Support/Http`, helpers) fica em `app/Support`.
-6. Toda rota autenticada passa por uma Policy ou Gate. Autorização nunca depende do frontend.
+6. Toda rota autenticada passa por uma Policy ou Gate. Autorização nunca depende do frontend. Padrões em [autorizacao.md](autorizacao.md).
 
 ### Módulos e quando nascem
 

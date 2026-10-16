@@ -31,6 +31,7 @@ const user: CurrentUser = {
   email_verified: true,
   pending_email: null,
   platform_role: "user",
+  abilities: [],
   profile: { nickname: "AnaAWP", country_code: "BR", timezone: "America/Sao_Paulo", bio: null },
   created_at: null,
 }

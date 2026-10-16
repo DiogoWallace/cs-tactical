@@ -471,3 +471,54 @@ O usuário e os e-mails do teste manual foram removidos.
 | `make test` | ✔ API 261 testes; web 96 testes |
 | `make lint` | ✔ Pint, Larastan nível 6, ESLint, Prettier, TypeScript |
 | Build de produção | ✔ `/painel/conta` e `/confirmar-email/[id]/[hash]` como Partial Prerender |
+
+---
+
+## Etapa 1.6 — Autorização por papel de plataforma
+
+Branch `feat/phase-1-authorization`, criada da `main` depois do merge do PR #3 (etapa 1.5 e o teste de regressão do "lembrar-me").
+
+### Arquivos criados ou modificados
+
+| Arquivo | Conteúdo |
+|---|---|
+| `app/Modules/Identity/Enums/PlatformAbility.php` | `manage-academy-content`, `administer-platform` |
+| `app/Modules/Identity/Enums/PlatformRole.php` | Matriz `abilities()`, `grants()`, `values()` |
+| `app/Modules/Identity/IdentityServiceProvider.php` | Um Gate por capacidade, a partir da matriz; registro do comando |
+| `app/Modules/Identity/Actions/ChangePlatformRole.php` | Muda o papel (trava os admins na transação, recusa rebaixar o último, registra no log) |
+| `app/Modules/Identity/Console/SetPlatformRoleCommand.php` | `identity:set-role {email} {role} {--force}` |
+| `app/Modules/Identity/Http/Resources/UserResource.php` | `abilities` efetivas, calculadas pelos Gates |
+| `tests/Feature/Authorization/PlatformAuthorizationTest.php` | Matriz papel × capacidade (Gates e HTTP com `can:`), visitantes, `/me`, nenhum papel altera outra conta |
+| `tests/Feature/Authorization/RouteAuthorizationTest.php` | Toda rota da API autenticada, salvo lista pública; rotas públicas de escrita com rate limiting |
+| `tests/Feature/Identity/SetPlatformRoleCommandTest.php` | Comando: confirmação, `--force`, papel inválido, e-mail inexistente, mesmo papel, último admin, efeito imediato |
+| `tests/Unit/ArchitectureTest.php` | `PlatformRole` só no Identity; sem `Gate::before/after`; `platform_role` só no Identity; Policies com sufixo |
+| `tests/Feature/Identity/SessionAuthenticationTest.php` | `abilities` na lista de campos de `/me` |
+| `apps/web/src/features/identity/types.ts` (+ teste) | Tipo `PlatformAbility` e `abilities` em `CurrentUser` |
+| `docs/decisions/0012-...md`, `docs/architecture/autorizacao.md` | ADR e guia para Academy e Teams |
+| `docs/api/convencoes.md`, `docs/architecture/visao-geral.md`, `README.md` | `abilities` em `/me`, links, comando |
+
+### Decisões técnicas
+
+- **Capacidades em vez de papéis** no código; a matriz é a única fonte ([ADR 0012](../decisions/0012-autorizacao-por-capacidades-e-policies.md)).
+- **Sem `Gate::before`**: admin não "pode tudo"; capacidade de plataforma nunca abre dados privados de equipes (ADR 0007).
+- **`abilities` em `/me` vem dos Gates** (`Gate::forUser`), não de uma cópia da matriz: se um Gate mudar, `/me` acompanha (há teste).
+- **Último admin protegido** com trava (`lockForUpdate`) nas linhas de admin, para duas mudanças simultâneas não deixarem a plataforma sem admin.
+- **Teste de rotas** como teste de arquitetura: rota nova sem `auth:sanctum` falha até ser incluída de propósito na lista pública.
+- Nenhuma rota de produto usa as capacidades ainda: a Academy (Fase 2) será a primeira.
+
+### Concorrência: rebaixamento do último admin (PostgreSQL real)
+
+Cenário: só duas contas admin; uma sessão `psql` segura a trava das linhas de admin por 3 s; enquanto isso, dois `identity:set-role ... user --force` rodam em paralelo, um para cada admin, e disputam quando a trava é liberada.
+
+| Situação | Resultado |
+|---|---|
+| Com `lockForUpdate` (código atual), 3 rodadas | ✔ Em todas: um rebaixamento concluído, o outro recusado ("Não é possível rebaixar o último admin"), 1 admin restante |
+| Contraprova: `lockForUpdate` removido temporariamente | ✘ Os dois rebaixamentos concluídos, **0 admins**: a trava é o que garante a regra. Arquivo restaurado depois |
+
+**Lacuna de cobertura:** os testes automatizados cobrem a regra sem concorrência (`SetPlatformRoleCommandTest`); a disputa simultânea foi verificada manualmente, como acima. Proposta de teste automatizado: um teste Pest separado (grupo `concurrency`, sem `RefreshDatabase`, com limpeza própria) que grava dois admins no banco de testes, segura `SELECT ... FOR UPDATE` numa segunda conexão, dispara dois `php artisan identity:set-role` com `Symfony\Component\Process\Process` apontando para `cs_tactical_test`, libera a trava e verifica um sucesso, uma recusa e um admin restante. Leva alguns segundos e precisa de processos paralelos, por isso fica fora da suíte padrão até ser aprovado.
+
+### Pendências
+
+- Teste automatizado de concorrência do último admin (proposta acima).
+- Interface administrativa e gerenciamento de equipes: fora do escopo.
+- Auditoria persistente (activity_log, Fase 4); por ora a mudança de papel vai para o log da aplicação.

@@ -80,6 +80,7 @@ make test && make lint
 | `make sh-api`, `make sh-web` | Shell nos containers |
 | `make psql`, `make redis-cli` | Acesso ao banco e ao Redis |
 | `make check-infra` | Valida fila, worker e e-mail |
+| `make artisan c="identity:set-role email@x.com editor"` | Muda o papel de plataforma (`user`, `editor`, `admin`) |
 | `make destroy` | Apaga containers **e dados** (pede confirmação) |
 
 ## Estrutura
@@ -98,6 +99,7 @@ compose.yaml        Serviços: web, api, worker, postgres, redis, mailpit
 
 - [Visão geral da arquitetura](docs/architecture/visao-geral.md)
 - [Autenticação entre Next.js e Laravel](docs/architecture/autenticacao.md)
+- [Autorização (capacidades, Policies, regras para novos módulos)](docs/architecture/autorizacao.md)
 - [Modelo conceitual de dados](docs/database/modelo-conceitual.md)
 - [Convenções da API](docs/api/convencoes.md)
 - [Decisões arquiteturais (ADRs)](docs/decisions/README.md)
