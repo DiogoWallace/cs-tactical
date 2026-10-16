@@ -20,17 +20,35 @@ Listas paginadas:
 
 ## Erros
 
-| Status | Quando | Corpo |
-|---|---|---|
-| 401 | não autenticado | `{ "message": "Unauthenticated." }` |
-| 403 | sem permissão | `{ "message": "...", "code": "forbidden" }` |
-| 404 | não encontrado (inclui recurso de outra equipe) | `{ "message": "...", "code": "not_found" }` |
-| 419 | CSRF ausente ou expirado | `{ "message": "CSRF token mismatch." }` |
-| 422 | validação | `{ "message": "...", "errors": { "campo": ["..."] } }` |
-| 429 | rate limit | `{ "message": "Too Many Attempts." }` |
-| 5xx | erro interno | `{ "message": "Server Error" }` (sem detalhes em produção) |
+Toda resposta de erro tem o mesmo formato, aplicado por `app/Support/Http/ApiErrorResponse.php` a qualquer rota `/api/*` ou requisição que espera JSON:
 
-Erros de regra de negócio usam `code` estável e legível por máquina (ex.: `team_member_limit_reached`).
+```json
+{ "message": "Texto em inglês, para log e depuração", "code": "codigo_estavel" }
+```
+
+- `code` é estável e é o que o frontend usa para decidir o comportamento e o texto exibido. `message` não deve ser mostrada diretamente ao usuário (exceto em 403 e 422, onde é escrita pela própria aplicação).
+- `errors` aparece apenas em 422.
+- Com `APP_DEBUG=true`, erros 5xx incluem também `exception`, `file`, `line` e `trace`. Erros 4xx nunca incluem.
+
+| Status | `code` | `message` | Observação |
+|---|---|---|---|
+| 400 | `bad_request` | original | |
+| 401 | `unauthenticated` | `Unauthenticated.` | sem sessão; o frontend redireciona ao login |
+| 403 | `forbidden` | a da Policy/Gate, ou `This action is unauthorized.` | |
+| 404 | `not_found` | `Not found.` | fixa: não expõe rota nem classe do model; inclui recurso de outra equipe |
+| 405 | `method_not_allowed` | `Method not allowed.` | |
+| 409 | `conflict` | original | |
+| 413 | `payload_too_large` | `Payload too large.` | |
+| 419 | `csrf_token_mismatch` | `CSRF token mismatch.` | o `apiClient` renova o token e repete uma vez |
+| 422 | `validation_failed` | original | `errors: { campo: [mensagens] }` |
+| 429 | `too_many_requests` | `Too Many Attempts.` | mantém o header `Retry-After` |
+| 503 | `service_unavailable` | `Service Unavailable` | |
+| outros 5xx | `server_error` | `Server Error` | sem detalhes com `APP_DEBUG=false` |
+| outros 4xx | `http_error` | original | |
+
+Erros de regra de negócio usam `code` próprio, estável e legível por máquina (ex.: `team_member_limit_reached`). Quando a resposta já traz um `code`, ele é mantido.
+
+O health check (`/api/v1/health`) não é afetado: o `503` dele é uma resposta normal, com formato próprio.
 
 ## Endpoints atuais
 

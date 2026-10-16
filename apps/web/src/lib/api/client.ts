@@ -1,3 +1,5 @@
+import { loginUrl } from "@/lib/routes"
+
 import { ApiError, ApiUnavailableError, parseBody } from "./errors"
 
 /**
@@ -7,11 +9,35 @@ import { ApiError, ApiUnavailableError, parseBody } from "./errors"
  * - O cookie de sessão é HTTP-only e vai automaticamente; nenhum token fica em JavaScript.
  * - Escritas enviam o header X-XSRF-TOKEN com o valor do cookie XSRF-TOKEN.
  * - Um 419 (token CSRF expirado) renova o cookie e repete a requisição uma vez.
+ * - Um 401 (sessão inexistente ou expirada) leva ao login, voltando depois para a página atual.
+ *   Quem espera um 401 (ex.: checar se há sessão) passa `redirectOnUnauthenticated: false`.
  */
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"])
 
-type RequestOptions = Omit<RequestInit, "body"> & { body?: unknown }
+type SendOptions = Omit<RequestInit, "body"> & { body?: unknown }
+
+type RequestOptions = SendOptions & {
+  /** Padrão: true. Com false, o 401 só é lançado como ApiError, sem redirecionar. */
+  redirectOnUnauthenticated?: boolean
+}
+
+type UnauthenticatedHandler = () => void
+
+function redirectToLogin(): void {
+  const { pathname, search } = window.location
+  const target = loginUrl(`${pathname}${search}`)
+  // Já no login: redirecionar de novo só criaria um laço.
+  if (pathname === target.split("?")[0]) return
+  window.location.assign(target)
+}
+
+let unauthenticatedHandler: UnauthenticatedHandler = redirectToLogin
+
+/** Troca a reação ao 401 (usado nos testes; o padrão é redirecionar ao login). */
+export function setUnauthenticatedHandler(handler: UnauthenticatedHandler | null): void {
+  unauthenticatedHandler = handler ?? redirectToLogin
+}
 
 export function readXsrfToken(cookieString: string = document.cookie): string | null {
   const entry = cookieString.split("; ").find((cookie) => cookie.startsWith("XSRF-TOKEN="))
@@ -23,7 +49,7 @@ export async function ensureCsrfCookie(force = false): Promise<void> {
   await send("/sanctum/csrf-cookie", { method: "GET" })
 }
 
-async function send(path: string, { body, headers, ...init }: RequestOptions): Promise<Response> {
+async function send(path: string, { body, headers, ...init }: SendOptions): Promise<Response> {
   const method = (init.method ?? "GET").toUpperCase()
   const finalHeaders = new Headers(headers)
   finalHeaders.set("Accept", "application/json")
@@ -47,7 +73,10 @@ async function send(path: string, { body, headers, ...init }: RequestOptions): P
   }
 }
 
-export async function apiRequest<T>(path: `/${string}`, options: RequestOptions = {}): Promise<T> {
+export async function apiRequest<T>(
+  path: `/${string}`,
+  { redirectOnUnauthenticated = true, ...options }: RequestOptions = {},
+): Promise<T> {
   const method = (options.method ?? "GET").toUpperCase()
   if (!SAFE_METHODS.has(method)) await ensureCsrfCookie()
 
@@ -59,7 +88,12 @@ export async function apiRequest<T>(path: `/${string}`, options: RequestOptions 
   }
 
   const body = await parseBody(response)
-  if (!response.ok) throw new ApiError(response.status, body)
+  if (!response.ok) {
+    if (response.status === 401 && redirectOnUnauthenticated) {
+      unauthenticatedHandler()
+    }
+    throw new ApiError(response.status, body)
+  }
   return body as T
 }
 

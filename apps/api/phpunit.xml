@@ -29,6 +29,8 @@
         <server name="SESSION_DRIVER" value="array" force="true"/>
         <server name="CACHE_STORE" value="array" force="true"/>
         <server name="MAIL_MAILER" value="array" force="true"/>
+        <!-- Os testes definem os proxies confiáveis explicitamente (tests/Feature/Http/TrustedProxiesTest.php). -->
+        <server name="TRUSTED_PROXIES" value="" force="true"/>
         <env name="APP_ENV" value="testing" force="true"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>

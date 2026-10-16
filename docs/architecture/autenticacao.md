@@ -1,6 +1,6 @@
 # Autenticação entre Next.js e Laravel
 
-> Decisão: [ADR 0003](../decisions/0003-autenticacao-sanctum-sessao-mesma-origem.md).
+> Decisões: [ADR 0003](../decisions/0003-autenticacao-sanctum-sessao-mesma-origem.md) (sessão e mesma origem), [ADR 0009](../decisions/0009-ip-real-do-cliente-e-proxies-confiaveis.md) (IP real do cliente), [ADR 0010](../decisions/0010-fortify-headless-em-api-v1-auth.md) (Fortify).
 > Fase 0: o proxy de mesma origem e a passagem de cookies são **validados** (etapa 0.6). Fase 1: login, cadastro e sessão são **implementados**.
 
 ## Princípios
@@ -31,7 +31,7 @@ O destino dos rewrites é lido de `API_INTERNAL_URL` quando o Next inicia (`next
 
 Atributos: `SameSite=Lax`, `Path=/`, sem `Domain` (cookie *host-only* da origem do frontend), `Secure` em produção.
 
-## Configuração do Laravel (feita na Fase 0)
+## Configuração do Laravel (Fase 0 e etapa 1.0)
 
 ```dotenv
 SESSION_DRIVER=redis
@@ -40,8 +40,11 @@ SESSION_DOMAIN=null
 SESSION_SAME_SITE=lax
 SESSION_SECURE_COOKIE=false        # true em produção
 SESSION_LIFETIME=120
-SANCTUM_STATEFUL_DOMAINS=localhost:3000
+SANCTUM_STATEFUL_DOMAINS=localhost:3000,127.0.0.1:3000
+TRUSTED_PROXIES=172.31.250.10      # definido pelo compose.yaml: IP fixo do container web
 ```
+
+- `SANCTUM_STATEFUL_DOMAINS` lista só as origens do frontend. O padrão do Sanctum, que incluiria a própria API (`127.0.0.1:8000`), não é usado: o navegador nunca chama a API diretamente.
 
 - `bootstrap/app.php`: `$middleware->statefulApi()` ativa o middleware que trata como "stateful" as requisições cujo `Origin` ou `Referer` pertence a `SANCTUM_STATEFUL_DOMAINS`. Essas requisições recebem sessão, cookies criptografados e verificação CSRF.
 - Rotas protegidas usam `auth:sanctum`.
@@ -49,6 +52,26 @@ SANCTUM_STATEFUL_DOMAINS=localhost:3000
 - `config/cors.php` sem origens permitidas.
 - `/api/v1/health` não usa sessão (`withoutMiddleware(EnsureFrontendRequestsAreStateful)`): ele precisa responder mesmo com o Redis, onde ficam as sessões, fora do ar.
 - A tabela `personal_access_tokens` não é criada: tokens pessoais estão desligados.
+
+## IP real do cliente
+
+Detalhes e alternativas na [ADR 0009](../decisions/0009-ip-real-do-cliente-e-proxies-confiaveis.md).
+
+```
+Desenvolvimento:  navegador ──► web (Next, IP fixo) ──► api (Laravel: confia só no IP do web)
+
+Produção:         cliente ──► borda (TLS; substitui X-Forwarded-For pelo IP da conexão;
+                                     remove Forwarded, X-Real-IP, X-Forwarded-Host...)
+                               ├── /api/*, /sanctum/* ──► api (Laravel: confia só na borda)
+                               └── demais rotas ───────► web (Next)
+```
+
+- O Next.js **não** acrescenta o IP da conexão ao `X-Forwarded-For`: o rewrite de `/api/*` repassa o cabeçalho do cliente sem alteração.
+- O Laravel (`config/trustedproxy.php`, `bootstrap/app.php`) lê `X-Forwarded-For` e `X-Forwarded-Proto` **apenas** quando a conexão vem do container `web`. Vindo de qualquer outro endereço, inclusive do gateway do Docker (porta 8000 do host), os cabeçalhos são ignorados.
+- O IP do cliente é a entrada mais à direita que não é um proxy confiável.
+- `X-Forwarded-Host` nunca é confiável.
+- Em produção, a borda é obrigatória, é o único ponto de entrada público e é a **única** responsável por estabelecer o IP real: ela substitui o `X-Forwarded-For` recebido e remove os demais cabeçalhos de IP e host vindos do cliente. A topologia recomendada encaminha `/api/*` direto da borda para a API, para que o IP não dependa do Next.js. Itens obrigatórios antes do deploy: [bloqueios de produção](../deploy/bloqueios-de-producao.md) P1 a P3.
+- Em desenvolvimento, sem borda, o IP é o que o cliente declarar ao Next.js (ou o do container `web`). Isso só é aceitável localmente.
 
 ## Fluxos
 
@@ -70,7 +93,7 @@ Headers: X-XSRF-TOKEN: <valor do cookie XSRF-TOKEN, decodificado de URL>
 Body:    { email, password, remember }
 ```
 
-O Laravel valida as credenciais (Fortify), regenera a sessão e devolve um novo `Set-Cookie` de sessão. O navegador guarda o cookie automaticamente porque a resposta veio da mesma origem.
+O Laravel valida as credenciais (Fortify, ver [ADR 0010](../decisions/0010-fortify-headless-em-api-v1-auth.md)), regenera a sessão e devolve um novo `Set-Cookie` de sessão. Credenciais inválidas respondem `422` (nunca `401`, que significa "sem sessão"). O navegador guarda o cookie automaticamente porque a resposta veio da mesma origem.
 
 ### 3. Requisições do navegador (Client Components)
 
@@ -79,7 +102,9 @@ O Laravel valida as credenciais (Fortify), regenera a sessão e devolve um novo 
 - usa caminhos relativos (`/api/v1/...`) e `credentials: 'same-origin'`;
 - em métodos de escrita, lê `XSRF-TOKEN` de `document.cookie`, aplica `decodeURIComponent` (o navegador guarda o valor codificado) e envia `X-XSRF-TOKEN`;
 - envia `Accept: application/json`;
-- trata `401` (sessão expirada → redireciona ao login), `403`, `404`, `419` (renova o CSRF e repete uma vez) e `422` (erros de validação para o formulário).
+- trata `419` (renova o CSRF e repete uma vez) e `422` (erros de validação para o formulário, em `ApiError.validationErrors`);
+- em `401` (sessão inexistente ou expirada), redireciona para `/login?next=<página atual>` e rejeita com `ApiError`. Quem espera um 401 (ex.: verificar se há sessão) passa `redirectOnUnauthenticated: false`. O `next` só aceita caminhos internos (`safeInternalPath` em `lib/routes.ts`, contra open redirect);
+- demais erros chegam como `ApiError`, com `status` e `code` estável ([convenções](../api/convencoes.md#erros)).
 
 ### 4. Requisições do servidor (Server Components)
 
@@ -90,7 +115,9 @@ No servidor não há navegador, então o cookie precisa ser repassado manualment
 - chama o Laravel direto pela rede interna (`API_INTERNAL_URL=http://api:8080`);
 - copia o header `Cookie` da requisição atual (via `cookies()` do Next);
 - envia `Origin` e `Referer` com a URL pública do frontend, para o Sanctum tratar a chamada como *stateful*;
-- usa `cache: 'no-store'` para dados de usuário (nunca cachear respostas autenticadas entre usuários).
+- repassa o `X-Forwarded-For` recebido, como o rewrite de `/api/*` faz;
+- usa `cache: 'no-store'` para dados de usuário (nunca cachear respostas autenticadas entre usuários);
+- em `401`, chama `redirect('/login')` (fora de `try/catch`, porque o redirect do Next funciona lançando uma exceção). Com `redirectOnUnauthenticated: false`, lança `ApiError`.
 
 **Regra:** Server Components **só leem**. Respostas do Laravel a chamadas feitas no servidor podem trazer `Set-Cookie` (renovação da sessão), e esses cookies não chegam ao navegador automaticamente. Por isso escritas acontecem no navegador via `apiClient`, passando pelo proxy. Se no futuro usarmos Server Actions para escrita, elas deverão repassar `X-XSRF-TOKEN` e copiar os `Set-Cookie` da resposta para o navegador, e isso será documentado numa ADR.
 
@@ -112,7 +139,7 @@ No servidor não há navegador, então o cookie precisa ser repassado manualment
 
 | Rota | Limite inicial | Chave |
 |---|---|---|
-| login, recuperação de senha | 5/min | e-mail + IP |
+| login, recuperação de senha | 5/min | e-mail + IP real ([ADR 0009](../decisions/0009-ip-real-do-cliente-e-proxies-confiaveis.md)) |
 | cadastro | 3/min | IP |
 | API autenticada | 120/min | ID do usuário |
 
@@ -127,6 +154,8 @@ Os contadores ficam no Redis.
 | Session fixation | Regeneração de sessão no login |
 | Cache de dados de um usuário servido a outro | `serverFetch` com `no-store`; rotas autenticadas dinâmicas |
 | `Origin` ausente em chamadas servidor→API | `serverFetch` sempre envia `Origin`/`Referer` |
+| IP falsificado via `X-Forwarded-For` para escapar do rate limiting | Só o IP fixo do container `web` é confiável; entrada mais à direita; borda obrigatória em produção (ADR 0009) |
+| Open redirect pelo parâmetro `next` do login | `safeInternalPath` aceita só caminhos internos |
 | IDOR entre equipes | Rotas aninhadas, scoped bindings, Policies e testes de acesso negado |
 
 ## Plano de validação
@@ -144,6 +173,16 @@ Os contadores ficam no Redis.
 - [x] `apiClient`: envia o token decodificado, busca o cookie antes da primeira escrita e repete uma vez após 419 (Vitest).
 
 > Nota para os testes do Laravel: com `APP_ENV=testing` o framework **desliga** a verificação CSRF. Os testes de CSRF em `tests/Feature/Auth/SanctumSpaFoundationTest.php` mudam o ambiente para `local` e usam sessões no Redis para reproduzir o comportamento real. Requisições JSON de teste só enviam cookies com `withCredentials()`.
+
+**Etapa 1.0**, concluído:
+
+- [x] `X-Forwarded-For` só é lido quando a conexão vem do container `web`; direto na API ou pelo gateway do Docker é ignorado (Pest).
+- [x] Entradas prefixadas pelo cliente são ignoradas; valor malformado nunca vira o IP (Pest).
+- [x] Trocar o cabeçalho falsificado não cria um novo contador de rate limiting (Pest).
+- [x] `X-Forwarded-Host` nunca é confiável; `X-Forwarded-Proto` só vindo do proxy (Pest).
+- [x] `Forwarded`, `X-Real-IP` e similares são ignorados mesmo vindos do proxy; topologias de produção e modos de falha (Pest).
+- [x] `127.0.0.1:3000` é origem stateful; a própria API (`127.0.0.1:8000`) não é (Pest).
+- [x] `apiClient` redireciona ao login em 401 (exceto com `redirectOnUnauthenticated: false`); `serverFetch` idem (Vitest).
 
 **Fase 1**, testes automatizados:
 

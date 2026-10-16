@@ -106,3 +106,44 @@ it('does not allow cross-origin requests via CORS', function () {
         ->options('/api/v1/health')
         ->assertHeaderMissing('Access-Control-Allow-Origin');
 });
+
+it('treats both local frontend addresses as stateful by default', function () {
+    $saved = [$_SERVER['SANCTUM_STATEFUL_DOMAINS'] ?? null, $_ENV['SANCTUM_STATEFUL_DOMAINS'] ?? null, getenv('SANCTUM_STATEFUL_DOMAINS')];
+    unset($_SERVER['SANCTUM_STATEFUL_DOMAINS'], $_ENV['SANCTUM_STATEFUL_DOMAINS']);
+    putenv('SANCTUM_STATEFUL_DOMAINS');
+
+    try {
+        $stateful = (require config_path('sanctum.php'))['stateful'];
+    } finally {
+        [$server, $env, $process] = $saved;
+        if ($server !== null) {
+            $_SERVER['SANCTUM_STATEFUL_DOMAINS'] = $server;
+        }
+        if ($env !== null) {
+            $_ENV['SANCTUM_STATEFUL_DOMAINS'] = $env;
+        }
+        if ($process !== false) {
+            putenv("SANCTUM_STATEFUL_DOMAINS={$process}");
+        }
+    }
+
+    expect($stateful)->toBe(['localhost:3000', '127.0.0.1:3000']);
+});
+
+it('starts a session for the frontend opened at 127.0.0.1:3000', function () {
+    config(['sanctum.stateful' => ['localhost:3000', '127.0.0.1:3000']]);
+
+    $response = $this->withHeader('Origin', 'http://127.0.0.1:3000')->get('/sanctum/csrf-cookie');
+
+    expect($response->getCookie(config('session.cookie'), decrypt: false))->not->toBeNull();
+});
+
+it('does not treat the API own address as a frontend origin', function () {
+    config(['sanctum.stateful' => ['localhost:3000', '127.0.0.1:3000']]);
+
+    $response = $this->withHeader('Origin', 'http://127.0.0.1:8000')
+        ->postJson('/api/v1/__csrf-probe');
+
+    $response->assertOk();
+    expect($response->getCookie(config('session.cookie'), decrypt: false))->toBeNull();
+});

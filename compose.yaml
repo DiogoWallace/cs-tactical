@@ -24,7 +24,10 @@ services:
     depends_on:
       api:
         condition: service_healthy
-    networks: [internal]
+    networks:
+      internal:
+        # IP fixo: é o único remetente cujos X-Forwarded-* a API aceita (TRUSTED_PROXIES, ADR 0009).
+        ipv4_address: ${WEB_INTERNAL_IP:-172.31.250.10}
 
   api: &api
     build:
@@ -56,8 +59,11 @@ services:
       # Rota de health check nativa do Laravel (liveness).
       HEALTHCHECK_PATH: /up
       SHOW_WELCOME_MESSAGE: "false"
-      # O container recebe tráfego apenas do frontend e da rede interna.
+      # O Nginx da imagem não reescreve o IP (real_ip desligado): quem decide é o Laravel.
       TRUSTED_PROXY: off
+      # Único proxy confiável: o container web. X-Forwarded-* de qualquer outro remetente
+      # (inclusive do gateway do Docker, por onde chega a porta 8000 do host) é ignorado.
+      TRUSTED_PROXIES: ${WEB_INTERNAL_IP:-172.31.250.10}
       # Escuta só IPv4: evita falha do Nginx em ambientes sem IPv6 (comum em Docker/WSL).
       NGINX_LISTEN_IP_PROTOCOL: ipv4
     volumes:
@@ -134,6 +140,11 @@ services:
 networks:
   internal:
     name: cs-tactical-internal
+    ipam:
+      config:
+        - subnet: ${INTERNAL_SUBNET:-172.31.250.0/24}
+          # IPs dinâmicos só na metade superior, para nunca colidirem com o IP fixo do web.
+          ip_range: ${INTERNAL_IP_RANGE:-172.31.250.128/25}
 
 volumes:
   postgres-data:
