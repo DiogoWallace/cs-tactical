@@ -1,6 +1,31 @@
 name: cs-tactical
 
 services:
+  web:
+    build:
+      context: ./infra/docker/web
+      args:
+        HOST_UID: ${HOST_UID:-1000}
+        HOST_GID: ${HOST_GID:-1000}
+    image: cs-tactical-web:dev
+    restart: unless-stopped
+    env_file:
+      - path: ./apps/web/.env
+        required: true
+    environment:
+      # Endereço da API na rede interna, usado pelos rewrites e pelo serverFetch.
+      API_INTERNAL_URL: http://api:8080
+    volumes:
+      - ./apps/web:/app
+      - pnpm-store:/home/node/.local/share/pnpm
+      - corepack-cache:/home/node/.cache
+    ports:
+      - "127.0.0.1:${WEB_PORT:-3000}:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [internal]
+
   api: &api
     build:
       context: ./infra/docker/api
@@ -113,3 +138,5 @@ networks:
 volumes:
   postgres-data:
   redis-data:
+  pnpm-store:
+  corepack-cache:

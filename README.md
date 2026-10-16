@@ -28,7 +28,8 @@ make migrate   # aplica as migrations (nunca roda automaticamente)
 
 | Serviço | Endereço |
 |---|---|
-| API (Laravel) | http://localhost:8000/up |
+| Frontend (Next.js) | http://localhost:3000 |
+| API (Laravel) | http://localhost:8000/api/v1/health |
 | Mailpit | http://localhost:8025 |
 
 Rode `make help` para ver todos os comandos.
