@@ -42,7 +42,7 @@ if [[ -f .env ]]; then
     warn "HOST_UID (${HOST_UID:-vazio}) difere do seu UID ($(id -u)). Rode 'make setup'."
   fi
 else
-  fail ".env não encontrado. Rode 'make setup'."
+  warn ".env ainda não existe. Ele é criado pelo 'make setup'."
 fi
 
 if [[ "$(git config --get core.autocrlf 2>/dev/null)" == "true" ]]; then
