@@ -218,3 +218,13 @@ make lint
 - **Apelidos reservados** (`admin`, `suporte`...) não são bloqueados.
 - **Dependências do Fortify sem uso** (`laravel/passkeys`, `pragmarx/google2fa`, `bacon/bacon-qr-code`) entram no `vendor`. As rotas e migrations delas não são carregadas.
 - **Observação fora do escopo:** `route:list` mostra `GET|PUT storage/{path}`, rotas do disco local do Laravel existentes desde a Fase 0 (`serve` no `config/filesystems.php`). Revisar quando houver upload de arquivos.
+
+### Revisão de segurança antes do merge (PR #1)
+
+| Achado | Correção |
+|---|---|
+| Login com `email` em formato de lista ou objeto respondia 500: o limitador de login convertia o valor para texto antes da validação | `EnsureStringFields` responde 422 para campos de texto que chegam em outro formato; o limitador só usa o e-mail quando é texto |
+| Cadastro com campos em formato de lista respondia 500: o controller do Fortify põe o e-mail em minúsculas antes da validação | Mesmo middleware, antes do controller |
+| Cookie "lembrar-me" valia 400 dias (padrão do Laravel) | `remember => 43200` no guard `web`: 30 dias |
+
+Testes novos: 3 de login com campos que não são texto, 1 de cadastro e 3 do "lembrar-me" (validade de 30 dias, ausência sem `remember` e remoção no logout). `make test`: API 164, web 35.

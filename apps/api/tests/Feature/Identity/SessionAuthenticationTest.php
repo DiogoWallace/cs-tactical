@@ -134,6 +134,64 @@ describe('login', function () {
 
         loginAs(browser())->assertTooManyRequests();
     });
+
+    it('rejects credentials that are not strings with 422, not 500', function (array $body, string $field) {
+        $session = browser();
+        $session->csrfCookie();
+
+        $session->post('/api/v1/auth/login', $body)
+            ->assertUnprocessable()
+            ->assertJsonPath('code', 'validation_failed')
+            ->assertJsonValidationErrors([$field]);
+    })->with([
+        'e-mail as list' => [['email' => ['player@example.com'], 'password' => 'x'], 'email'],
+        'e-mail as object' => [['email' => ['a' => 'player@example.com'], 'password' => 'x'], 'email'],
+        'password as list' => [['email' => 'player@example.com', 'password' => ['x']], 'password'],
+    ]);
+});
+
+describe('remember me', function () {
+    $recaller = fn () => auth()->guard('web')->getRecallerName();
+
+    it('keeps the remember cookie for 30 days', function () use ($recaller) {
+        $session = browser();
+        $session->csrfCookie();
+
+        $response = $session->post('/api/v1/auth/login', [
+            'email' => 'player@example.com',
+            'password' => 'secret-password-1',
+            'remember' => true,
+        ])->assertOk();
+
+        $cookie = $response->getCookie($recaller(), decrypt: false);
+
+        expect($cookie)->not->toBeNull()
+            ->and($cookie->isHttpOnly())->toBeTrue()
+            ->and($cookie->getExpiresTime() - time())->toBeGreaterThan(29 * 86400)->toBeLessThanOrEqual(30 * 86400 + 60);
+    });
+
+    it('does not set the remember cookie unless asked', function () use ($recaller) {
+        $session = browser();
+
+        $response = loginAs($session)->assertOk();
+
+        expect($response->getCookie($recaller(), decrypt: false))->toBeNull();
+    });
+
+    it('clears the remember cookie on logout', function () use ($recaller) {
+        $session = browser();
+        $session->csrfCookie();
+        $session->post('/api/v1/auth/login', [
+            'email' => 'player@example.com',
+            'password' => 'secret-password-1',
+            'remember' => true,
+        ])->assertOk();
+
+        $response = $session->post('/api/v1/auth/logout')->assertNoContent();
+
+        expect($response->getCookie($recaller(), decrypt: false)?->isCleared())->toBeTrue()
+            ->and($session->cookie($recaller()))->toBeNull();
+    });
 });
 
 describe('logout', function () {

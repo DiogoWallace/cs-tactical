@@ -103,6 +103,21 @@ it('rejects a nickname already in use, in any case', function () {
         ->assertJsonValidationErrors(['nickname']);
 });
 
+it('rejects fields that are not strings with 422, not 500', function () {
+    frontend()->post('/api/v1/auth/register', registration([
+        'name' => ['Ana'],
+        'email' => ['ana@example.com'],
+        'nickname' => ['a' => 'AnaAWP'],
+        'country_code' => ['BR'],
+        'timezone' => ['UTC'],
+    ]))
+        ->assertUnprocessable()
+        ->assertJsonPath('code', 'validation_failed')
+        ->assertJsonValidationErrors(['name', 'email', 'nickname', 'country_code', 'timezone']);
+
+    expect(User::query()->count())->toBe(0);
+});
+
 it('validates the fields', function (array $overrides, string $field) {
     frontend()->post('/api/v1/auth/register', registration($overrides))
         ->assertUnprocessable()

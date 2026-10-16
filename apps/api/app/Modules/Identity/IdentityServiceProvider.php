@@ -55,9 +55,13 @@ class IdentityServiceProvider extends ServiceProvider
      */
     private function configureRateLimiting(): void
     {
-        RateLimiter::for('login', fn (Request $request) => Limit::perMinute(5)->by(
-            Str::transliterate(Str::lower((string) $request->input(Fortify::username()))).'|'.$request->ip(),
-        ));
+        RateLimiter::for('login', function (Request $request) {
+            // Só texto entra na chave; outros tipos já são barrados por EnsureStringFields.
+            $email = $request->input(Fortify::username());
+            $email = is_string($email) ? Str::transliterate(Str::lower($email)) : '';
+
+            return Limit::perMinute(5)->by($email.'|'.$request->ip());
+        });
 
         RateLimiter::for('register', fn (Request $request) => Limit::perMinute(3)->by($request->ip()));
 
