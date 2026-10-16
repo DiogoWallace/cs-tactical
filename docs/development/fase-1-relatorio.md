@@ -368,3 +368,38 @@ O usuário e os e-mails do teste manual foram removidos.
 - **O token de redefinição fica no histórico do navegador** (fragmento da URL) até ser usado ou expirar; ele é de uso único e vale 60 minutos.
 - **Sem limite global por conta** no "esqueci minha senha": o limite é por e-mail + IP, e o broker só envia um e-mail por minuto para a mesma conta.
 - **E-mails em produção** dependem de um provedor SMTP/transacional configurado (fora do escopo; entra com o deploy).
+
+### Revisão de segurança antes do merge (PR #2)
+
+Matriz de estados de autenticação, pelo proxy do Next com Postgres e Redis reais:
+
+| Situação | Resultado |
+|---|---|
+| `forgot-password`, `reset-password` e `verification-notification` sem `X-XSRF-TOKEN` | ✔ 419 |
+| Visitante: `/me`, logout, reenvio, `GET verify` | ✔ 401 |
+| Visitante: `forgot-password` | ✔ 200 genérico |
+| Autenticado: login, cadastro, `forgot-password`, `reset-password` | ✔ 409 `already_authenticated` |
+| Autenticado: `GET verify` com assinatura falsa | ✔ 403 |
+| Autenticado: `/login?next=/painel?x=1` | ✔ vai para `/painel?x=1` |
+| Autenticado: `/login?next=//evil.example` e `/esqueci-senha` | ✔ vai para `/painel` |
+| Logout; cookie antigo em `/me`; reenvio depois do logout | ✔ 204; 401; 401 |
+| Armazenamento no navegador | ✔ nenhum token em `localStorage`, `sessionStorage` ou cookie legível; só o `XSRF-TOKEN`, por desenho |
+
+Achados e correções:
+
+| Achado | Correção |
+|---|---|
+| O fragmento `#token=...&email=...` permanecia na barra de endereço e no histórico depois de lido | A página captura o link na memória e apaga o fragmento na hora (`history.replaceState`, preservando o estado do router). Recarregar a página depois disso pede um novo link, que é o comportamento esperado |
+| Link de redefinição aberto com uma conta conectada: a API responde 409 e a tela mostrava "Algo deu errado" | Mensagem própria: "Você está conectado a uma conta. Saia dela para continuar." |
+
+Observações sem alteração:
+
+- A página `/verificar-email/...` mantém `expires` e `signature` na query, porque a API valida a assinatura sobre caminho e query. O link só confirma o e-mail da própria conta, exige sessão dessa conta e expira em 60 minutos.
+- O histórico global do navegador pode ter registrado a URL original com o fragmento no momento da visita (depende do navegador). O token continua de uso único e expira em 60 minutos.
+
+### Débitos técnicos registrados
+
+| Débito | Risco | Como evitar divergência |
+|---|---|---|
+| Lista de países duplicada: `apps/api/app/Modules/Identity/Support/CountryCodes.php` e `apps/web/src/features/identity/lib/countries.ts` | Um país aceito num lado e recusado no outro | Mudar os dois arquivos juntos; avaliar um endpoint de referência ou geração de tipos (OpenAPI, fase posterior) |
+| Rotas protegidas em dois lugares: `PROTECTED_PATH_PREFIXES` (`lib/routes.ts`) e `config.matcher` (`proxy.ts`), que precisa ser constante | Rota nova da área logada sem o redirecionamento do `proxy.ts` (ainda protegida pelo layout via `/me`) | Mudar os dois juntos; o teste `proxy.test.ts` fixa o `matcher` atual |

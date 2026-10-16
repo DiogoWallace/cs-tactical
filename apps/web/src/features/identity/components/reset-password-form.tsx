@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, useSyncExternalStore } from "react"
+import { useState, useSyncExternalStore } from "react"
 import Link from "next/link"
 import { CircleCheckIcon, LoaderCircleIcon } from "lucide-react"
 
@@ -11,18 +11,23 @@ import { resetPassword } from "../api/auth"
 import { NO_ERRORS, toFormErrors, type FormErrors } from "../lib/form-errors"
 import { FormAlert, FormField } from "./form-field"
 
+type ResetLink = { token: string; email: string }
+
 /**
  * Nova senha a partir do link do e-mail: /redefinir-senha#token=...&email=...
- * Token e e-mail ficam no fragmento (#), que o navegador nunca envia ao servidor.
+ *
+ * Token e e-mail ficam no fragmento (#), que o navegador nunca envia ao servidor. Assim que a
+ * página os lê, o fragmento é apagado da barra de endereço e da entrada do histórico
+ * (`history.replaceState`); o token fica só na memória desta página, nunca em storage.
  */
 export function ResetPasswordForm() {
-  const hash = useSyncExternalStore(noSubscription, readHash, () => null)
-  const link = useMemo(() => parseLink(hash), [hash])
+  // `undefined` no servidor e na hidratação; depois, o link capturado ou null.
+  const link = useSyncExternalStore(noSubscription, captureLink, () => undefined)
   const [errors, setErrors] = useState<FormErrors>(NO_ERRORS)
   const [pending, setPending] = useState(false)
   const [done, setDone] = useState(false)
 
-  if (hash === null) return null // Ainda no servidor: o fragmento só existe no navegador.
+  if (link === undefined) return null // Ainda no servidor: o fragmento só existe no navegador.
 
   if (!link) {
     return <InvalidLink message="Este link de redefinição está incompleto." />
@@ -109,7 +114,7 @@ function InvalidLink({ message }: { message: string }) {
   )
 }
 
-export function parseLink(hash: string | null): { token: string; email: string } | null {
+export function parseLink(hash: string | null): ResetLink | null {
   if (!hash) return null
   const params = new URLSearchParams(hash.replace(/^#/, ""))
   const token = params.get("token")
@@ -117,8 +122,21 @@ export function parseLink(hash: string | null): { token: string; email: string }
   return token && email ? { token, email } : null
 }
 
-function readHash() {
-  return window.location.hash
+let capturedLink: ResetLink | null = null
+
+/**
+ * Lê o link do fragmento e o apaga da URL na mesma hora. Chamadas seguintes (sem fragmento)
+ * devolvem o mesmo objeto, como `useSyncExternalStore` exige. Um link novo (outro fragmento)
+ * substitui o anterior.
+ */
+function captureLink(): ResetLink | null {
+  const { hash, pathname, search } = window.location
+  if (hash) {
+    capturedLink = parseLink(hash)
+    // Mantém o estado do router do Next; só a URL muda.
+    window.history.replaceState(window.history.state, "", `${pathname}${search}`)
+  }
+  return capturedLink
 }
 
 function noSubscription() {

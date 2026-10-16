@@ -39,6 +39,12 @@ export function toFormErrors(error: unknown): FormErrors {
       return { fields: {}, form: "Muitas tentativas. Aguarde um minuto e tente novamente." }
     case "csrf_token_mismatch":
       return { fields: {}, form: "Sua sessão expirou. Recarregue a página e tente novamente." }
+    case "already_authenticated":
+      // Ex.: link de redefinição de senha aberto com uma conta conectada neste navegador.
+      return {
+        fields: {},
+        form: "Você está conectado a uma conta. Saia dela para continuar.",
+      }
     case "frontend_session_required":
       return {
         fields: {},

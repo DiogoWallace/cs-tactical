@@ -37,7 +37,36 @@ describe("ResetPasswordForm", () => {
   beforeEach(() => {
     vi.mocked(resetPassword).mockReset()
   })
-  afterEach(() => window.history.replaceState(null, "", "/"))
+  afterEach(() => {
+    window.history.replaceState(null, "", "/")
+  })
+
+  it("removes the token from the address bar as soon as it is read", () => {
+    window.history.replaceState(
+      { fromRouter: true },
+      "",
+      "/redefinir-senha?x=1#token=abc&email=a%40b.com",
+    )
+    render(<ResetPasswordForm />)
+
+    expect(window.location.hash).toBe("")
+    expect(window.location.pathname + window.location.search).toBe("/redefinir-senha?x=1")
+    expect(window.history.state).toEqual({ fromRouter: true })
+    // O link continua disponível para o formulário.
+    expect(screen.getByText("a@b.com")).toBeInTheDocument()
+  })
+
+  it("explains that a signed-in user has to sign out first", async () => {
+    openLink("#token=abc&email=ana%40example.com")
+    vi.mocked(resetPassword).mockImplementation(async () => {
+      throw new ApiError(409, { message: "Already authenticated.", code: "already_authenticated" })
+    })
+    render(<ResetPasswordForm />)
+
+    submit()
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Você está conectado a uma conta")
+  })
 
   it("sends token, e-mail and the new password from the link", async () => {
     openLink("#token=abc123&email=ana%40example.com")
