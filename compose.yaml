@@ -1,6 +1,64 @@
 name: cs-tactical
 
 services:
+  api: &api
+    build:
+      context: ./infra/docker/api
+      target: development
+      args:
+        HOST_UID: ${HOST_UID:-1000}
+        HOST_GID: ${HOST_GID:-1000}
+    image: cs-tactical-api:dev
+    restart: unless-stopped
+    env_file:
+      - path: ./apps/api/.env
+        required: true
+    environment: &api-environment
+      # Conexões definidas aqui têm prioridade sobre apps/api/.env (fonte única: .env da raiz).
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: ${POSTGRES_DB:-cs_tactical}
+      DB_USERNAME: ${POSTGRES_USER:-cs_tactical}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      MAIL_HOST: mailpit
+      MAIL_PORT: 1025
+      # Desenvolvimento: sem OPcache para que alterações no código valham na hora.
+      PHP_OPCACHE_ENABLE: 0
+      PHP_DISPLAY_ERRORS: "On"
+      # Rota de health check nativa do Laravel (liveness).
+      HEALTHCHECK_PATH: /up
+      SHOW_WELCOME_MESSAGE: "false"
+      # O container recebe tráfego apenas do frontend e da rede interna.
+      TRUSTED_PROXY: off
+      # Escuta só IPv4: evita falha do Nginx em ambientes sem IPv6 (comum em Docker/WSL).
+      NGINX_LISTEN_IP_PROTOCOL: ipv4
+    volumes:
+      - ./apps/api:/var/www/html
+    ports:
+      - "127.0.0.1:${API_PORT:-8000}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks: [internal]
+
+  worker:
+    <<: *api
+    command: ["php", "/var/www/html/artisan", "queue:work", "--tries=3", "--timeout=90"]
+    stop_signal: SIGTERM
+    ports: []
+    healthcheck:
+      # Healthcheck nativo da imagem para processos que não são HTTP.
+      test: ["CMD", "healthcheck-queue"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
   postgres:
     image: postgres:18
     restart: unless-stopped

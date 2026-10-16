@@ -92,3 +92,74 @@ make down && make up        # persistência
 
 - Validar no seu WSL2 real: UID 1000, integração do Docker Desktop e acesso pelo navegador do Windows (o ambiente de validação é Linux sem WSL).
 - O repositório ainda não está no GitHub (ver README da entrega).
+
+---
+
+## Etapa 0.3 — Laravel 13 com containers `api` e `worker`
+
+**Commit:** `feat(api): add laravel 13 application with api and worker containers`
+
+### Arquivos criados ou modificados
+
+| Arquivo | Conteúdo |
+|---|---|
+| `apps/api/` | Laravel 13.36 (skeleton `laravel/laravel` v13.11), PHP 8.4 |
+| `apps/api/composer.json` | nome `cs-tactical/api`, `php: ^8.4`, `config.platform.php` fixado em 8.4.26 |
+| `apps/api/.env.example` | Postgres, Redis (sessão, cache, fila), SMTP, logs em `stderr`, locale `pt_BR`, `FRONTEND_URL` |
+| `apps/api/database/migrations/0001_01_01_000000_create_queue_tables.php` | apenas `job_batches` e `failed_jobs` |
+| `infra/docker/api/Dockerfile` | `serversideup/php:8.4-fpm-nginx`, alvo `development` com UID/GID do host |
+| `compose.yaml` | serviços `api` (porta `API_PORT` → 8080) e `worker` (`queue:work`), mesma imagem |
+| `scripts/setup.sh` | cria `apps/api/.env`, faz build, `composer install` e `key:generate` no container |
+| `Makefile` | `sh-api`, `artisan`, `composer`, `migrate`, `fresh` (com confirmação), `tinker` |
+
+### Removido do skeleton (ajuste 5: nada que ainda não será usado)
+
+- `package.json`, `vite.config.js`, `resources/js`, `resources/css`, view `welcome`: a API não serve frontend, então **não há Vite**.
+- Migration e model `User`, `UserFactory`: serão recriados na Fase 1 no módulo `Identity`, já com UUIDv7.
+- Migrations de `cache`, `sessions` e `jobs`: cache, sessões e filas ficam no Redis.
+- Workflows `.github` e arquivos de IA (`AGENTS.md`, `CLAUDE.md`) do skeleton.
+- Teste de exemplo que acessava `/` (a rota não existe mais).
+
+### Decisões técnicas
+
+- **Fonte única para conexões**: `DB_*`, `REDIS_*` e `MAIL_*` vêm do `compose.yaml` (a partir do `.env` da raiz) e têm prioridade sobre `apps/api/.env`. A senha do banco existe num só lugar.
+- **Sanctum fica para a etapa 0.6**, quando vamos validar o proxy de cookies; tabela de tokens pessoais não será criada (ADR 0003).
+- **OPcache desligado em dev** (`PHP_OPCACHE_ENABLE=0`): alterações no código valem na próxima requisição.
+- **Nginx escutando só IPv4** (`NGINX_LISTEN_IP_PROTOCOL=ipv4`): sem isso o Nginx falha em hosts sem IPv6.
+- **Worker** usa a mesma imagem, com o healthcheck `healthcheck-queue` da própria imagem.
+- **Healthcheck da API** aponta para `/up` (nativa do Laravel); `make up` só retorna quando a API está saudável.
+- **Extensão `intl` não instalada**: não é necessária agora; entra quando houver formatação por locale.
+- `setup.sh` recusa UID 0 (root) e mantém 1000, porque o build não funciona com o usuário root.
+
+### Comandos executados
+
+```bash
+composer create-project laravel/laravel apps/api "^13.0"
+./scripts/setup.sh           # build, composer install, key:generate
+make up
+make migrate
+docker compose exec api php artisan about
+docker compose exec api php artisan test
+```
+
+### Testes realizados
+
+| Verificação | Resultado |
+|---|---|
+| `make setup` completo | ✔ build, `composer install` e `APP_KEY` gerada |
+| `make up` | ✔ 5 serviços `healthy` (api, worker, postgres, redis, mailpit) |
+| `GET http://localhost:8000/up` | ✔ 200 |
+| `make migrate` | ✔ `job_batches` e `failed_jobs` criadas no Postgres |
+| `artisan about` | ✔ Laravel 13.36.0, PHP 8.4.26, drivers: pgsql, redis (cache, fila, sessão), smtp, logs stderr |
+| Dono dos arquivos criados pelo container | ✔ UID/GID 1000 |
+| Worker | ✔ processo `queue:work` rodando |
+| Alteração de código sem reiniciar | ✔ rota alterada de `v1` para `v2` refletiu na hora |
+| `php artisan test` | ✔ 1 teste passando (Pest entra na 0.4) |
+
+### Observações do ambiente de validação
+
+- O ambiente onde validei não tem IPv6 e bloqueia downloads diretos do GitHub. O `composer install` foi feito pelo host com `--prefer-source`; no seu WSL o `make setup` baixa normalmente dentro do container.
+
+### Pendências
+
+- `config/auth.php` ainda referencia `App\Models\User` (inexistente até a Fase 1); só seria usado por rotas autenticadas, que ainda não existem.
