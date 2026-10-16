@@ -368,3 +368,49 @@ Capturas: `docs/fase-0/status.png` e `status-mobile.png` na pasta do projeto.
 
 - Erros 404/500 da API mostram stack trace porque `APP_DEBUG=true` em desenvolvimento; em produção `APP_DEBUG=false` (será verificado ao preparar o deploy).
 - O horário em `/status` usa o fuso do servidor (UTC). A definição de fuso por usuário entra com o perfil, na Fase 1.
+
+---
+
+## Etapa 0.7 — Fila, worker e e-mail
+
+**Commit:** `feat(api): add infrastructure check through queue and mail`
+
+### Arquivos criados ou modificados
+
+| Arquivo | Conteúdo |
+|---|---|
+| `app/Modules/System/Console/CheckInfrastructureCommand.php` | `php artisan system:check-infra [--to=...]`: enfileira o job |
+| `app/Modules/System/Jobs/RunInfrastructureCheck.php` | Job na fila Redis: envia o e-mail e registra no log |
+| `app/Modules/System/Mail/InfrastructureCheckMail.php` | E-mail de diagnóstico, sem arquivo de view |
+| `app/Modules/System/SystemServiceProvider.php` | Registra o comando |
+| `tests/Feature/System/InfrastructureCheckTest.php` | 3 testes (enfileiramento, envio, conteúdo) |
+| `Makefile` | `make check-infra` |
+
+### Decisões técnicas
+
+- **Diagnóstico como comando, não como endpoint**: disparar e-mails por HTTP abriria uma porta para abuso; o comando só roda dentro do container.
+- **Conteúdo do e-mail em `htmlString`**: evita recriar a pasta de views só para isso. Templates de e-mail entram com os e-mails reais (verificação de conta, convites).
+- **Fila no Redis com AOF**: jobs enfileirados sobrevivem a reinícios do Redis e do worker.
+
+### Comandos executados
+
+```bash
+make check-infra
+make logs s=worker
+curl http://localhost:8025/api/v1/messages
+docker compose stop worker && make check-infra && docker compose restart redis && docker compose start worker
+```
+
+### Testes realizados
+
+| Verificação | Resultado |
+|---|---|
+| `make check-infra` | ✔ job processado pelo worker em ~80 ms (`DONE` no log) |
+| Mailpit | ✔ e-mail recebido com o assunto e o destinatário esperados |
+| Worker parado + Redis reiniciado | ✔ job permaneceu na fila e foi processado quando o worker voltou |
+| `make test` (API) | ✔ 22 testes, 60 asserções |
+| `make lint` (API) | ✔ sem erros |
+
+### Pendências
+
+- Nenhuma nesta etapa. Monitoramento de filas (Horizon) fica para quando houver jobs de negócio.
