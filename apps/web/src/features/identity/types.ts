@@ -4,6 +4,8 @@ export type CurrentUser = {
   name: string
   email: string
   email_verified: boolean
+  /** Novo e-mail aguardando confirmação, ou null. */
+  pending_email: string | null
   platform_role: "user" | "editor" | "admin"
   profile: {
     nickname: string
@@ -35,6 +37,21 @@ export type RegisterInput = {
 export type ResetPasswordInput = {
   token: string
   email: string
+  password: string
+  password_confirmation: string
+}
+
+/** Atualização parcial do perfil: só os campos enviados mudam. */
+export type UpdateProfileInput = Partial<{
+  name: string
+  nickname: string
+  country_code: string | null
+  timezone: string
+  bio: string | null
+}>
+
+export type ChangePasswordInput = {
+  current_password: string
   password: string
   password_confirmation: string
 }

@@ -8,11 +8,15 @@ use App\Modules\Identity\Http\Responses\FailedPasswordResetResponse;
 use App\Modules\Identity\Http\Responses\LoginResponse;
 use App\Modules\Identity\Http\Responses\PasswordResetLinkResponse;
 use App\Modules\Identity\Http\Responses\RegisterResponse;
+use App\Modules\Identity\Models\Profile;
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Policies\ProfilePolicy;
+use App\Modules\Identity\Policies\UserPolicy;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
@@ -61,6 +65,9 @@ class IdentityServiceProvider extends ServiceProvider
 
         Password::defaults(fn () => Password::min(8)->max(72));
 
+        Gate::policy(Profile::class, ProfilePolicy::class);
+        Gate::policy(User::class, UserPolicy::class);
+
         $this->configureEmailLinks();
         $this->configureRateLimiting();
 
@@ -107,6 +114,11 @@ class IdentityServiceProvider extends ServiceProvider
         RateLimiter::for('password-reset', fn (Request $request) => Limit::perMinute(5)->by($this->emailKey($request).'|'.$request->ip()));
 
         RateLimiter::for('register', fn (Request $request) => Limit::perMinute(3)->by($request->ip()));
+
+        // Troca de senha e pedido de troca de e-mail: exigem a senha atual.
+        RateLimiter::for('credentials', fn (Request $request) => Limit::perMinute(5)->by(
+            $request->user()?->getAuthIdentifier() ?: $request->ip(),
+        ));
 
         RateLimiter::for('verification', fn (Request $request) => Limit::perMinute(6)->by(
             $request->user()?->getAuthIdentifier() ?: $request->ip(),

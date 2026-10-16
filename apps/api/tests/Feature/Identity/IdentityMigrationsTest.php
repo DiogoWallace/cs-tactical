@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Schema;
 const IDENTITY_TABLES = ['users', 'profiles', 'password_reset_tokens'];
 
 it('rolls back and re-applies the identity migrations', function () {
-    $this->artisan('migrate:rollback', ['--step' => 3])->assertSuccessful();
+    $this->artisan('migrate:rollback', ['--step' => 4])->assertSuccessful();
 
     foreach (IDENTITY_TABLES as $table) {
         expect(Schema::hasTable($table))->toBeFalse();
@@ -23,6 +23,16 @@ it('rolls back and re-applies the identity migrations', function () {
     foreach (IDENTITY_TABLES as $table) {
         expect(Schema::hasTable($table))->toBeTrue();
     }
+    expect(Schema::hasColumn('users', 'pending_email'))->toBeTrue();
+});
+
+it('rolls back the pending e-mail column on its own', function () {
+    $this->artisan('migrate:rollback', ['--step' => 1])->assertSuccessful();
+    expect(Schema::hasColumn('users', 'pending_email'))->toBeFalse()
+        ->and(Schema::hasTable('users'))->toBeTrue();
+
+    $this->artisan('migrate')->assertSuccessful();
+    expect(Schema::hasColumn('users', 'pending_email'))->toBeTrue();
 });
 
 it('creates the expected indexes and constraints', function () {

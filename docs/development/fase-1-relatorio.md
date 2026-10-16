@@ -403,3 +403,71 @@ Observações sem alteração:
 |---|---|---|
 | Lista de países duplicada: `apps/api/app/Modules/Identity/Support/CountryCodes.php` e `apps/web/src/features/identity/lib/countries.ts` | Um país aceito num lado e recusado no outro | Mudar os dois arquivos juntos; avaliar um endpoint de referência ou geração de tipos (OpenAPI, fase posterior) |
 | Rotas protegidas em dois lugares: `PROTECTED_PATH_PREFIXES` (`lib/routes.ts`) e `config.matcher` (`proxy.ts`), que precisa ser constante | Rota nova da área logada sem o redirecionamento do `proxy.ts` (ainda protegida pelo layout via `/me`) | Mudar os dois juntos; o teste `proxy.test.ts` fixa o `matcher` atual |
+
+---
+
+## Etapa 1.5 — Perfil e conta
+
+Branch `feat/phase-1-profile`, criada da `main` depois do merge do PR #2 (etapas 1.3 e 1.4). Escolhas aprovadas: troca de e-mail com confirmação no novo endereço, sem carência para trocar o apelido, e troca de senha encerrando as outras sessões.
+
+### Arquivos criados ou modificados
+
+| Arquivo | Conteúdo |
+|---|---|
+| `database/migrations/2026_10_16_200000_add_pending_email_to_users_table.php` | `users.pending_email` (minúsculas garantidas por check constraint) |
+| `app/Modules/Identity/Validation/AccountRules.php` | Regras de nome, e-mail, senha, apelido, país, fuso e bio, normalização e conversão de violação de unicidade em 422; usadas pelo cadastro e pela edição |
+| `app/Modules/Identity/Actions/CreateNewUser.php` | Passa a usar `AccountRules` (sem mudança de comportamento) |
+| `app/Modules/Identity/Policies/{Profile,User}Policy.php` | Só o dono edita o perfil e as credenciais; papéis de plataforma não dão acesso |
+| `app/Modules/Identity/Http/Requests/{UpdateProfile,ChangePassword,RequestEmailChange}Request.php` | Validação e autorização pelas Policies |
+| `app/Modules/Identity/Actions/{UpdateProfile,ChangePassword,RequestEmailChange,ConfirmEmailChange}.php` | Regras de negócio |
+| `app/Modules/Identity/Http/Controllers/{UpdateProfile,ChangePassword,EmailChange}Controller.php` | Endpoints `/api/v1/me/...` |
+| `app/Modules/Identity/Support/EmailChangeLink.php` | Link assinado relativo para `/confirmar-email`, com `sha256(pending_email)` |
+| `app/Modules/Identity/Notifications/{ConfirmNewEmail,EmailChanged}Notification.php` | Link ao novo endereço; aviso ao antigo (pela fila) |
+| `app/Modules/Identity/IdentityServiceProvider.php`, `routes.php` | Policies, limitador `credentials` (5/min por usuário), rotas |
+| `app/Modules/Identity/Http/Resources/UserResource.php`, `Models/User.php` | `pending_email` |
+| `lang/pt_BR/validation.php` | `current_password`, `different` e atributos novos |
+| `tests/Feature/Identity/{ProfileUpdate,PasswordChange,EmailChange}Test.php` | 55 testes (20 + 13 + 22) |
+| `tests/Feature/Identity/{IdentityMigrations,SessionAuthentication}Test.php`, `tests/Support/FrontendSession.php` | Migration nova, campo novo em `/me`, PATCH/PUT/DELETE no auxiliar |
+| `docs/decisions/0011-troca-de-email-com-confirmacao.md` | ADR nova |
+| `apps/web/src/app/(app)/painel/conta/page.tsx` | Página da conta (perfil, e-mail, senha) |
+| `apps/web/src/app/(auth)/confirmar-email/[id]/[hash]/page.tsx` | Confirmação do novo e-mail |
+| `apps/web/src/features/identity/{api/account.ts,components/*,lib/timezones.ts,types.ts}` | Formulários, chamadas e lista de fusos |
+| `apps/web/src/components/ui/native-select.tsx` | `NativeSelect` e `Textarea` |
+| `apps/web/src/features/identity/components/app-header.tsx`, `lib/routes.ts` | Link "Conta"; `ACCOUNT_PATH` (dentro de `/painel`, já protegido pelo `proxy.ts`) |
+
+### Decisões técnicas
+
+- **Controllers próprios para senha e e-mail**, não o `PasswordController` do Fortify: ele não renova a sessão atual nem troca o `remember_token`. O recurso `updatePasswords` do Fortify continua desligado.
+- **Troca de e-mail com confirmação** ([ADR 0011](../decisions/0011-troca-de-email-com-confirmacao.md)).
+- **`sha256` no hash do link de troca de e-mail** (o formato é nosso; a verificação de e-mail mantém o `sha1` exigido pelo Fortify).
+- **Policies explícitas** mesmo nas rotas `/me/*`, que já são do próprio usuário: a autorização fica no backend e pronta para os papéis da etapa 1.6.
+- **`AccountRules` compartilhado** entre cadastro e edição, para as regras não divergirem.
+- **Listas de país e fuso só no navegador**, como no cadastro (dados de idioma diferentes entre Node e navegador).
+- **`router.refresh()` depois de salvar o perfil**, para o cabeçalho mostrar o novo apelido. A navegação completa continua reservada para quando a sessão muda (login, cadastro, logout).
+
+### Validação no navegador (com Mailpit)
+
+| Fluxo | Resultado |
+|---|---|
+| `/painel/conta` | ✔ três seções; país e fuso carregados (250 e 419 opções), valores atuais selecionados |
+| Salvar perfil (apelido, país, bio) | ✔ "Perfil atualizado."; o cabeçalho passa a mostrar o novo apelido |
+| Pedir troca de e-mail | ✔ aviso "Enviamos um link para..."; e-mail "Confirme seu novo e-mail" só para o novo endereço |
+| Abrir o link | ✔ "O e-mail da sua conta agora é ..."; página da conta mostra o novo e-mail; endereço antigo recebe "O e-mail da sua conta foi alterado" com o novo mascarado |
+| Trocar senha com a senha atual errada | ✔ "A senha atual está incorreta." (tradução adicionada nesta validação) |
+| Trocar senha | ✔ "Senha alterada. As outras sessões abertas foram encerradas."; a sessão atual continua (`/me` 200) |
+
+O usuário e os e-mails do teste manual foram removidos.
+
+### Pendências
+
+- Avatar e links externos do perfil continuam fora (dependem de upload/armazenamento).
+- Sem carência para trocar o apelido (decisão desta etapa); rever se houver abuso.
+
+### Testes realizados
+
+| Verificação | Resultado |
+|---|---|
+| `make migrate` | ✔ `pending_email` adicionada; rollback isolado testado |
+| `make test` | ✔ API 261 testes; web 96 testes |
+| `make lint` | ✔ Pint, Larastan nível 6, ESLint, Prettier, TypeScript |
+| Build de produção | ✔ `/painel/conta` e `/confirmar-email/[id]/[hash]` como Partial Prerender |

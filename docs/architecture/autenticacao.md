@@ -163,6 +163,11 @@ Navegador abre o link ─► página do Next ─► GET /api/v1/auth/email/verif
 - As páginas desses links usam `Referrer-Policy: same-origin`: o Sanctum reconhece a sessão pelo `Referer` nas chamadas GET à própria API, e nada das URLs vai para outros sites.
 - Depois de redefinir a senha, as outras sessões caem na próxima requisição (`AuthenticateSession` do Sanctum) e o `remember_token` é trocado.
 
+### 8. Troca de senha e de e-mail com sessão aberta (etapa 1.5)
+
+- **Senha** (`PUT /api/v1/me/password`): exige a senha atual. A sessão atual é refeita com `login()` (novo ID e, se havia, novo cookie "lembrar-me") e recebe o hash da nova senha; as demais caem na próxima requisição pelo `AuthenticateSession` do Sanctum, e o `remember_token` novo invalida os cookies "lembrar-me" dos outros dispositivos.
+- **E-mail** (`POST /api/v1/me/email`): exige a senha atual e só vale depois da confirmação pelo link enviado ao novo endereço ([ADR 0011](../decisions/0011-troca-de-email-com-confirmacao.md)). As sessões continuam.
+
 ## Autorização
 
 - `auth:sanctum` garante quem é o usuário; Policies decidem o que ele pode fazer.

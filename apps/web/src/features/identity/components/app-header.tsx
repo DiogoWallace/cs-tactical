@@ -2,7 +2,7 @@ import Link from "next/link"
 
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Skeleton } from "@/components/ui/skeleton"
-import { HOME_PATH } from "@/lib/routes"
+import { ACCOUNT_PATH, HOME_PATH } from "@/lib/routes"
 
 import { getCurrentUser } from "../api/get-current-user"
 import { LogoutButton } from "./logout-button"
@@ -25,9 +25,12 @@ export async function AppHeader() {
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
         <div className="flex items-center gap-6">
           <Brand />
-          <nav aria-label="Principal" className="hidden text-sm sm:block">
+          <nav aria-label="Principal" className="flex gap-4 text-sm">
             <Link href={HOME_PATH} className="text-muted-foreground hover:text-foreground">
               Painel
+            </Link>
+            <Link href={ACCOUNT_PATH} className="text-muted-foreground hover:text-foreground">
+              Conta
             </Link>
           </nav>
         </div>

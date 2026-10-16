@@ -11,6 +11,8 @@
 return [
 
     'confirmed' => 'A confirmação de :attribute não confere.',
+    'current_password' => 'A senha atual está incorreta.',
+    'different' => 'O campo :attribute deve ser diferente de :other.',
     'email' => 'Informe um e-mail válido.',
     'in' => 'O valor de :attribute é inválido.',
     'max' => [
@@ -42,6 +44,9 @@ return [
         'country_code' => [
             'in' => 'Selecione um país da lista.',
         ],
+        'password' => [
+            'different' => 'A nova senha deve ser diferente da atual.',
+        ],
     ],
 
     'attributes' => [
@@ -52,6 +57,8 @@ return [
         'nickname' => 'apelido',
         'country_code' => 'país',
         'timezone' => 'fuso horário',
+        'current_password' => 'senha atual',
+        'bio' => 'bio',
     ],
 
 ];

@@ -67,6 +67,11 @@ O health check (`/api/v1/health`) não é afetado: o `503` dele é uma resposta 
 | POST | `/api/v1/auth/reset-password` | não (sessão do frontend + CSRF) | Redefine a senha com o token do link |
 | GET | `/api/v1/auth/email/verify/{id}/{hash}?expires&signature` | sim + assinatura | Confirma o e-mail |
 | POST | `/api/v1/auth/email/verification-notification` | sim (+ CSRF) | Reenvia o link de confirmação |
+| PATCH | `/api/v1/me/profile` | sim (+ CSRF) | Edita nome e perfil (parcial) |
+| PUT | `/api/v1/me/password` | sim (+ CSRF) | Troca a senha; encerra as outras sessões |
+| POST | `/api/v1/me/email` | sim (+ CSRF) | Pede a troca de e-mail (link ao novo endereço) |
+| DELETE | `/api/v1/me/email` | sim (+ CSRF) | Cancela a troca pendente |
+| GET | `/api/v1/me/email/confirm/{id}/{hash}?expires&signature` | sim + assinatura | Conclui a troca de e-mail |
 
 ### `POST /api/v1/auth/register`
 
@@ -119,7 +124,7 @@ Sem corpo. Resposta **204**. Invalida a sessão e troca o token CSRF (o cookie `
 }
 ```
 
-Lista fechada de campos (`UserResource`): senha, `remember_token` e datas internas nunca saem. Sem sessão: 401. Limite: 120/min por usuário.
+Lista fechada de campos (`UserResource`): senha, `remember_token` e datas internas nunca saem. `pending_email` (desde a etapa 1.5) é o novo e-mail aguardando confirmação, ou `null`. Sem sessão: 401. Limite: 120/min por usuário.
 
 ### `GET /api/v1/health`
 
@@ -153,3 +158,19 @@ Chamado pela página `/verificar-email/{id}/{hash}?expires=...&signature=...` do
 ### `POST /api/v1/auth/email/verification-notification`
 
 Sem corpo. **202** quando envia um novo link; **204** quando o e-mail já está confirmado (nada é enviado). Limite: 6/min por usuário.
+
+### `PATCH /api/v1/me/profile`
+
+Atualização parcial: só os campos enviados mudam. Campos: `name`, `nickname`, `country_code` (null limpa), `timezone`, `bio` (até 500; null ou vazio limpa), com as mesmas regras do cadastro. O apelido pode mudar só de maiúsculas/minúsculas; em uso por outra conta, 422. Qualquer outro campo é ignorado. Resposta **200** com o usuário. Autorização: `ProfilePolicy@update` (só o dono). Limite: 120/min.
+
+### `PUT /api/v1/me/password`
+
+Corpo: `{ "current_password", "password", "password_confirmation" }`. A nova senha segue as regras do cadastro e precisa ser diferente da atual. Resposta **204**. A sessão atual continua, com novo ID (e novo cookie "lembrar-me", se havia um); as outras sessões e cookies "lembrar-me" deixam de valer; tokens de redefinição pendentes são apagados. Senha atual errada: 422 em `current_password`. Limite: 5/min por usuário.
+
+### `POST /api/v1/me/email` e `DELETE /api/v1/me/email`
+
+Corpo do POST: `{ "email", "current_password" }`. Resposta **202** com o usuário (`pending_email` preenchido); o link vai para o novo endereço e vale por 60 minutos. O DELETE cancela o pedido (200). Ver [ADR 0011](../decisions/0011-troca-de-email-com-confirmacao.md). Limite do POST: 5/min por usuário.
+
+### `GET /api/v1/me/email/confirm/{id}/{hash}`
+
+Chamado pela página `/confirmar-email/{id}/{hash}?expires&signature` do frontend. Resposta **200** com o usuário (e-mail novo, verificado). Link expirado, adulterado, substituído por pedido mais novo, cancelado ou de outra conta: **403**. Endereço tomado por outra conta nesse meio-tempo: **422** em `email`. Sem sessão: 401.

@@ -2,15 +2,11 @@
 
 namespace App\Modules\Identity\Actions;
 
-use App\Modules\Identity\Models\Profile;
 use App\Modules\Identity\Models\User;
-use App\Modules\Identity\Support\CountryCodes;
-use Closure;
+use App\Modules\Identity\Validation\AccountRules;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
 
@@ -26,12 +22,6 @@ use Laravel\Fortify\Contracts\CreatesNewUsers;
  */
 class CreateNewUser implements CreatesNewUsers
 {
-    /** Constraint do banco => campo do formulário. */
-    private const UNIQUE_CONSTRAINTS = [
-        'users_email_lower_unique' => 'email',
-        'profiles_nickname_lower_unique' => 'nickname',
-    ];
-
     /**
      * @param  array<string, mixed>  $input
      *
@@ -39,7 +29,14 @@ class CreateNewUser implements CreatesNewUsers
      */
     public function create(array $input): User
     {
-        $data = Validator::make($this->normalize($input), $this->rules())->validate();
+        $data = Validator::make(AccountRules::normalize($input), [
+            'name' => ['required', ...AccountRules::name()],
+            'email' => ['required', ...AccountRules::email()],
+            'password' => ['required', ...AccountRules::password()],
+            'nickname' => ['required', ...AccountRules::nickname()],
+            'country_code' => ['nullable', ...AccountRules::countryCode()],
+            'timezone' => ['nullable', ...AccountRules::timezone()],
+        ])->validate();
 
         try {
             return DB::transaction(function () use ($data): User {
@@ -58,69 +55,7 @@ class CreateNewUser implements CreatesNewUsers
                 return $user;
             });
         } catch (UniqueConstraintViolationException $e) {
-            foreach (self::UNIQUE_CONSTRAINTS as $constraint => $field) {
-                if (str_contains($e->getMessage(), $constraint)) {
-                    throw ValidationException::withMessages([
-                        $field => [__('validation.unique', ['attribute' => $field])],
-                    ]);
-                }
-            }
-
-            throw $e;
+            AccountRules::rethrowUniqueViolation($e);
         }
-    }
-
-    /** @return array<string, mixed> */
-    private function rules(): array
-    {
-        return [
-            'name' => ['required', 'string', 'max:120'],
-            'email' => ['required', 'string', 'email:rfc', 'max:254', $this->uniqueEmail()],
-            'password' => ['required', 'string', Password::default(), 'confirmed'],
-            'nickname' => ['required', 'string', 'regex:/^[A-Za-z0-9_.-]{3,24}$/', $this->uniqueNickname()],
-            'country_code' => ['nullable', 'string', Rule::in(CountryCodes::ALL)],
-            'timezone' => ['nullable', 'string', 'timezone:all'],
-        ];
-    }
-
-    /**
-     * @param  array<string, mixed>  $input
-     * @return array<string, mixed>
-     */
-    private function normalize(array $input): array
-    {
-        foreach (['email', 'nickname', 'country_code'] as $field) {
-            if (is_string($input[$field] ?? null)) {
-                $input[$field] = trim($input[$field]);
-            }
-        }
-
-        if (is_string($input['email'] ?? null)) {
-            $input['email'] = User::normalizeEmail($input['email']);
-        }
-
-        if (is_string($input['country_code'] ?? null)) {
-            $input['country_code'] = strtoupper($input['country_code']);
-        }
-
-        return $input;
-    }
-
-    private function uniqueEmail(): Closure
-    {
-        return function (string $attribute, mixed $value, Closure $fail): void {
-            if (is_string($value) && User::query()->whereEmailIs($value)->exists()) {
-                $fail('validation.unique')->translate();
-            }
-        };
-    }
-
-    private function uniqueNickname(): Closure
-    {
-        return function (string $attribute, mixed $value, Closure $fail): void {
-            if (is_string($value) && Profile::query()->whereNicknameIs($value)->exists()) {
-                $fail('validation.unique')->translate();
-            }
-        };
     }
 }
