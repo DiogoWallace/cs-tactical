@@ -9,6 +9,9 @@ import type { NextConfig } from "next"
 const apiInternalUrl = process.env.API_INTERNAL_URL ?? "http://api:8080"
 
 const nextConfig: NextConfig = {
+  // O dev server roda no container com --hostname 0.0.0.0 e só libera "localhost" por padrão.
+  // Sem isto, abrir http://127.0.0.1:3000 bloqueia o WebSocket do hot reload (/_next/hmr).
+  allowedDevOrigins: ["127.0.0.1"],
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

@@ -478,3 +478,15 @@ Limitação do ambiente de validação (não se aplica ao WSL): o `composer inst
 - Validar a Fase 0 no seu WSL2 (UID 1000, Docker Desktop, navegador do Windows).
 - Publicar no GitHub e confirmar a primeira execução do CI.
 - Fase 1: login, cadastro e perfil (Fortify headless), módulo `Identity` com `users` em UUIDv7, OpenAPI via Scramble com tipos TypeScript gerados.
+
+---
+
+## Correção após validação no WSL2: hot reload em `127.0.0.1`
+
+**Commit:** `fix(web): allow 127.0.0.1 as a dev origin for hot reload`
+
+- **Sintoma** (relatado no WSL2): `WebSocket connection to 'ws://127.0.0.1:3000/_next/hmr' failed` em loop no console; o hot reload não funcionava no navegador.
+- **Causa**: o Next 16 bloqueia recursos de desenvolvimento vindos de origens diferentes da que ele conhece. Ele libera `localhost` por padrão, mas o dev server roda no container com `--hostname 0.0.0.0`, então `127.0.0.1` é tratado como outra origem.
+- **Correção**: `allowedDevOrigins: ["127.0.0.1"]` em `apps/web/next.config.ts` (só tem efeito em desenvolvimento).
+- **Verificação**: reproduzido com navegador real em `http://127.0.0.1:3000` (handshake falhava; em `localhost` funcionava). Depois da correção, o WebSocket conecta nos dois endereços e uma edição em `page.tsx` aparece no navegador sem recarregar a página.
+- A validação anterior não pegou o problema porque testava o hot reload só por `curl` em `localhost`.

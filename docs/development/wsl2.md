@@ -101,4 +101,5 @@ E rode `wsl --shutdown` no PowerShell para aplicar.
 | `port is already allocated` | Outro projeto usa a porta | Altere a porta no `.env` e rode `make up` |
 | Arquivos com dono `root` | `HOST_UID` incorreto | `make setup && make build && make up` |
 | Hot reload não funciona | Repositório em `/mnt/c` | Mova para `~/projects` |
+| Console do navegador: `WebSocket connection to 'ws://.../_next/hmr' failed` | Endereço não liberado no dev server do Next | Use `localhost:3000` ou `127.0.0.1:3000` (ambos liberados em `allowedDevOrigins`); outro host precisa ser adicionado em `apps/web/next.config.ts` |
 | Scripts falham com `\r: command not found` | Arquivo com CRLF | `git config --global core.autocrlf false` e clone novamente |
