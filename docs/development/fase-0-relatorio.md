@@ -433,3 +433,48 @@ docker compose stop worker && make check-infra && docker compose restart redis &
 - **CI fora do Docker Compose**: usa `setup-php` e `setup-node` com serviços do GitHub. É mais rápido que construir as imagens de desenvolvimento e testa as mesmas versões (PHP 8.4, Node 24, Postgres 18, Redis 8).
 - **Sem deploy** e sem segredos no workflow.
 - **O workflow ainda não rodou**: ele só executa quando o repositório estiver no GitHub. A sintaxe foi validada localmente e os mesmos comandos passam via `make lint` e `make test`.
+
+---
+
+## Validação final: ambiente do zero seguindo o README
+
+Clone novo do repositório, sem containers, imagens ou volumes anteriores (`docker compose down --volumes` e remoção das imagens locais), executando apenas os comandos do README.
+
+| Comando | Resultado |
+|---|---|
+| `make doctor` | ✔ (antes do `make setup`, apenas avisa que o `.env` será criado) |
+| `make setup` | ✔ três `.env` criados, UID/GID, build das imagens, dependências, `APP_KEY` |
+| `make up` | ✔ 6 serviços `healthy` em ~19 s |
+| `make migrate` | ✔ |
+| `curl localhost:8000/api/v1/health` | ✔ `ok`, banco e Redis ok |
+| `curl localhost:3000/api/v1/health` (proxy) | ✔ 200 |
+| `localhost:3000` e `localhost:3000/status` | ✔ 200 |
+| `make check-infra` | ✔ e-mail no Mailpit |
+| `make test` | ✔ API 22 testes; web 11 testes |
+| `make lint` | ✔ sem erros |
+| Hot reload | ✔ alteração no host refletida sem reiniciar |
+
+Correção feita nesta validação: o `make doctor` falhava antes do primeiro `make setup` porque o `.env` ainda não existia; agora isso é só um aviso.
+
+Limitação do ambiente de validação (não se aplica ao WSL): o `composer install` dentro do container não consegue baixar pacotes por causa de um proxy TLS, então a pasta `vendor/` foi copiada antes do `make setup`. Todas as outras etapas rodaram exatamente como no README.
+
+## Critérios de conclusão da Fase 0
+
+| Critério | Status | Como verificar |
+|---|---|---|
+| Inicializar os serviços com Docker Compose | ✔ | `make up` |
+| Acessar o frontend Next.js | ✔ | http://localhost:3000 |
+| Acessar a API Laravel | ✔ | http://localhost:8000/up |
+| Consultar `/api/v1/health` | ✔ | `curl localhost:8000/api/v1/health` |
+| Confirmar conectividade com PostgreSQL | ✔ | `checks.database` no health; `make psql` |
+| Confirmar conectividade com Redis | ✔ | `checks.redis` no health; `make redis-cli` |
+| Executar migrations | ✔ | `make migrate` |
+| Executar testes básicos | ✔ | `make test` (33 testes) |
+| Hot reload no WSL2 | ✔ no ambiente Linux de validação; **falta confirmar no seu WSL2** | editar `apps/web/src/app/page.tsx` com `make up` rodando |
+| Reproduzir o ambiente seguindo o README | ✔ clone limpo; **falta confirmar no seu WSL2** | seção "Início rápido" do README |
+
+## Pendências gerais para a Fase 1
+
+- Validar a Fase 0 no seu WSL2 (UID 1000, Docker Desktop, navegador do Windows).
+- Publicar no GitHub e confirmar a primeira execução do CI.
+- Fase 1: login, cadastro e perfil (Fortify headless), módulo `Identity` com `users` em UUIDv7, OpenAPI via Scramble com tipos TypeScript gerados.
