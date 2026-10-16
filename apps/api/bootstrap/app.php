@@ -22,6 +22,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->trustProxies(
             headers: Request::HEADER_X_FORWARDED_FOR | Request::HEADER_X_FORWARDED_PROTO,
         );
+
+        // A API não tem página de login: quem não está autenticado recebe 401 em JSON e o
+        // frontend decide para onde ir (docs/architecture/autenticacao.md). Sem isto, o Laravel
+        // tentaria redirecionar para a rota nomeada "login".
+        $middleware->redirectGuestsTo(fn () => null);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

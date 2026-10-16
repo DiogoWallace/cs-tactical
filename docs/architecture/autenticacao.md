@@ -141,7 +141,7 @@ No servidor não há navegador, então o cookie precisa ser repassado manualment
 |---|---|---|
 | login, recuperação de senha | 5/min | e-mail + IP real ([ADR 0009](../decisions/0009-ip-real-do-cliente-e-proxies-confiaveis.md)) |
 | cadastro | 3/min | IP |
-| API autenticada | 120/min | ID do usuário |
+| API autenticada (`/me`, logout) | 120/min | ID do usuário |
 
 Os contadores ficam no Redis.
 
@@ -186,11 +186,12 @@ Os contadores ficam no Redis.
 
 **Fase 1**, testes automatizados:
 
-- [ ] Login com credenciais válidas define o cookie de sessão e `GET /api/v1/me` responde 200.
-- [ ] `POST` sem `X-XSRF-TOKEN` responde 419.
-- [ ] Requisição sem cookie responde 401.
-- [ ] Requisição com `Origin` fora de `SANCTUM_STATEFUL_DOMAINS` não é tratada como sessão.
+- [x] Login com credenciais válidas define o cookie de sessão e `GET /api/v1/me` responde 200 (Pest e `curl` pelo proxy, etapa 1.2).
+- [x] `POST` sem `X-XSRF-TOKEN` responde 419 (login e logout, Pest e `curl`).
+- [x] Requisição sem cookie responde 401.
+- [x] Requisição com `Origin` fora de `SANCTUM_STATEFUL_DOMAINS` não é tratada como sessão, mesmo com um cookie de sessão válido.
 - [ ] Server Component com cookie repassado recebe o usuário; sem cookie, redireciona ao login.
-- [ ] Logout invalida a sessão (o cookie antigo passa a receber 401).
-- [ ] Rate limit de login responde 429 após o limite.
+- [x] Logout invalida a sessão (o cookie antigo passa a receber 401) e troca o token CSRF.
+- [x] Rate limit de login responde 429 após o limite.
+- [x] Login regenera o ID da sessão; senha errada e e-mail inexistente têm a mesma resposta; `Bearer` é ignorado.
 - [ ] Teste E2E (Playwright): cadastro → login → página protegida → logout.

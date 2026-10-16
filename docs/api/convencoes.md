@@ -35,9 +35,11 @@ Toda resposta de erro tem o mesmo formato, aplicado por `app/Support/Http/ApiErr
 | 400 | `bad_request` | original | |
 | 401 | `unauthenticated` | `Unauthenticated.` | sem sessão; o frontend redireciona ao login |
 | 403 | `forbidden` | a da Policy/Gate, ou `This action is unauthorized.` | |
+| 403 | `frontend_session_required` | `This endpoint is only available to the web application.` | login, cadastro e logout chamados sem a sessão do frontend |
 | 404 | `not_found` | `Not found.` | fixa: não expõe rota nem classe do model; inclui recurso de outra equipe |
 | 405 | `method_not_allowed` | `Method not allowed.` | |
 | 409 | `conflict` | original | |
+| 409 | `already_authenticated` | `Already authenticated.` | cadastro ou login com sessão ativa |
 | 413 | `payload_too_large` | `Payload too large.` | |
 | 419 | `csrf_token_mismatch` | `CSRF token mismatch.` | o `apiClient` renova o token e repete uma vez |
 | 422 | `validation_failed` | original | `errors: { campo: [mensagens] }` |
@@ -56,6 +58,63 @@ O health check (`/api/v1/health`) não é afetado: o `503` dele é uma resposta 
 |---|---|---|---|
 | GET | `/up` | não | Liveness do Laravel (processo vivo) |
 | GET | `/api/v1/health` | não | Readiness: verifica PostgreSQL e Redis |
+| POST | `/api/v1/auth/register` | não (sessão do frontend + CSRF) | Cadastro; inicia a sessão |
+| POST | `/api/v1/auth/login` | não (sessão do frontend + CSRF) | Login |
+| POST | `/api/v1/auth/logout` | sim (+ CSRF) | Logout |
+| GET | `/api/v1/me` | sim | Usuário da sessão |
+
+### `POST /api/v1/auth/register`
+
+Corpo:
+
+```json
+{
+  "name": "Ana Souza",
+  "email": "ana@example.com",
+  "password": "...",
+  "password_confirmation": "...",
+  "nickname": "AnaAWP",
+  "country_code": "BR",
+  "timezone": "America/Sao_Paulo"
+}
+```
+
+| Campo | Regras |
+|---|---|
+| `name` | obrigatório, até 120 caracteres |
+| `email` | obrigatório, e-mail válido (RFC), até 254, único sem diferenciar maiúsculas; gravado em minúsculas |
+| `password` | obrigatório, 8 a 72 caracteres, igual a `password_confirmation` |
+| `nickname` | obrigatório, 3 a 24 caracteres `[A-Za-z0-9_.-]`, único sem diferenciar maiúsculas |
+| `country_code` | opcional, ISO 3166-1 alfa-2 (aceita minúsculas e converte) |
+| `timezone` | opcional, identificador IANA (ex.: `America/Sao_Paulo`); padrão `UTC` |
+
+Qualquer outro campo (`platform_role`, `email_verified_at`, `id`...) é ignorado; o papel inicial é sempre `user`. Resposta **201** com o usuário, como em `/me`. Erros: 422 (validação, inclusive e-mail ou apelido em uso), 409, 403, 419, 429 (3/min por IP).
+
+### `POST /api/v1/auth/login`
+
+Corpo: `{ "email", "password", "remember"? }`. Resposta **200** com o usuário, como em `/me`. Credenciais inválidas: **422** com erro em `email`, a mesma resposta para senha errada e e-mail inexistente. Limite: 5/min por e-mail + IP real.
+
+### `POST /api/v1/auth/logout`
+
+Sem corpo. Resposta **204**. Invalida a sessão e troca o token CSRF (o cookie `XSRF-TOKEN` vem renovado na resposta).
+
+### `GET /api/v1/me`
+
+```json
+{
+  "data": {
+    "id": "01a14322-df0e-7031-ba00-dfdf62045361",
+    "name": "Ana Souza",
+    "email": "ana@example.com",
+    "email_verified": false,
+    "platform_role": "user",
+    "profile": { "nickname": "AnaAWP", "country_code": "BR", "timezone": "America/Sao_Paulo", "bio": null },
+    "created_at": "2026-10-16T05:12:30Z"
+  }
+}
+```
+
+Lista fechada de campos (`UserResource`): senha, `remember_token` e datas internas nunca saem. Sem sessão: 401. Limite: 120/min por usuário.
 
 ### `GET /api/v1/health`
 

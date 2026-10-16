@@ -1,6 +1,6 @@
 # 0010 — Laravel Fortify headless sob `/api/v1/auth`
 
-- Status: Aceita (implementação nas etapas 1.2 e 1.4)
+- Status: Aceita (login, logout e cadastro na etapa 1.2; recuperação de senha e verificação de e-mail na 1.4)
 - Data: 2026-10-16
 
 ## Contexto
@@ -11,12 +11,19 @@ A [ADR 0003](0003-autenticacao-sanctum-sessao-mesma-origem.md) definiu o Fortify
 
 ### Instalação e rotas
 
-- `laravel/fortify`, com compatibilidade com o Laravel 13 confirmada na instalação ([ADR 0002](0002-laravel-13-e-php-84.md)).
-- `config/fortify.php`: `views => false`, `prefix => 'api/v1/auth'`, `middleware => ['api']`, `guard => 'web'`, `username => 'email'`, `lowercase_usernames => true`.
-- O grupo `api` já contém o middleware stateful do Sanctum (`statefulApi()`), então as rotas do Fortify recebem sessão e verificação CSRF como o resto da API.
-- `features`: `registration`, `resetPasswords`, `emailVerification`, `updatePasswords`. **Fora da Fase 1:** `updateProfileInformation` (o perfil terá endpoints próprios do módulo Identity, na etapa 1.5) e `twoFactorAuthentication`.
-- As rotas ficam com nomes e caminhos do Fortify sob o prefixo, por exemplo `POST /api/v1/auth/login`, `POST /api/v1/auth/logout`, `POST /api/v1/auth/register`, `POST /api/v1/auth/forgot-password`, `POST /api/v1/auth/reset-password`, `POST /api/v1/auth/email/verification-notification`.
-- `GET /api/v1/me` **não** é do Fortify: pertence ao módulo Identity (`auth:sanctum`, resposta via Resource).
+- `laravel/fortify` 1.41, compatível com o Laravel 13 (`illuminate/support ^11|^12|^13`, verificado na instalação, [ADR 0002](0002-laravel-13-e-php-84.md)). O pacote traz `laravel/passkeys` como dependência; o próprio Fortify desliga as rotas dele, e nenhuma migration é carregada automaticamente.
+- **As rotas do pacote ficam desligadas (`Fortify::ignoreRoutes()`).** Com elas ligadas, o Fortify registraria sempre `/user/confirm-password` e `/user/confirmed-password-status`, mesmo sem uso. O módulo Identity declara em `routes.php` apenas os endpoints decididos, usando os controllers do Fortify:
+  - `POST /api/v1/auth/register` — `RegisteredUserController@store`;
+  - `POST /api/v1/auth/login` — `AuthenticatedSessionController@store`;
+  - `POST /api/v1/auth/logout` — `AuthenticatedSessionController@destroy`.
+
+  Os próximos endpoints (recuperação de senha e verificação de e-mail na etapa 1.4; alteração de senha na 1.5) entram da mesma forma.
+- `config/fortify.php`: `views => false`, `guard => 'web'`, `username => 'email'`, `lowercase_usernames => true`, `limiters.login => 'login'`. `features` liga apenas o que já tem rota (`registration` na etapa 1.2). `prefix` e `middleware` ficam documentados, mas só teriam efeito nas rotas do pacote.
+- As rotas usam o grupo `api`, que contém o middleware stateful do Sanctum (`statefulApi()`): recebem sessão e verificação CSRF como o resto da API.
+- **Só requisições do frontend.** `EnsureFrontendSession` responde 403 (`frontend_session_required`) quando a requisição não tem sessão (origem fora de `SANCTUM_STATEFUL_DOMAINS` ou sem `Origin`/`Referer`). Sem isso, o login de um cliente sem sessão gravaria uma sessão órfã no Redis.
+- **Cadastro e login exigem não estar autenticado.** `RejectAuthenticated` responde 409 (`already_authenticated`), em vez do redirecionamento do middleware `guest`, que não serve a um cliente JSON.
+- **Sem tokens.** `Sanctum::getAccessTokenFromRequestUsing(fn () => null)`: o header `Authorization: Bearer` é ignorado. Sem isso, o guard do Sanctum consultaria a tabela `personal_access_tokens`, que não existe (ADR 0003), e responderia 500.
+- `GET /api/v1/me` **não** é do Fortify: pertence ao módulo Identity (`auth:sanctum`, resposta via `UserResource`).
 
 ### Organização no monólito modular
 
@@ -26,6 +33,8 @@ A [ADR 0003](0003-autenticacao-sanctum-sessao-mesma-origem.md) definiu o Fortify
 ### Respostas
 
 - Toda resposta é JSON (as requisições sempre enviam `Accept: application/json`). Erros seguem o formato padronizado `{ message, code, errors? }` ([convenções](../api/convencoes.md#erros)).
+- Cadastro responde **201** e login **200**, ambos com `{ data: <usuário> }` no mesmo formato de `GET /api/v1/me` (respostas `LoginResponse` e `RegisterResponse` do módulo). Logout responde **204**.
+- O login usa `guard->attempt()` do Laravel, sem `Fortify::authenticateUsing()`: o `SessionGuard` executa a tentativa dentro de um *timebox* (200 ms), então o tempo de resposta não revela se o e-mail existe.
 - Login inválido responde **422** com erro em `email` (comportamento do Fortify), nunca 401: 401 significa "sem sessão" e dispara o redirecionamento do frontend.
 - Cadastro com e-mail já existente responde **422** (decisão de produto: o cadastro pode revelar que o e-mail existe).
 - **Recuperação de senha não revela se o e-mail existe**: `POST /forgot-password` responde sempre 200 com a mesma mensagem. O Fortify, por padrão, devolve 422 para e-mail desconhecido. Isso será trocado por uma resposta própria (`FailedPasswordResetLinkRequestResponse` ligado à mesma resposta de sucesso), com teste.

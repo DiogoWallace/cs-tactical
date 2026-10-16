@@ -140,3 +140,81 @@ make lint
 
 - Cadastro com criação atômica de usuário + perfil, login, logout e `/me`: etapa 1.2.
 - Validação do fuso horário (IANA) e do país na aplicação: etapas 1.2 e 1.5.
+
+---
+
+## Etapa 1.2 — Autenticação e sessões
+
+### Arquivos criados ou modificados
+
+| Arquivo | Conteúdo |
+|---|---|
+| `composer.json`, `composer.lock` | `laravel/fortify` ^1.41 |
+| `config/fortify.php` | Headless: sem views, guard `web`, e-mail em minúsculas, limitador `login`, só `registration` ligado |
+| `app/Modules/Identity/IdentityServiceProvider.php` | `Fortify::ignoreRoutes()`, `createUsersUsing`, respostas de login/cadastro, `Password::defaults()` (8 a 72), Sanctum sem tokens, limitadores `login`, `register` e `api`, rotas do módulo |
+| `app/Modules/Identity/routes.php` | `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /me` |
+| `app/Modules/Identity/Actions/CreateNewUser.php` | Validação e criação de `User` + `Profile` numa transação; corrida de unicidade vira 422 |
+| `app/Modules/Identity/Support/CountryCodes.php` | 249 códigos ISO 3166-1 alfa-2 |
+| `app/Modules/Identity/Http/Middleware/EnsureFrontendSession.php` | 403 sem a sessão do frontend |
+| `app/Modules/Identity/Http/Middleware/RejectAuthenticated.php` | 409 para cadastro/login com sessão ativa |
+| `app/Modules/Identity/Http/Controllers/MeController.php` | `GET /api/v1/me` |
+| `app/Modules/Identity/Http/Resources/{User,Profile}Resource.php` | Lista fechada de campos |
+| `app/Modules/Identity/Http/Responses/{Login,Register}Response.php` | 200/201 com o usuário |
+| `bootstrap/providers.php` | `IdentityServiceProvider` |
+| `bootstrap/app.php` | `redirectGuestsTo(fn () => null)`: 401 em JSON sem depender de uma rota `login` |
+| `tests/Support/FrontendSession.php` | Simula o navegador: cookies, Origin, `X-XSRF-TOKEN`, estado limpo entre requisições |
+| `tests/Feature/Identity/RegistrationTest.php` | 26 testes |
+| `tests/Feature/Identity/SessionAuthenticationTest.php` | 21 testes (CSRF real e sessões no Redis) |
+| `tests/Unit/ArchitectureTest.php` | Regras de controllers e Actions do Identity |
+| `docs/decisions/0010-...md`, `docs/api/convencoes.md`, `docs/architecture/autenticacao.md` | Decisões e endpoints |
+
+### Decisões técnicas
+
+- **Rotas do Fortify desligadas, declaradas pelo módulo** (ADR 0010 atualizada). Com as rotas do pacote, `/user/confirm-password` e `/user/confirmed-password-status` ficariam expostas sem uso. `route:list` mostra apenas os quatro endpoints novos, sem duplicatas.
+- **Respostas de login e cadastro com o usuário** (mesmo formato de `/me`): o frontend não precisa de uma segunda chamada.
+- **Login sem `authenticateUsing`**: o `guard->attempt()` do Laravel usa um *timebox* de 200 ms, então o tempo de resposta também não revela se o e-mail existe.
+- **Bearer desligado no Sanctum.** Os testes mostraram que `Authorization: Bearer ...` causava 500 (consulta à tabela `personal_access_tokens`, que não existe). Agora é 401.
+- **`EnsureFrontendSession`**: sem ele, um login sem `Origin` do frontend autenticaria numa sessão que nunca chega ao cliente.
+- **`RejectAuthenticated` (409)** no lugar do middleware `guest`, que redirecionaria.
+- **Corrida no cadastro**: dois cadastros simultâneos com o mesmo e-mail ou apelido passam pela validação, mas o índice único do banco barra um deles; a exceção vira o mesmo 422 de campo.
+- **Senha de 8 a 72 caracteres**: o bcrypt ignora o que passa de 72 bytes.
+- **País por lista no código**: a extensão `intl` não está instalada.
+
+### Verificação pelo proxy (Next.js → Laravel, Postgres e Redis reais)
+
+| Fluxo | Resultado |
+|---|---|
+| Cadastro com `platform_role=admin` forjado | ✔ 201, papel `user`, sessão regenerada |
+| `/me` após cadastro | ✔ 200 |
+| Cadastro já autenticado | ✔ 409 `already_authenticated` |
+| Logout sem `X-XSRF-TOKEN` | ✔ 419 |
+| Logout | ✔ 204, token CSRF trocado |
+| `/me` após logout e com o cookie de sessão antigo | ✔ 401 e 401 |
+| Senha errada × e-mail inexistente | ✔ 422, respostas idênticas |
+| Login sem `X-XSRF-TOKEN` | ✔ 419 |
+| Login com e-mail em maiúsculas | ✔ 200, sessão regenerada |
+| Campos de `/me` | ✔ `id, name, email, email_verified, platform_role, profile{nickname, country_code, timezone, bio}, created_at` |
+| `Bearer` sem cookie | ✔ 401 |
+| Cookie válido enviado de outra origem | ✔ 401 |
+| Login direto na porta 8000, sem `Origin` | ✔ 403 `frontend_session_required` |
+| Método errado / rota do pacote fora do escopo | ✔ 405 / 404 |
+| 6 tentativas de login | ✔ 422 ×5, depois 429 |
+| Banco | ✔ usuário e perfil gravados (`user`, não verificado, país e fuso); usuário de teste removido depois |
+
+### Testes realizados
+
+| Verificação | Resultado |
+|---|---|
+| `make migrate` | ✔ nada pendente (a etapa não cria tabelas) |
+| `make test` | ✔ API 157 testes; web 35 testes |
+| `make lint` | ✔ Pint, Larastan nível 6, ESLint, Prettier, TypeScript |
+| Build de produção do web | ✔ |
+
+### Riscos e pendências
+
+- **Mensagens da API em inglês.** Não há tradução `pt_BR` (`lang/`); o frontend deve exibir textos a partir de `code` e dos campos de `errors`. A tradução das mensagens de validação pode entrar na etapa 1.3.
+- **Política de senha mínima** (8 a 72). Verificação contra senhas vazadas (`Password::uncompromised()`, consulta externa) não foi ligada; avaliar antes do deploy público.
+- **Limite de cadastro por IP (3/min)** pode afetar usuários atrás do mesmo NAT e os testes E2E da etapa 1.7.
+- **Apelidos reservados** (`admin`, `suporte`...) não são bloqueados.
+- **Dependências do Fortify sem uso** (`laravel/passkeys`, `pragmarx/google2fa`, `bacon/bacon-qr-code`) entram no `vendor`. As rotas e migrations delas não são carregadas.
+- **Observação fora do escopo:** `route:list` mostra `GET|PUT storage/{path}`, rotas do disco local do Laravel existentes desde a Fase 0 (`serve` no `config/filesystems.php`). Revisar quando houver upload de arquivos.
