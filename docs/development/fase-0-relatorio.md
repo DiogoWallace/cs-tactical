@@ -414,3 +414,22 @@ docker compose stop worker && make check-infra && docker compose restart redis &
 ### Pendências
 
 - Nenhuma nesta etapa. Monitoramento de filas (Horizon) fica para quando houver jobs de negócio.
+
+---
+
+## Etapa 0.8 — CI e README
+
+**Commit:** `ci: add github actions workflow and complete readme`
+
+### Arquivos criados ou modificados
+
+| Arquivo | Conteúdo |
+|---|---|
+| `.github/workflows/ci.yml` | Jobs `api` (Pint, Larastan, migrations, Pest com Postgres 18 e Redis 8) e `web` (ESLint, Prettier, TypeScript, Vitest, build) |
+| `README.md` | Pré-requisitos, início rápido, endereços, verificação, comandos, estrutura, documentação, convenções |
+
+### Decisões técnicas
+
+- **CI fora do Docker Compose**: usa `setup-php` e `setup-node` com serviços do GitHub. É mais rápido que construir as imagens de desenvolvimento e testa as mesmas versões (PHP 8.4, Node 24, Postgres 18, Redis 8).
+- **Sem deploy** e sem segredos no workflow.
+- **O workflow ainda não rodou**: ele só executa quando o repositório estiver no GitHub. A sintaxe foi validada localmente e os mesmos comandos passam via `make lint` e `make test`.
