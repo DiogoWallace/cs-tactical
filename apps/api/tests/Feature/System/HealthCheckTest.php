@@ -69,3 +69,14 @@ it('runs against the dedicated test database', function () {
     expect(app()->environment())->toBe('testing')
         ->and(DB::connection()->getDatabaseName())->toBe('cs_tactical_test');
 });
+
+it('does not depend on the session store, even for frontend requests', function () {
+    config(['sanctum.stateful' => ['localhost:3000'], 'session.driver' => 'redis']);
+    config(['database.redis.default.port' => 1]);
+    Redis::purge('default');
+
+    $this->withHeader('Origin', 'http://localhost:3000')
+        ->getJson('/api/v1/health')
+        ->assertStatus(503)
+        ->assertJsonPath('checks.redis.status', 'fail');
+});

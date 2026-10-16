@@ -1,3 +1,8 @@
+import Link from "next/link"
+import { ActivityIcon } from "lucide-react"
+
+import { Button } from "@/components/ui/button"
+
 export default function HomePage() {
   return (
     <section className="mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center gap-6 px-4 py-16 sm:px-6">
@@ -10,6 +15,14 @@ export default function HomePage() {
       <p className="max-w-xl text-lg text-muted-foreground">
         Academy para aprender com método. Teams para treinar, planejar e jogar juntos.
       </p>
+      <div>
+        <Button asChild variant="outline">
+          <Link href="/status">
+            <ActivityIcon />
+            Status da plataforma
+          </Link>
+        </Button>
+      </div>
     </section>
   )
 }

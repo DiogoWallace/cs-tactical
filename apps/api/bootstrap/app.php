@@ -12,7 +12,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // Sanctum em modo SPA: requisições vindas do frontend (SANCTUM_STATEFUL_DOMAINS)
+        // recebem sessão, cookies criptografados e verificação CSRF. Ver ADR 0003.
+        $middleware->statefulApi();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

@@ -296,3 +296,75 @@ Capturas: `docs/fase-0/home-dark.png`, `home-light.png` e `404-mobile.png` na pa
 ### Pendências
 
 - A interface é provisória; a identidade visual (logo, tipografia de títulos, componentes de navegação) entra quando houver telas reais.
+
+---
+
+## Etapa 0.6 — Integração web ↔ API e validação da autenticação (ajuste 1)
+
+**Commit:** `feat: connect web and api through same-origin proxy with sanctum csrf`
+
+### Arquivos criados ou modificados
+
+| Arquivo | Conteúdo |
+|---|---|
+| `apps/api/composer.json` | `laravel/sanctum` 4 |
+| `apps/api/bootstrap/app.php` | `statefulApi()`: sessão, cookies criptografados e CSRF para o frontend |
+| `apps/api/config/cors.php` | Nenhuma origem externa permitida |
+| `apps/api/config/sanctum.php`, `config/session.php` | Publicados; valores vêm do `.env` |
+| `apps/api/.env.example` | `SESSION_COOKIE`, `SESSION_SAME_SITE`, `SESSION_SECURE_COOKIE`, `SANCTUM_STATEFUL_DOMAINS` |
+| `apps/api/app/Modules/System/routes.php` | Health check sem sessão |
+| `apps/api/tests/Feature/Auth/SanctumSpaFoundationTest.php` | 6 testes de cookies, CSRF real, origens e CORS |
+| `apps/web/next.config.ts` | Rewrites `beforeFiles` de `/api/*` e `/sanctum/*` para `API_INTERNAL_URL` |
+| `apps/web/src/lib/env.ts` | Variáveis do servidor validadas com Zod |
+| `apps/web/src/lib/api/server.ts` | `serverFetch`: rede interna, repassa cookies, `Origin`/`Referer`, `no-store`, timeout de 5 s |
+| `apps/web/src/lib/api/client.ts` | `apiClient`: mesma origem, `X-XSRF-TOKEN`, busca do cookie CSRF, nova tentativa após 419 |
+| `apps/web/src/lib/api/errors.ts`, `types.ts` | `ApiError` (com erros de validação 422), `ApiUnavailableError`, tipos do health |
+| `apps/web/src/features/system/` | Leitura do health e componentes da página de status |
+| `apps/web/src/app/status/page.tsx` | Página `/status` (Server Component + Client Component) |
+| `apps/web/src/lib/api/*.test.ts` | 8 testes do cliente e dos headers do servidor |
+| `docs/architecture/autenticacao.md` | Cache Components, configuração aplicada e checklist de validação marcado |
+
+### Decisões técnicas
+
+- **Sanctum instalado agora, não na Fase 1**, porque a validação do proxy de cookies pedida no ajuste 1 depende de `/sanctum/csrf-cookie`. Não há login, usuários nem tabela de tokens.
+- **`beforeFiles` nos rewrites**: `/api` e `/sanctum` sempre vão para o Laravel, mesmo que alguém crie uma rota com esse nome no Next.
+- **Health check sem sessão**: com `statefulApi()`, toda chamada do frontend abriria uma sessão no Redis. Se o Redis caísse, o health check daria erro 500 em vez de informar a falha com 503. Há um teste para isso.
+- **Cache Components exige `<Suspense>`** ao redor de quem lê cookies. A página `/status` segue o padrão: título estático pré-renderizado, dados da API em streaming (`◐ Partial Prerender` no build).
+- **Server Components só leem; escritas vão pelo navegador** (detalhado na documentação).
+- **Testes de CSRF com verificação real**: o Laravel desliga o CSRF em `APP_ENV=testing`, então esses testes rodam como `local`, com sessões no Redis.
+- **Página `/status`** fica como ferramenta de diagnóstico do ambiente e demonstra os dois caminhos de chamada (servidor e navegador).
+
+### Comandos executados
+
+```bash
+make composer c='require laravel/sanctum:^4.0'
+make artisan c='config:publish cors'
+make artisan c='vendor:publish --tag=sanctum-config'
+curl -D - -H "Origin: http://localhost:3000" http://localhost:3000/sanctum/csrf-cookie
+curl http://localhost:3000/api/v1/health
+curl -X OPTIONS -H "Origin: https://evil.example" -H "Access-Control-Request-Method: POST" http://localhost:3000/api/v1/health
+make test
+make lint
+make pnpm c=build
+```
+
+### Testes realizados
+
+| Verificação | Resultado |
+|---|---|
+| `/sanctum/csrf-cookie` pelo proxy (porta 3000) | ✔ 204; `XSRF-TOKEN` (`samesite=lax`) e `cs_tactical_session` (`httponly; samesite=lax`) |
+| `/api/v1/health` pelo proxy | ✔ 200 com banco e Redis |
+| Preflight CORS de origem externa | ✔ sem `Access-Control-Allow-Origin` |
+| Navegador real (Playwright) em `/status` | ✔ 3 cards "Operacional"; botão recebe o cookie CSRF; cookie de sessão HTTP-only e invisível ao JavaScript; nenhum erro no console |
+| `/status` com Redis parado | ✔ API "Degradado", Redis "Falha" |
+| `/status` com a API parada | ✔ estado vazio "API indisponível", sem página de erro |
+| `make test` | ✔ API 19 testes (55 asserções); web 11 testes |
+| `make lint` | ✔ sem erros |
+| Build de produção | ✔ `/status` como Partial Prerender |
+
+Capturas: `docs/fase-0/status.png` e `status-mobile.png` na pasta do projeto.
+
+### Pendências
+
+- Erros 404/500 da API mostram stack trace porque `APP_DEBUG=true` em desenvolvimento; em produção `APP_DEBUG=false` (será verificado ao preparar o deploy).
+- O horário em `/status` usa o fuso do servidor (UTC). A definição de fuso por usuário entra com o perfil, na Fase 1.
