@@ -31,3 +31,10 @@ export type RegisterInput = {
   country_code: string | null
   timezone: string | null
 }
+
+export type ResetPasswordInput = {
+  token: string
+  email: string
+  password: string
+  password_confirmation: string
+}

@@ -41,4 +41,7 @@ arch('the legacy App\Models namespace is not used')
     ->expect('App\Models')
     ->not->toBeUsed();
 
-arch()->preset()->security();
+// Exceção única: o IdentityServiceProvider monta o link de verificação de e-mail com
+// sha1(email), formato exigido pelo Laravel/Fortify (VerifyEmailRequest compara esse valor).
+// O sha1 não protege nada ali: a integridade vem da assinatura HMAC-SHA256 da URL.
+arch()->preset()->security()->ignoring('App\Modules\Identity\IdentityServiceProvider');

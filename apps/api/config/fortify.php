@@ -44,10 +44,12 @@ return [
     'views' => false,
 
     // Recursos ligados conforme as etapas da Fase 1. Login e logout não são "features":
-    // existem sempre. Recuperação de senha e verificação de e-mail entram na etapa 1.4;
-    // alteração de senha na 1.5. Autenticação em dois fatores e passkeys: fora da Fase 1.
+    // existem sempre. Alteração de senha entra na etapa 1.5. Autenticação em dois fatores e
+    // passkeys: fora da Fase 1.
     'features' => [
         Features::registration(),
+        Features::resetPasswords(),
+        Features::emailVerification(),
     ],
 
 ];

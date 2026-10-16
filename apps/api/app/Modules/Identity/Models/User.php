@@ -3,7 +3,10 @@
 namespace App\Modules\Identity\Models;
 
 use App\Modules\Identity\Enums\PlatformRole;
+use App\Modules\Identity\Notifications\ResetPasswordNotification;
+use App\Modules\Identity\Notifications\VerifyEmailNotification;
 use Database\Factories\Identity\UserFactory;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -21,6 +24,7 @@ use Illuminate\Support\Carbon;
  *   ações explícitas (comando administrativo, verificação de e-mail).
  * - O e-mail é gravado sem espaços nas pontas e em minúsculas. A unicidade sem diferenciar
  *   maiúsculas é garantida no banco (índice em lower(email)).
+ * - Verificação de e-mail e redefinição de senha usam notificações próprias, enviadas pela fila.
  *
  * @property string $id
  * @property string $name
@@ -34,7 +38,7 @@ use Illuminate\Support\Carbon;
  * @property-read Profile|null $profile
  */
 #[UseFactory(UserFactory::class)]
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, HasUuids, Notifiable;
@@ -86,6 +90,17 @@ class User extends Authenticatable
     public function scopeWhereEmailIs(Builder $query, string $email): void
     {
         $query->where('email', self::normalizeEmail($email));
+    }
+
+    public function sendEmailVerificationNotification(): void
+    {
+        $this->notify(new VerifyEmailNotification);
+    }
+
+    /** @param  string  $token */
+    public function sendPasswordResetNotification(#[\SensitiveParameter] $token): void
+    {
+        $this->notify(new ResetPasswordNotification($token));
     }
 
     public static function normalizeEmail(string $email): string

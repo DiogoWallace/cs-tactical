@@ -147,6 +147,22 @@ O `next` passa sempre por `safeInternalPath` (`afterLoginPath` no login): URLs e
 
 `POST /api/v1/auth/logout` (com CSRF) → Laravel invalida a sessão no Redis e expira o cookie.
 
+### 7. Verificação de e-mail e redefinição de senha (etapa 1.4)
+
+Detalhes na [ADR 0010](../decisions/0010-fortify-headless-em-api-v1-auth.md#links-enviados-por-e-mail).
+
+```
+Cadastro ─► evento Registered ─► fila ─► e-mail com FRONTEND_URL/verificar-email/{id}/{hash}?expires&signature
+Navegador abre o link ─► página do Next ─► GET /api/v1/auth/email/verify/{id}/{hash}?expires&signature (mesma query)
+                                           └─ sessão + assinatura relativa + id/hash do usuário logado ─► 204
+
+/esqueci-senha ─► POST forgot-password ─► 200 sempre ─► fila ─► e-mail com FRONTEND_URL/redefinir-senha#token&email
+/redefinir-senha lê o fragmento ─► POST reset-password ─► 200 ─► login com a nova senha
+```
+
+- As páginas desses links usam `Referrer-Policy: same-origin`: o Sanctum reconhece a sessão pelo `Referer` nas chamadas GET à própria API, e nada das URLs vai para outros sites.
+- Depois de redefinir a senha, as outras sessões caem na próxima requisição (`AuthenticateSession` do Sanctum) e o `remember_token` é trocado.
+
 ## Autorização
 
 - `auth:sanctum` garante quem é o usuário; Policies decidem o que ele pode fazer.

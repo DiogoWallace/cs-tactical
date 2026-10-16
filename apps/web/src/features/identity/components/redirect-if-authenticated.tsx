@@ -1,16 +1,21 @@
 import { redirect } from "next/navigation"
 
 import { ApiUnavailableError } from "@/lib/api/errors"
-import { HOME_PATH } from "@/lib/routes"
+import { afterLoginPath } from "@/lib/routes"
 
 import { findCurrentUser } from "../api/get-current-user"
 
+type Props = {
+  /** `searchParams` da página: com `?next=`, quem já está logado vai para lá (só caminhos internos). */
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
+}
+
 /**
- * Nas páginas de login e cadastro: quem já tem sessão válida vai direto ao painel.
- * A verificação é feita pela API (/me), não pela presença do cookie, para não criar um laço
- * login ↔ painel com um cookie de sessão expirado.
+ * Nas páginas de login, cadastro e "esqueci minha senha": quem já tem sessão válida segue
+ * para o `next` ou para o painel. A verificação é feita pela API (/me), não pela presença do
+ * cookie, para não criar um laço login ↔ painel com um cookie de sessão expirado.
  */
-export async function RedirectIfAuthenticated() {
+export async function RedirectIfAuthenticated({ searchParams }: Props) {
   let authenticated = false
   try {
     authenticated = (await findCurrentUser()) !== null
@@ -19,6 +24,8 @@ export async function RedirectIfAuthenticated() {
     if (!(error instanceof ApiUnavailableError)) throw error
   }
 
-  if (authenticated) redirect(HOME_PATH)
-  return null
+  if (!authenticated) return null
+
+  const next = (await searchParams)?.next
+  redirect(afterLoginPath(typeof next === "string" ? next : null))
 }

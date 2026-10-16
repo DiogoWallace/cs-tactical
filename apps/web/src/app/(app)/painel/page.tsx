@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getCurrentUser } from "@/features/identity/api/get-current-user"
+import { ResendVerificationButton } from "@/features/identity/components/resend-verification-button"
 
 export const metadata: Metadata = {
   title: "Painel",
@@ -28,6 +29,21 @@ async function Dashboard() {
         <h1 className="text-3xl font-semibold tracking-tight">Olá, {nickname}</h1>
         <p className="text-muted-foreground">Bem-vindo à sua área no CS Tactical.</p>
       </header>
+
+      {!user.email_verified && (
+        <Card className="max-w-xl border-warning/50">
+          <CardHeader>
+            <CardTitle className="text-lg">Confirme seu e-mail</CardTitle>
+            <CardDescription>
+              Enviamos um link para {user.email}. Algumas funcionalidades exigem o e-mail
+              confirmado.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResendVerificationButton email={user.email} />
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="max-w-xl">
         <CardHeader>

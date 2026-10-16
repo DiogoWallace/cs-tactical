@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   title: "Entrar",
 }
 
-export default function LoginPage() {
+export default function LoginPage({ searchParams }: PageProps<"/login">) {
   return (
     <Card>
       <CardHeader>
@@ -20,7 +20,7 @@ export default function LoginPage() {
       <CardContent>
         {/* Dependem da requisição (cookies e ?next=): ficam atrás de Suspense (Cache Components). */}
         <Suspense>
-          <RedirectIfAuthenticated />
+          <RedirectIfAuthenticated searchParams={searchParams} />
         </Suspense>
         <Suspense fallback={<FormSkeleton />}>
           <LoginForm />

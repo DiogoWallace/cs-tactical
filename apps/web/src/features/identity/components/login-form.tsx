@@ -7,7 +7,7 @@ import { LoaderCircleIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { ApiError } from "@/lib/api/errors"
-import { afterLoginPath, REGISTER_PATH } from "@/lib/routes"
+import { afterLoginPath, FORGOT_PASSWORD_PATH, REGISTER_PATH } from "@/lib/routes"
 
 import { login } from "../api/auth"
 import { navigateAfterSessionChange } from "../lib/navigation"
@@ -74,6 +74,13 @@ export function LoginForm() {
         required
         error={errors.fields.password}
       />
+
+      <Link
+        href={FORGOT_PASSWORD_PATH}
+        className="-mt-2 self-end text-sm text-muted-foreground hover:text-foreground hover:underline"
+      >
+        Esqueci minha senha
+      </Link>
 
       <label className="flex items-center gap-2 text-sm text-muted-foreground">
         <input type="checkbox" name="remember" className="size-4 accent-primary" />

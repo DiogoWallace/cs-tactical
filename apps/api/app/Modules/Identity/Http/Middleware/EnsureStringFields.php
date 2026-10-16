@@ -24,6 +24,7 @@ class EnsureStringFields
         'nickname',
         'country_code',
         'timezone',
+        'token',
     ];
 
     public function handle(Request $request, Closure $next): Response

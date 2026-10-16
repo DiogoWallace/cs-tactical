@@ -1,6 +1,7 @@
 /** Rotas do frontend usadas fora dos próprios componentes. */
 export const LOGIN_PATH = "/login"
 export const REGISTER_PATH = "/cadastro"
+export const FORGOT_PASSWORD_PATH = "/esqueci-senha"
 
 /** Para onde o usuário vai depois de entrar, quando não há `next`. */
 export const HOME_PATH = "/painel"

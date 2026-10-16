@@ -293,3 +293,78 @@ O usuário criado no teste manual foi removido do banco de desenvolvimento.
 - **Lista de países duplicada** (PHP e TypeScript). Se mudar, precisa mudar nos dois.
 - **`matcher` do `proxy.ts` e `PROTECTED_PATH_PREFIXES`** precisam ser atualizados juntos ao criar uma rota na área logada (há teste para o `matcher` atual).
 - **E2E automatizado** (Playwright) fica para a etapa 1.7; a validação desta etapa no navegador foi manual.
+
+---
+
+## Etapa 1.4 — Segurança da conta
+
+Branch `feat/phase-1-auth-frontend` (mesma da etapa 1.3).
+
+### Arquivos criados ou modificados
+
+| Arquivo | Conteúdo |
+|---|---|
+| `config/fortify.php` | `resetPasswords` e `emailVerification` ligados |
+| `config/app.php` | `frontend_url` (de `FRONTEND_URL`) |
+| `app/Modules/Identity/routes.php` | `forgot-password`, `reset-password`, `email/verify/{id}/{hash}` (assinatura relativa), `email/verification-notification` |
+| `app/Modules/Identity/IdentityServiceProvider.php` | `resetUserPasswordsUsing`, links dos e-mails para o frontend, respostas de senha, limitadores `password-reset` e `verification` |
+| `app/Modules/Identity/Models/User.php` | `MustVerifyEmail`; notificações próprias |
+| `app/Modules/Identity/Notifications/{VerifyEmail,ResetPassword}Notification.php` | Enviadas pela fila, depois do commit |
+| `app/Modules/Identity/Actions/ResetUserPassword.php` | Valida e grava a nova senha |
+| `app/Modules/Identity/Http/Responses/PasswordResetLinkResponse.php` | 200 igual para qualquer e-mail |
+| `app/Modules/Identity/Http/Responses/FailedPasswordResetResponse.php` | Uma única mensagem para qualquer token recusado |
+| `app/Modules/Identity/Http/Middleware/EnsureEmailIsVerified.php` | 403 `email_not_verified` para rotas futuras que exigirem e-mail confirmado |
+| `app/Modules/Identity/Http/Middleware/EnsureStringFields.php` | Inclui `token` |
+| `lang/pt_BR.json`, `lang/pt_BR/passwords.php` | Textos dos e-mails e mensagens de senha |
+| `resources/views/vendor/mail/{html,text}/message.blade.php` | Cabeçalho do e-mail aponta para o frontend |
+| `tests/Feature/Identity/EmailVerificationTest.php` | 18 testes |
+| `tests/Feature/Identity/PasswordResetTest.php` | 21 testes |
+| `tests/Unit/ArchitectureTest.php` | Exceção do preset de segurança para o `sha1` do link de verificação |
+| `apps/web/src/app/(auth)/{esqueci-senha,redefinir-senha,verificar-email/[id]/[hash]}/page.tsx` | Páginas novas |
+| `apps/web/src/features/identity/components/*` | Formulários de esqueci/redefinir senha, status da verificação, botão de reenvio; aviso no painel; link no login |
+| `apps/web/src/features/identity/components/redirect-if-authenticated.tsx`, `app/(auth)/login/page.tsx` | Quem já está logado e chega ao login com `?next=` vai para o `next` |
+| Testes do web | `forgot-password-form`, `reset-password-form`, `verify-email-status` |
+
+### Decisões técnicas
+
+- **Links para páginas do frontend**, com a assinatura da verificação **relativa** e o token de redefinição no **fragmento** (ADR 0010 atualizada).
+- **Mesma resposta para qualquer e-mail** no "esqueci minha senha", e **uma mensagem** para qualquer token recusado.
+- **E-mails pela fila**: o cadastro e o pedido de redefinição não esperam o SMTP, e o tempo de resposta não depende de o e-mail existir.
+- **`EnsureEmailIsVerified` próprio** com `code` estável; nenhuma rota usa ainda (não há funcionalidade protegida na Fase 1).
+- **Exceção no preset de segurança do Pest** para o `sha1(email)` do link de verificação, formato exigido pelo Fortify; a integridade vem da assinatura HMAC-SHA256.
+
+### Problemas encontrados na validação e corrigidos
+
+- **`Referrer-Policy: no-referrer` quebrava a verificação.** Num GET para a mesma origem o navegador não envia `Origin`; sem `Referer`, o Sanctum não reconhecia a sessão e a API respondia 401. O login então redirecionava ao painel, perdendo o link. Trocado por `same-origin`.
+- **O login ignorava `?next=` para quem já estava logado**: agora segue para o `next` (só caminhos internos).
+- **Cabeçalho do e-mail apontava para a API** (`APP_URL`): o layout passou a usar `FRONTEND_URL`.
+- **Worker da fila precisa ser reiniciado** depois de mudanças no código (`docker compose restart worker`), porque o `queue:work` mantém o código carregado. Isso vale para qualquer alteração em notificações, jobs ou providers.
+- Nos testes do web, `beforeEach(() => vi.mocked(fn).mockReset())` devolvia o mock, e o Vitest o chamava como rotina de limpeza. Os testes usam corpo em bloco.
+
+### Validação no navegador (com Mailpit)
+
+| Fluxo | Resultado |
+|---|---|
+| Cadastro | ✔ painel com aviso "Confirme seu e-mail"; e-mail "Confirme seu e-mail" no Mailpit, em português, com link para `/verificar-email/...` |
+| Link de verificação (logado) | ✔ "E-mail confirmado"; painel mostra "Verificado" e o aviso some |
+| Link com assinatura adulterada | ✔ "Este link é inválido, expirou ou pertence a outra conta" e botão de reenvio |
+| Esqueci minha senha | ✔ mensagem genérica; e-mail "Redefina sua senha" com link `/redefinir-senha#token=...` e cabeçalho apontando para o frontend |
+| Redefinir senha | ✔ "Sua senha foi redefinida" |
+| Mesmo link de novo | ✔ "Este link de redefinição é inválido ou expirou" com "Pedir um novo link" |
+| Login com a nova senha | ✔ painel |
+
+O usuário e os e-mails do teste manual foram removidos.
+
+### Testes realizados
+
+| Verificação | Resultado |
+|---|---|
+| `make test` | ✔ API 205 testes; web 83 testes |
+| `make lint` | ✔ |
+| Build de produção | ✔ páginas novas: `/esqueci-senha` e `/verificar-email/[id]/[hash]` (Partial Prerender), `/redefinir-senha` (estática) |
+
+### Pendências e riscos
+
+- **O token de redefinição fica no histórico do navegador** (fragmento da URL) até ser usado ou expirar; ele é de uso único e vale 60 minutos.
+- **Sem limite global por conta** no "esqueci minha senha": o limite é por e-mail + IP, e o broker só envia um e-mail por minuto para a mesma conta.
+- **E-mails em produção** dependem de um provedor SMTP/transacional configurado (fora do escopo; entra com o deploy).
