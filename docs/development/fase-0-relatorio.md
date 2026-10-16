@@ -220,3 +220,79 @@ docker compose stop redis && curl localhost:8000/api/v1/health && docker compose
 ### Pendências
 
 - Nenhuma nesta etapa.
+
+---
+
+## Etapa 0.5 — Next.js 16 com Tailwind, shadcn/ui e Vitest
+
+**Commit:** `feat(web): add next.js 16 application with theme, ui kit and tests`
+
+### Arquivos criados ou modificados
+
+| Arquivo | Conteúdo |
+|---|---|
+| `apps/web/` | Next.js 16.4.2 (App Router, Turbopack, `src/`), React 19.3, TypeScript 5.9 |
+| `apps/web/package.json` | scripts `dev`, `build`, `lint`, `typecheck`, `test`, `format`; `engines.node >= 24`; pnpm 10.28 |
+| `apps/web/tsconfig.json` | `strict`, `noUncheckedIndexedAccess`, `noFallthroughCasesInSwitch`, alvo ES2022 |
+| `apps/web/src/app/globals.css` | Tailwind v4 e tokens de design (dark como padrão, tema claro com os mesmos nomes) |
+| `apps/web/src/app/layout.tsx` | `lang="pt-BR"`, fontes Geist locais, tema, cabeçalho |
+| `apps/web/src/app/page.tsx` | Página inicial provisória |
+| `apps/web/src/app/not-found.tsx`, `error.tsx` | Estados de "não encontrado" e erro padronizados |
+| `apps/web/src/app/icon.svg` | Ícone próprio (mira), sem logos de terceiros |
+| `apps/web/src/components/ui/` | `button`, `card`, `badge`, `skeleton`, `empty` (shadcn/ui, estilo new-york, Radix) |
+| `apps/web/src/components/theme-provider.tsx`, `theme-toggle.tsx`, `site-header.tsx` | Tema escuro padrão com alternância |
+| `apps/web/components.json` | Configuração do shadcn/ui para adicionar componentes depois |
+| `apps/web/vitest.config.mts`, `src/test/setup.ts` | Vitest 5 + Testing Library + jsdom |
+| `apps/web/src/lib/utils.test.ts`, `src/app/__tests__/not-found.test.tsx` | 3 testes |
+| `apps/web/.prettierrc.json` | Prettier com ordenação de classes Tailwind |
+| `infra/docker/web/Dockerfile` | `node:24-bookworm-slim`, usuário com UID/GID do host, Corepack, healthcheck sem curl |
+| `compose.yaml` | serviço `web` (porta `WEB_PORT`), volumes `pnpm-store` e `corepack-cache`, `API_INTERNAL_URL` |
+| `scripts/setup.sh` | cria `apps/web/.env` e roda `pnpm install` no container |
+| `Makefile` | `sh-web`, `pnpm`, `test-web`, `lint-web`, `fmt-web`; `test`, `lint` e `fmt` cobrem as duas aplicações |
+
+### Decisões técnicas
+
+- **Next.js 16.4 com Cache Components ligado** (padrão do template). Isso afeta a autenticação: leituras de `cookies()` precisam ficar dentro de `<Suspense>`. A documentação de autenticação será atualizada na 0.6, junto com a validação.
+- **`AGENTS.md` do Next mantido**: o próprio `next dev` recria o arquivo; ele orienta ferramentas de IA a ler a documentação da versão instalada.
+- **Fontes Geist pelo pacote `geist`** (arquivos locais, licença OFL), não pelo Google Fonts: funciona offline e no CI.
+- **Paleta própria**: grafite azulado com destaque âmbar. Nenhuma cor, logo ou arte da Valve.
+- **Componentes shadcn copiados só quando usados** (ajuste 5). O registro online do shadcn não estava acessível no ambiente de validação; os arquivos vieram do repositório oficial (`shadcn-ui/ui`). No seu WSL, `make pnpm c="dlx shadcn@latest add <componente>"` funciona normalmente.
+- **Imagem Debian, não Alpine**: `node_modules` é compartilhado com o WSL pelo bind mount, e binários nativos compilados para glibc funcionam nos dois lados.
+- **Store do pnpm em volume nomeado** (`NPM_CONFIG_STORE_DIR`): sem isso, o pnpm criava `.pnpm-store` dentro do projeto.
+- **`.next` não fica em volume separado** (a análise previa um volume anônimo): com o UID correto, o bind mount funciona e evita problemas de permissão do volume.
+- **`typecheck` roda `next typegen` antes do `tsc`**, porque tipos como `LayoutProps` são gerados pelo Next.
+- **Rótulo fixo no botão de tema**: o tema só é conhecido no navegador; um rótulo dependente dele causava erro de hidratação.
+
+### Comandos executados
+
+```bash
+npx create-next-app@16.4.2 apps/web --ts --tailwind --eslint --app --src-dir --use-pnpm --turbopack
+pnpm add clsx tailwind-merge class-variance-authority radix-ui lucide-react next-themes geist zod server-only
+pnpm add -D vitest @vitejs/plugin-react jsdom @testing-library/react @testing-library/dom @testing-library/jest-dom vite-tsconfig-paths prettier prettier-plugin-tailwindcss @types/node@^24
+./scripts/setup.sh
+make up
+make test
+make lint
+pnpm build
+```
+
+### Testes realizados
+
+| Verificação | Resultado |
+|---|---|
+| `make up` | ✔ 6 serviços `healthy`, incluindo `web` |
+| `GET http://localhost:3000/` | ✔ 200, `lang="pt-BR"`, tema `dark` aplicado |
+| Rota inexistente | ✔ 404 com a página "Página não encontrada" |
+| Hot reload | ✔ texto alterado no host aparece na próxima requisição (`Compiled in 16ms`) |
+| Alternância de tema | ✔ dark → light (capturas abaixo) |
+| Console do navegador | ✔ sem erros na página inicial após a correção de hidratação |
+| `make test` | ✔ API 12 testes; web 3 testes |
+| `make lint` | ✔ Pint, Larastan, ESLint, Prettier e TypeScript sem erros |
+| `pnpm build` | ✔ build de produção compilado |
+| Dono dos arquivos (`node_modules`, `.next`) | ✔ UID/GID 1000 |
+
+Capturas: `docs/fase-0/home-dark.png`, `home-light.png` e `404-mobile.png` na pasta do projeto.
+
+### Pendências
+
+- A interface é provisória; a identidade visual (logo, tipografia de títulos, componentes de navegação) entra quando houver telas reais.

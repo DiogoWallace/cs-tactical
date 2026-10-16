@@ -6,6 +6,7 @@ SHELL := /usr/bin/env bash
 
 COMPOSE := docker compose
 API     := $(COMPOSE) exec api
+WEB     := $(COMPOSE) exec web
 
 ##@ Ambiente
 
@@ -74,28 +75,52 @@ fresh: ## Recria o banco de dev do zero com seeders. Pede confirmação
 tinker: ## Abre o Tinker
 	$(API) php artisan tinker
 
+##@ Web (Next.js)
+
+.PHONY: sh-web
+sh-web: ## Abre um shell no container do frontend
+	$(WEB) bash
+
+.PHONY: pnpm
+pnpm: ## Executa o pnpm (ex.: make pnpm c="add pacote")
+	$(WEB) pnpm $(c)
+
 ##@ Qualidade
 
 .PHONY: test
-test: test-api ## Roda todos os testes
+test: test-api test-web ## Roda todos os testes
 
 .PHONY: test-api
 test-api: ## Testes da API (Pest, banco cs_tactical_test)
 	$(API) composer test
 
+.PHONY: test-web
+test-web: ## Testes do frontend (Vitest)
+	$(WEB) pnpm test
+
 .PHONY: lint
-lint: lint-api ## Roda todas as verificações de estilo e análise estática
+lint: lint-api lint-web ## Roda todas as verificações de estilo e análise estática
 
 .PHONY: lint-api
 lint-api: ## Pint (modo verificação) + Larastan
 	$(API) composer lint
 
+.PHONY: lint-web
+lint-web: ## ESLint + Prettier (verificação) + TypeScript
+	$(WEB) pnpm lint
+	$(WEB) pnpm format:check
+	$(WEB) pnpm typecheck
+
 .PHONY: fmt
-fmt: fmt-api ## Formata o código automaticamente
+fmt: fmt-api fmt-web ## Formata o código automaticamente
 
 .PHONY: fmt-api
 fmt-api: ## Formata o PHP com Pint
 	$(API) composer fmt
+
+.PHONY: fmt-web
+fmt-web: ## Formata o frontend com Prettier
+	$(WEB) pnpm format
 
 ##@ Dados
 

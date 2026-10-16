@@ -50,7 +50,8 @@ Se algum arquivo aparecer como `root`, rode `make setup`, depois `make build` e 
 |---|---|---|
 | Código das aplicações | bind mount (`apps/api`, `apps/web`) | editado no VS Code, refletido na hora nos containers |
 | `vendor/`, `node_modules/` | dentro do bind mount | instalados pelo container, visíveis ao VS Code (autocomplete e lint funcionam sem PHP/Node no host) |
-| `.next/` | volume anônimo | cache do Next fora do host |
+| `.next/` | dentro do bind mount | cache de build do Next, ignorado pelo git |
+| store do pnpm, cache do Corepack | volumes nomeados `pnpm-store`, `corepack-cache` | instalações seguintes ficam mais rápidas |
 | PostgreSQL | volume nomeado `cs-tactical_postgres-data` | sobrevive a `make down`; apagado só com `make destroy` |
 | Redis | volume nomeado `cs-tactical_redis-data` | AOF ligado, filas sobrevivem a reinícios |
 

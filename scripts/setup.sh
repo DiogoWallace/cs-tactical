@@ -15,9 +15,10 @@ copy_env() {
   fi
 }
 
-echo "1/4 Arquivos de ambiente"
+echo "1/5 Arquivos de ambiente"
 copy_env .env.example .env
 copy_env apps/api/.env.example apps/api/.env
+copy_env apps/web/.env.example apps/web/.env
 
 uid="$(id -u)"
 gid="$(id -g)"
@@ -30,13 +31,16 @@ fi
 sed -i "s/^HOST_UID=.*/HOST_UID=${uid}/; s/^HOST_GID=.*/HOST_GID=${gid}/" .env
 echo "• HOST_UID=${uid} e HOST_GID=${gid} configurados no .env."
 
-echo "2/4 Build das imagens"
+echo "2/5 Build das imagens"
 docker compose build
 
-echo "3/4 Dependências da API (composer install no container)"
+echo "3/5 Dependências da API (composer install no container)"
 docker compose run --rm --no-deps api composer install --no-interaction
 
-echo "4/4 Chave da aplicação Laravel"
+echo "4/5 Dependências do frontend (pnpm install no container)"
+docker compose run --rm --no-deps -e CI=true web pnpm install --frozen-lockfile
+
+echo "5/5 Chave da aplicação Laravel"
 if grep -qE '^APP_KEY=.+' apps/api/.env; then
   echo "• APP_KEY já definida."
 else
