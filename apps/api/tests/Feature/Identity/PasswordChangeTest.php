@@ -81,6 +81,41 @@ it('invalidates remember-me cookies of other devices and reissues the current on
         ->and($session->cookie($recaller))->not->toBeNull()->not->toBe($oldRecaller);
 });
 
+it('stops the remember-me cookie of another device from restoring the session', function () {
+    // Regressão (revisão do PR #3): o cookie persistente antigo, sozinho, não pode autenticar
+    // depois da troca de senha. Fluxo real: sessão no Redis, CSRF real e cookies do navegador.
+    $recaller = auth()->guard('web')->getRecallerName();
+
+    // 1. Dois dispositivos: o principal sem "lembrar-me" e o segundo com.
+    $main = signedIn();
+    $second = signedIn(remember: true);
+    expect($second->cookie($recaller))->not->toBeNull();
+
+    // 2. Antes da troca, o cookie persistente sozinho (sem cookie de sessão) restaura a sessão.
+    $second->withOnlyCookies($recaller, 'XSRF-TOKEN')
+        ->get('/api/v1/me')
+        ->assertOk()
+        ->assertJsonPath('data.id', $this->user->id);
+
+    // Cópia intacta do cookie antigo, para o passo 6.
+    $oldRememberOnly = $second->withOnlyCookies($recaller, 'XSRF-TOKEN');
+
+    // 3. Troca de senha no dispositivo principal.
+    changePassword($main)->assertNoContent();
+
+    // 4. A sessão atual continua válida.
+    $main->get('/api/v1/me')->assertOk()->assertJsonPath('data.id', $this->user->id);
+
+    // 5. A sessão do segundo dispositivo foi invalidada.
+    $second->get('/api/v1/me')->assertUnauthorized();
+
+    // 6. O cookie persistente antigo, isoladamente, não restaura a autenticação.
+    $oldRememberOnly->get('/api/v1/me')->assertUnauthorized();
+
+    // E o principal continua funcionando depois das tentativas do outro dispositivo.
+    $main->get('/api/v1/me')->assertOk();
+});
+
 it('deletes pending password reset tokens', function () {
     $session = signedIn();
     Password::broker()->createToken($this->user);

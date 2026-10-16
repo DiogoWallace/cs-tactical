@@ -87,6 +87,18 @@ final class FrontendSession
         return $this->cookies[$name] ?? null;
     }
 
+    /**
+     * Outro "navegador" com apenas alguns dos cookies deste (ex.: só o cookie "lembrar-me",
+     * como depois de a sessão expirar). Este objeto não muda.
+     */
+    public function withOnlyCookies(string ...$names): self
+    {
+        $copy = clone $this;
+        $copy->cookies = array_intersect_key($this->cookies, array_flip($names));
+
+        return $copy;
+    }
+
     /** @param  array<string, mixed>  $data */
     private function send(string $method, string $uri, array $data = []): TestResponse
     {
