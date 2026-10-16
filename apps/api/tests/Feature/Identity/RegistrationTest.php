@@ -192,3 +192,12 @@ it('has the full ISO 3166-1 alpha-2 list', function () {
         ->and(array_unique(CountryCodes::ALL))->toHaveCount(249)
         ->and(CountryCodes::ALL)->each->toMatch('/^[A-Z]{2}$/');
 });
+
+it('answers validation errors in Portuguese', function () {
+    app()->setLocale('pt_BR');
+
+    frontend()->post('/api/v1/auth/register', registration(['email' => 'not-an-email', 'nickname' => 'a b']))
+        ->assertUnprocessable()
+        ->assertJsonPath('errors.email.0', 'Informe um e-mail válido.')
+        ->assertJsonPath('errors.nickname.0', 'O apelido deve ter de 3 a 24 caracteres, usando letras sem acento, números, ponto, hífen ou sublinhado.');
+});

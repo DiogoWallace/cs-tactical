@@ -2,7 +2,6 @@ import type { Metadata } from "next"
 import { GeistMono } from "geist/font/mono"
 import { GeistSans } from "geist/font/sans"
 
-import { SiteHeader } from "@/components/site-header"
 import { ThemeProvider } from "@/components/theme-provider"
 import { cn } from "@/lib/utils"
 
@@ -25,10 +24,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col">
-        <ThemeProvider>
-          <SiteHeader />
-          <main className="flex flex-1 flex-col">{children}</main>
-        </ThemeProvider>
+        {/* Cabeçalho e <main> ficam nos layouts de cada grupo: (marketing), (auth) e (app). */}
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   )
