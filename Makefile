@@ -5,6 +5,7 @@ SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
 
 COMPOSE := docker compose
+API     := $(COMPOSE) exec api
 
 ##@ Ambiente
 
@@ -15,7 +16,7 @@ help: ## Lista os comandos disponíveis
 		/^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) }' $(MAKEFILE_LIST)
 
 .PHONY: setup
-setup: ## Prepara o ambiente (cria .env, ajusta UID/GID)
+setup: ## Prepara o ambiente: .env, UID/GID, build, dependências, APP_KEY
 	@./scripts/setup.sh
 
 .PHONY: doctor
@@ -44,6 +45,34 @@ logs: ## Acompanha logs (ex.: make logs s=postgres)
 .PHONY: build
 build: ## Reconstrói as imagens locais
 	$(COMPOSE) build
+
+##@ API (Laravel)
+
+.PHONY: sh-api
+sh-api: ## Abre um shell no container da API
+	$(API) bash
+
+.PHONY: artisan
+artisan: ## Executa um comando artisan (ex.: make artisan c="route:list")
+	$(API) php artisan $(c)
+
+.PHONY: composer
+composer: ## Executa o Composer (ex.: make composer c="require pacote")
+	$(API) composer $(c)
+
+.PHONY: migrate
+migrate: ## Executa as migrations pendentes (nunca roda automaticamente)
+	$(API) php artisan migrate
+
+.PHONY: fresh
+fresh: ## Recria o banco de dev do zero com seeders. Pede confirmação
+	@read -r -p "Isso apaga e recria o banco de desenvolvimento. Digite 'recriar' para confirmar: " ans; \
+		[[ "$$ans" == "recriar" ]] || { echo "Cancelado."; exit 1; }
+	$(API) php artisan migrate:fresh --seed
+
+.PHONY: tinker
+tinker: ## Abre o Tinker
+	$(API) php artisan tinker
 
 ##@ Dados
 

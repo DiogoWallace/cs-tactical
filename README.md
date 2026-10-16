@@ -20,13 +20,15 @@ Pré-requisitos e detalhes do WSL2 em [docs/development/wsl2.md](docs/developmen
 ```bash
 cd ~/projects
 git clone <url-do-repositorio> cs-tactical && cd cs-tactical
-make setup     # cria o .env e ajusta UID/GID
 make doctor    # verifica Docker, portas e localização do repositório
+make setup     # .env, UID/GID, build das imagens, composer install, APP_KEY
 make up        # sobe os serviços e aguarda ficarem saudáveis
+make migrate   # aplica as migrations (nunca roda automaticamente)
 ```
 
 | Serviço | Endereço |
 |---|---|
+| API (Laravel) | http://localhost:8000/up |
 | Mailpit | http://localhost:8025 |
 
 Rode `make help` para ver todos os comandos.
