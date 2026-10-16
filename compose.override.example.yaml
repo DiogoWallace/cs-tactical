@@ -1,0 +1,12 @@
+# Exemplo opcional: expõe PostgreSQL e Redis no host para ferramentas como
+# DBeaver, TablePlus ou RedisInsight.
+#   cp compose.override.example.yaml compose.override.yaml
+# O compose.override.yaml é ignorado pelo git e carregado automaticamente.
+# Portas fora do padrão para não conflitar com instalações locais.
+services:
+  postgres:
+    ports:
+      - "127.0.0.1:54320:5432"
+  redis:
+    ports:
+      - "127.0.0.1:63790:6379"
