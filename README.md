@@ -2,7 +2,7 @@
 
 Plataforma SaaS para desenvolvimento de jogadores e equipes competitivas de Counter-Strike 2, com dois módulos integrados: **Academy** (aprendizado individual) e **Teams** (gestão de equipes).
 
-> Status: **Fase 0 — Fundação técnica** concluída. Nenhuma funcionalidade de produto ainda.
+> Status: **Fase 1 — Identidade** em andamento. Cadastro, login, logout, área logada, verificação de e-mail e recuperação de senha funcionando; perfil e autorização nas próximas etapas.
 
 ## Stack
 
@@ -44,6 +44,9 @@ Primeira execução: alguns minutos (download de imagens e dependências). As se
 |---|---|
 | Frontend | http://localhost:3000 |
 | Status da plataforma | http://localhost:3000/status |
+| Cadastro / login | http://localhost:3000/cadastro · http://localhost:3000/login |
+| Área logada | http://localhost:3000/painel |
+| Esqueci minha senha | http://localhost:3000/esqueci-senha (e-mails chegam no Mailpit) |
 | API (health check) | http://localhost:8000/api/v1/health |
 | Mailpit (e-mails de desenvolvimento) | http://localhost:8025 |
 

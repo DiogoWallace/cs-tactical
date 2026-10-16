@@ -293,3 +293,11 @@ describe('me', function () {
         $session->get('/api/v1/me')->assertTooManyRequests();
     });
 });
+
+it('answers invalid credentials in Portuguese', function () {
+    app()->setLocale('pt_BR');
+
+    loginAs(browser(), password: 'wrong-password')
+        ->assertUnprocessable()
+        ->assertJsonPath('errors.email.0', 'E-mail ou senha incorretos.');
+});

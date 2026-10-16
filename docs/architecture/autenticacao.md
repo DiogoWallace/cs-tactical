@@ -123,11 +123,45 @@ No servidor não há navegador, então o cookie precisa ser repassado manualment
 
 ### 5. Proteção de rotas no Next
 
-`proxy.ts` (antigo `middleware.ts` no Next 16) verifica apenas se o cookie de sessão **existe**, para redirecionar visitantes ao login antes de renderizar. Não valida a sessão: quem decide é o Laravel, e páginas protegidas tratam `401` vindo do `serverFetch` redirecionando ao login.
+Implementado na etapa 1.3. Grupos de rotas em `apps/web/src/app`:
+
+| Grupo | Rotas | Acesso |
+|---|---|---|
+| `(marketing)` | `/`, `/status` | público |
+| `(auth)` | `/login`, `/cadastro` | público; quem já tem sessão válida vai ao painel |
+| `(app)` | `/painel` | autenticado |
+
+Camadas de proteção da área `(app)`:
+
+1. **`src/proxy.ts`** (antigo `middleware.ts`): roda só nos caminhos de `PROTECTED_PATH_PREFIXES` (`lib/routes.ts`; o `matcher` repete a lista, porque precisa ser constante). Sem o cookie `cs_tactical_session`, redireciona com `307` para `/login?next=<caminho>`. Não valida a sessão: o cookie pode existir e estar expirado. Ele também grava o caminho atual no header `x-pathname`, sobrescrevendo qualquer valor enviado pelo cliente.
+2. **Layout e páginas da área logada** leem o usuário com `getCurrentUser()` (`features/identity/api`, `GET /api/v1/me` via `serverFetch`, com `cache()` do React para uma chamada por requisição). Em `401`, o `serverFetch` redireciona para `/login?next=<x-pathname>`. É isso que trata o cookie expirado.
+3. **A autorização de cada dado é sempre da API.**
+
+Nas páginas de login e cadastro, `RedirectIfAuthenticated` consulta `/me` (não o cookie) e redireciona ao painel quem tem sessão válida. Usar o cookie criaria um laço login ↔ painel com uma sessão expirada, porque o Laravel mantém um cookie de sessão também para visitantes.
+
+O `next` passa sempre por `safeInternalPath` (`afterLoginPath` no login): URLs externas, `//host`, `/\host` e caracteres de controle levam ao painel.
+
+**Depois de entrar, criar conta ou sair**, o frontend faz uma navegação completa (`window.location.assign`, em `features/identity/lib/navigation.ts`), não `router.replace` + `router.refresh()`. A sessão mudou, então nenhum estado do cliente deve sobreviver. Na validação da etapa 1.3, a navegação pelo router deixava a área logada presa nos esqueletos de carregamento.
 
 ### 6. Logout
 
 `POST /api/v1/auth/logout` (com CSRF) → Laravel invalida a sessão no Redis e expira o cookie.
+
+### 7. Verificação de e-mail e redefinição de senha (etapa 1.4)
+
+Detalhes na [ADR 0010](../decisions/0010-fortify-headless-em-api-v1-auth.md#links-enviados-por-e-mail).
+
+```
+Cadastro ─► evento Registered ─► fila ─► e-mail com FRONTEND_URL/verificar-email/{id}/{hash}?expires&signature
+Navegador abre o link ─► página do Next ─► GET /api/v1/auth/email/verify/{id}/{hash}?expires&signature (mesma query)
+                                           └─ sessão + assinatura relativa + id/hash do usuário logado ─► 204
+
+/esqueci-senha ─► POST forgot-password ─► 200 sempre ─► fila ─► e-mail com FRONTEND_URL/redefinir-senha#token&email
+/redefinir-senha lê o fragmento ─► POST reset-password ─► 200 ─► login com a nova senha
+```
+
+- As páginas desses links usam `Referrer-Policy: same-origin`: o Sanctum reconhece a sessão pelo `Referer` nas chamadas GET à própria API, e nada das URLs vai para outros sites.
+- Depois de redefinir a senha, as outras sessões caem na próxima requisição (`AuthenticateSession` do Sanctum) e o `remember_token` é trocado.
 
 ## Autorização
 
@@ -190,7 +224,7 @@ Os contadores ficam no Redis.
 - [x] `POST` sem `X-XSRF-TOKEN` responde 419 (login e logout, Pest e `curl`).
 - [x] Requisição sem cookie responde 401.
 - [x] Requisição com `Origin` fora de `SANCTUM_STATEFUL_DOMAINS` não é tratada como sessão, mesmo com um cookie de sessão válido.
-- [ ] Server Component com cookie repassado recebe o usuário; sem cookie, redireciona ao login.
+- [x] Server Component com cookie repassado recebe o usuário; sem cookie, redireciona ao login (etapa 1.3: Vitest e navegador).
 - [x] Logout invalida a sessão (o cookie antigo passa a receber 401) e troca o token CSRF.
 - [x] Rate limit de login responde 429 após o limite.
 - [x] Login regenera o ID da sessão; senha errada e e-mail inexistente têm a mesma resposta; `Bearer` é ignorado.

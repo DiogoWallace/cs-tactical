@@ -1,5 +1,22 @@
-/** Rotas do frontend usadas fora dos próprios componentes. A página de login entra na etapa 1.3. */
+/** Rotas do frontend usadas fora dos próprios componentes. */
 export const LOGIN_PATH = "/login"
+export const REGISTER_PATH = "/cadastro"
+export const FORGOT_PASSWORD_PATH = "/esqueci-senha"
+
+/** Para onde o usuário vai depois de entrar, quando não há `next`. */
+export const HOME_PATH = "/painel"
+
+/**
+ * Prefixos da área autenticada (grupo `(app)`). O `proxy.ts` usa a mesma lista no `matcher`;
+ * uma rota nova da área logada precisa entrar nos dois lugares.
+ */
+export const PROTECTED_PATH_PREFIXES = ["/painel"] as const
+
+export function isProtectedPath(pathname: string): boolean {
+  return PROTECTED_PATH_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  )
+}
 
 // O navegador remove tab e quebras de linha ao montar a URL: "/<tab>/evil.example" viraria
 // "//evil.example". Por isso qualquer caractere de controle invalida o caminho.
@@ -22,4 +39,13 @@ export function loginUrl(next?: string | null): string {
     return LOGIN_PATH
   }
   return `${LOGIN_PATH}?${new URLSearchParams({ next: safeNext })}`
+}
+
+/** Destino depois do login ou cadastro: o `next` recebido, se for seguro, ou o painel. */
+export function afterLoginPath(next: string | null | undefined): string {
+  const safeNext = safeInternalPath(next)
+  if (!safeNext || safeNext === LOGIN_PATH || safeNext.startsWith(`${LOGIN_PATH}?`)) {
+    return HOME_PATH
+  }
+  return safeNext
 }

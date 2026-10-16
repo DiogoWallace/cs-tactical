@@ -54,6 +54,9 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    // URL pública do frontend (Next.js). Links enviados por e-mail apontam para ela.
+    'frontend_url' => rtrim((string) env('FRONTEND_URL', 'http://localhost:3000'), '/'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

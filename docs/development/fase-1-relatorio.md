@@ -228,3 +228,178 @@ make lint
 | Cookie "lembrar-me" valia 400 dias (padrão do Laravel) | `remember => 43200` no guard `web`: 30 dias |
 
 Testes novos: 3 de login com campos que não são texto, 1 de cadastro e 3 do "lembrar-me" (validade de 30 dias, ausência sem `remember` e remoção no logout). `make test`: API 164, web 35.
+
+---
+
+## Etapa 1.3 — Frontend autenticado
+
+Branch `feat/phase-1-auth-frontend`, criada da `main` depois do merge do PR #1 (etapas 1.0 a 1.2). A branch `feat/phase-1-foundation` foi apagada (local e remota); `backup/phase-0-original` continua preservada.
+
+### Arquivos criados ou modificados
+
+| Arquivo | Conteúdo |
+|---|---|
+| `apps/web/src/proxy.ts` | Redireciona ao login sem cookie de sessão na área logada; repassa `x-pathname` |
+| `apps/web/src/lib/routes.ts` | `REGISTER_PATH`, `HOME_PATH`, `PROTECTED_PATH_PREFIXES`, `isProtectedPath`, `afterLoginPath` |
+| `apps/web/src/lib/session.ts` | Nome do cookie de sessão e do header `x-pathname` |
+| `apps/web/src/lib/api/server.ts` | 401 redireciona para `/login?next=<página atual>` |
+| `apps/web/src/app/layout.tsx` | Só `<html>`, `<body>` e tema; cabeçalho e `<main>` passam para os grupos |
+| `apps/web/src/app/(marketing)/` | `layout.tsx` com `SiteHeader`; `page.tsx` e `status/` movidos para cá |
+| `apps/web/src/app/(auth)/` | `layout.tsx`, `login/page.tsx`, `cadastro/page.tsx` |
+| `apps/web/src/app/(app)/` | `layout.tsx` (cabeçalho com usuário e sair), `painel/page.tsx` |
+| `apps/web/src/features/identity/` | `types.ts`; `api/` (`getCurrentUser`, `findCurrentUser`, `login`, `register`, `logout`); `components/` (formulários, campo com erro acessível, cabeçalho, botão sair, redirecionamento de quem já está logado); `lib/` (países, fuso, erros de formulário, navegação) |
+| `apps/web/src/components/ui/{input,label}.tsx` | Componentes shadcn/ui |
+| `apps/web/src/components/site-header.tsx`, `app/(marketing)/page.tsx`, `app/not-found.tsx` | Links de entrar/criar conta; `<main>` na página 404 |
+| `apps/api/lang/pt_BR/{validation,auth}.php`, `apps/api/lang/pt_BR.json` | Mensagens de validação e de login em português (só as regras usadas) |
+| Testes | Web: `proxy.test.ts`, `routes.test.ts`, `server.test.ts`, `form-errors.test.ts`, `login-form.test.tsx`, `register-form.test.tsx`, `logout-button.test.tsx`. API: mensagens em português no cadastro e no login |
+
+### Decisões técnicas
+
+- **URLs em português** (`/cadastro`, `/painel`), como a interface; `/login` mantido.
+- **Mensagens da API traduzidas no backend** (`lang/pt_BR`), não no frontend: os erros de campo já chegam prontos em `errors`. Mensagens gerais (429, 419, conexão) vêm do `code` (`features/identity/lib/form-errors.ts`).
+- **Credenciais inválidas como mensagem geral** no login (a API devolve o erro em `email`, mas não diz qual campo errou).
+- **Lista de países e fuso só no navegador** (`useSyncExternalStore` com valor vazio no servidor). Os nomes vêm do `Intl.DisplayNames`, e os dados de idioma do Node e do navegador diferem (ex.: "Hong Kong, RAE da China" × "Hong Kong"): renderizar no servidor causou erro de hidratação na validação.
+- **Navegação completa depois de mudar a sessão** (ver docs/architecture/autenticacao.md).
+- **"Lembrar-me"** aparece como "Manter conectado por 30 dias".
+- **Dashboard mínimo**: saudação e dados da conta. Navegação completa, indicação de Academy e Teams e E2E com Playwright ficam na etapa 1.7.
+
+### Validação no navegador (Next dev + API + Postgres + Redis reais)
+
+| Fluxo | Resultado |
+|---|---|
+| `/painel` sem sessão | ✔ redireciona para `/login?next=%2Fpainel` (`proxy.ts`) |
+| Cadastro com dados inválidos | ✔ erros em português, cada um no seu campo |
+| Cadastro válido (país Brasil, fuso detectado `America/Sao_Paulo`) | ✔ vai ao painel com apelido, e-mail "Não verificado" e fuso |
+| Sair | ✔ volta ao `/login`; `/painel` em seguida redireciona ao login (cookie de visitante → `/me` 401 → `next`) |
+| Login com senha errada | ✔ alerta "E-mail ou senha incorretos." |
+| Login correto com `?next=/painel` | ✔ volta ao painel com cabeçalho do usuário |
+| `/login` já autenticado | ✔ redireciona ao painel |
+| Celular (375 px) | ✔ painel e início sem rolagem horizontal |
+| Console | ✔ sem erros além do 422 esperado da senha errada |
+
+O usuário criado no teste manual foi removido do banco de desenvolvimento.
+
+### Testes realizados
+
+| Verificação | Resultado |
+|---|---|
+| `make test` | ✔ API 166 testes; web 67 testes |
+| `make lint` | ✔ Pint, Larastan, ESLint, Prettier, TypeScript |
+| Build de produção | ✔ `/login`, `/cadastro`, `/painel` e `/status` como Partial Prerender; `proxy.ts` registrado |
+
+### Pendências e riscos
+
+- **Mensagens em português só para as regras usadas hoje.** Uma regra nova sem tradução aparece em inglês; o comentário de `lang/pt_BR/validation.php` registra isso.
+- **Lista de países duplicada** (PHP e TypeScript). Se mudar, precisa mudar nos dois.
+- **`matcher` do `proxy.ts` e `PROTECTED_PATH_PREFIXES`** precisam ser atualizados juntos ao criar uma rota na área logada (há teste para o `matcher` atual).
+- **E2E automatizado** (Playwright) fica para a etapa 1.7; a validação desta etapa no navegador foi manual.
+
+---
+
+## Etapa 1.4 — Segurança da conta
+
+Branch `feat/phase-1-auth-frontend` (mesma da etapa 1.3).
+
+### Arquivos criados ou modificados
+
+| Arquivo | Conteúdo |
+|---|---|
+| `config/fortify.php` | `resetPasswords` e `emailVerification` ligados |
+| `config/app.php` | `frontend_url` (de `FRONTEND_URL`) |
+| `app/Modules/Identity/routes.php` | `forgot-password`, `reset-password`, `email/verify/{id}/{hash}` (assinatura relativa), `email/verification-notification` |
+| `app/Modules/Identity/IdentityServiceProvider.php` | `resetUserPasswordsUsing`, links dos e-mails para o frontend, respostas de senha, limitadores `password-reset` e `verification` |
+| `app/Modules/Identity/Models/User.php` | `MustVerifyEmail`; notificações próprias |
+| `app/Modules/Identity/Notifications/{VerifyEmail,ResetPassword}Notification.php` | Enviadas pela fila, depois do commit |
+| `app/Modules/Identity/Actions/ResetUserPassword.php` | Valida e grava a nova senha |
+| `app/Modules/Identity/Http/Responses/PasswordResetLinkResponse.php` | 200 igual para qualquer e-mail |
+| `app/Modules/Identity/Http/Responses/FailedPasswordResetResponse.php` | Uma única mensagem para qualquer token recusado |
+| `app/Modules/Identity/Http/Middleware/EnsureEmailIsVerified.php` | 403 `email_not_verified` para rotas futuras que exigirem e-mail confirmado |
+| `app/Modules/Identity/Http/Middleware/EnsureStringFields.php` | Inclui `token` |
+| `lang/pt_BR.json`, `lang/pt_BR/passwords.php` | Textos dos e-mails e mensagens de senha |
+| `resources/views/vendor/mail/{html,text}/message.blade.php` | Cabeçalho do e-mail aponta para o frontend |
+| `tests/Feature/Identity/EmailVerificationTest.php` | 18 testes |
+| `tests/Feature/Identity/PasswordResetTest.php` | 21 testes |
+| `tests/Unit/ArchitectureTest.php` | Exceção do preset de segurança para o `sha1` do link de verificação |
+| `apps/web/src/app/(auth)/{esqueci-senha,redefinir-senha,verificar-email/[id]/[hash]}/page.tsx` | Páginas novas |
+| `apps/web/src/features/identity/components/*` | Formulários de esqueci/redefinir senha, status da verificação, botão de reenvio; aviso no painel; link no login |
+| `apps/web/src/features/identity/components/redirect-if-authenticated.tsx`, `app/(auth)/login/page.tsx` | Quem já está logado e chega ao login com `?next=` vai para o `next` |
+| Testes do web | `forgot-password-form`, `reset-password-form`, `verify-email-status` |
+
+### Decisões técnicas
+
+- **Links para páginas do frontend**, com a assinatura da verificação **relativa** e o token de redefinição no **fragmento** (ADR 0010 atualizada).
+- **Mesma resposta para qualquer e-mail** no "esqueci minha senha", e **uma mensagem** para qualquer token recusado.
+- **E-mails pela fila**: o cadastro e o pedido de redefinição não esperam o SMTP, e o tempo de resposta não depende de o e-mail existir.
+- **`EnsureEmailIsVerified` próprio** com `code` estável; nenhuma rota usa ainda (não há funcionalidade protegida na Fase 1).
+- **Exceção no preset de segurança do Pest** para o `sha1(email)` do link de verificação, formato exigido pelo Fortify; a integridade vem da assinatura HMAC-SHA256.
+
+### Problemas encontrados na validação e corrigidos
+
+- **`Referrer-Policy: no-referrer` quebrava a verificação.** Num GET para a mesma origem o navegador não envia `Origin`; sem `Referer`, o Sanctum não reconhecia a sessão e a API respondia 401. O login então redirecionava ao painel, perdendo o link. Trocado por `same-origin`.
+- **O login ignorava `?next=` para quem já estava logado**: agora segue para o `next` (só caminhos internos).
+- **Cabeçalho do e-mail apontava para a API** (`APP_URL`): o layout passou a usar `FRONTEND_URL`.
+- **Worker da fila precisa ser reiniciado** depois de mudanças no código (`docker compose restart worker`), porque o `queue:work` mantém o código carregado. Isso vale para qualquer alteração em notificações, jobs ou providers.
+- Nos testes do web, `beforeEach(() => vi.mocked(fn).mockReset())` devolvia o mock, e o Vitest o chamava como rotina de limpeza. Os testes usam corpo em bloco.
+
+### Validação no navegador (com Mailpit)
+
+| Fluxo | Resultado |
+|---|---|
+| Cadastro | ✔ painel com aviso "Confirme seu e-mail"; e-mail "Confirme seu e-mail" no Mailpit, em português, com link para `/verificar-email/...` |
+| Link de verificação (logado) | ✔ "E-mail confirmado"; painel mostra "Verificado" e o aviso some |
+| Link com assinatura adulterada | ✔ "Este link é inválido, expirou ou pertence a outra conta" e botão de reenvio |
+| Esqueci minha senha | ✔ mensagem genérica; e-mail "Redefina sua senha" com link `/redefinir-senha#token=...` e cabeçalho apontando para o frontend |
+| Redefinir senha | ✔ "Sua senha foi redefinida" |
+| Mesmo link de novo | ✔ "Este link de redefinição é inválido ou expirou" com "Pedir um novo link" |
+| Login com a nova senha | ✔ painel |
+
+O usuário e os e-mails do teste manual foram removidos.
+
+### Testes realizados
+
+| Verificação | Resultado |
+|---|---|
+| `make test` | ✔ API 205 testes; web 83 testes |
+| `make lint` | ✔ |
+| Build de produção | ✔ páginas novas: `/esqueci-senha` e `/verificar-email/[id]/[hash]` (Partial Prerender), `/redefinir-senha` (estática) |
+
+### Pendências e riscos
+
+- **O token de redefinição fica no histórico do navegador** (fragmento da URL) até ser usado ou expirar; ele é de uso único e vale 60 minutos.
+- **Sem limite global por conta** no "esqueci minha senha": o limite é por e-mail + IP, e o broker só envia um e-mail por minuto para a mesma conta.
+- **E-mails em produção** dependem de um provedor SMTP/transacional configurado (fora do escopo; entra com o deploy).
+
+### Revisão de segurança antes do merge (PR #2)
+
+Matriz de estados de autenticação, pelo proxy do Next com Postgres e Redis reais:
+
+| Situação | Resultado |
+|---|---|
+| `forgot-password`, `reset-password` e `verification-notification` sem `X-XSRF-TOKEN` | ✔ 419 |
+| Visitante: `/me`, logout, reenvio, `GET verify` | ✔ 401 |
+| Visitante: `forgot-password` | ✔ 200 genérico |
+| Autenticado: login, cadastro, `forgot-password`, `reset-password` | ✔ 409 `already_authenticated` |
+| Autenticado: `GET verify` com assinatura falsa | ✔ 403 |
+| Autenticado: `/login?next=/painel?x=1` | ✔ vai para `/painel?x=1` |
+| Autenticado: `/login?next=//evil.example` e `/esqueci-senha` | ✔ vai para `/painel` |
+| Logout; cookie antigo em `/me`; reenvio depois do logout | ✔ 204; 401; 401 |
+| Armazenamento no navegador | ✔ nenhum token em `localStorage`, `sessionStorage` ou cookie legível; só o `XSRF-TOKEN`, por desenho |
+
+Achados e correções:
+
+| Achado | Correção |
+|---|---|
+| O fragmento `#token=...&email=...` permanecia na barra de endereço e no histórico depois de lido | A página captura o link na memória e apaga o fragmento na hora (`history.replaceState`, preservando o estado do router). Recarregar a página depois disso pede um novo link, que é o comportamento esperado |
+| Link de redefinição aberto com uma conta conectada: a API responde 409 e a tela mostrava "Algo deu errado" | Mensagem própria: "Você está conectado a uma conta. Saia dela para continuar." |
+
+Observações sem alteração:
+
+- A página `/verificar-email/...` mantém `expires` e `signature` na query, porque a API valida a assinatura sobre caminho e query. O link só confirma o e-mail da própria conta, exige sessão dessa conta e expira em 60 minutos.
+- O histórico global do navegador pode ter registrado a URL original com o fragmento no momento da visita (depende do navegador). O token continua de uso único e expira em 60 minutos.
+
+### Débitos técnicos registrados
+
+| Débito | Risco | Como evitar divergência |
+|---|---|---|
+| Lista de países duplicada: `apps/api/app/Modules/Identity/Support/CountryCodes.php` e `apps/web/src/features/identity/lib/countries.ts` | Um país aceito num lado e recusado no outro | Mudar os dois arquivos juntos; avaliar um endpoint de referência ou geração de tipos (OpenAPI, fase posterior) |
+| Rotas protegidas em dois lugares: `PROTECTED_PATH_PREFIXES` (`lib/routes.ts`) e `config.matcher` (`proxy.ts`), que precisa ser constante | Rota nova da área logada sem o redirecionamento do `proxy.ts` (ainda protegida pelo layout via `/me`) | Mudar os dois juntos; o teste `proxy.test.ts` fixa o `matcher` atual |

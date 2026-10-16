@@ -4,7 +4,8 @@ import { cookies, headers } from "next/headers"
 import { redirect } from "next/navigation"
 
 import { serverEnv } from "@/lib/env"
-import { LOGIN_PATH } from "@/lib/routes"
+import { loginUrl } from "@/lib/routes"
+import { PATHNAME_HEADER } from "@/lib/session"
 
 import { ApiError, ApiUnavailableError, parseBody } from "./errors"
 
@@ -16,7 +17,8 @@ import { ApiError, ApiUnavailableError, parseBody } from "./errors"
  * - Envia Origin/Referer do frontend, para o Sanctum tratar a chamada como "stateful".
  * - Repassa o X-Forwarded-For recebido, como faz o proxy de /api (ADR 0009).
  * - Nunca usa cache: respostas autenticadas não podem ser compartilhadas entre usuários.
- * - Um 401 redireciona ao login, a menos que `redirectOnUnauthenticated: false`.
+ * - Um 401 redireciona ao login (voltando à página atual, informada pelo `proxy.ts`), a menos
+ *   que `redirectOnUnauthenticated: false`.
  *
  * Somente leitura (GET). Escritas acontecem no navegador via `apiClient`, porque cookies
  * renovados pela API numa chamada feita no servidor não chegariam ao navegador.
@@ -34,7 +36,8 @@ export async function serverFetch<T>(
 ): Promise<T> {
   const { API_INTERNAL_URL, NEXT_PUBLIC_APP_URL } = serverEnv()
   const cookieHeader = (await cookies()).toString()
-  const forwardedFor = (await headers()).get("x-forwarded-for")
+  const requestHeaders = await headers()
+  const forwardedFor = requestHeaders.get("x-forwarded-for")
 
   let response: Response
   try {
@@ -50,7 +53,9 @@ export async function serverFetch<T>(
 
   const body = await parseBody(response)
   // Fora de try/catch: redirect() funciona lançando uma exceção do Next.
-  if (response.status === 401 && redirectOnUnauthenticated) redirect(LOGIN_PATH)
+  if (response.status === 401 && redirectOnUnauthenticated) {
+    redirect(loginUrl(requestHeaders.get(PATHNAME_HEADER)))
+  }
   if (!response.ok) throw new ApiError(response.status, body)
   return body as T
 }

@@ -62,7 +62,7 @@ Regras:
 
 ```
 apps/web/src/
-├── app/            # rotas (App Router); grupos (marketing), (auth), (app) entram conforme as fases
+├── app/            # rotas (App Router): grupos (marketing), (auth) e (app); proxy.ts fica em src/
 ├── components/
 │   └── ui/         # componentes shadcn/ui, sem regra de negócio
 ├── features/       # um diretório por área (academy, teams...), criado quando a área existir

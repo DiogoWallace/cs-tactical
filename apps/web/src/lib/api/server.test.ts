@@ -49,6 +49,7 @@ describe("serverFetch", () => {
     fetchMock.mockReset()
     redirect.mockClear()
     requestHeaders.delete("x-forwarded-for")
+    requestHeaders.delete("x-pathname")
     vi.unstubAllGlobals()
   })
 
@@ -61,6 +62,22 @@ describe("serverFetch", () => {
     fetchMock.mockResolvedValueOnce(unauthenticated())
 
     await expect(serverFetch("/api/v1/me")).rejects.toThrow("NEXT_REDIRECT:/login")
+    expect(redirect).toHaveBeenCalledWith("/login")
+  })
+
+  it("returns to the current page after the login", async () => {
+    requestHeaders.set("x-pathname", "/painel?tab=conta")
+    fetchMock.mockResolvedValueOnce(unauthenticated())
+
+    await expect(serverFetch("/api/v1/me")).rejects.toThrow("NEXT_REDIRECT")
+    expect(redirect).toHaveBeenCalledWith("/login?next=%2Fpainel%3Ftab%3Dconta")
+  })
+
+  it("ignores an unsafe current page", async () => {
+    requestHeaders.set("x-pathname", "//evil.example")
+    fetchMock.mockResolvedValueOnce(unauthenticated())
+
+    await expect(serverFetch("/api/v1/me")).rejects.toThrow("NEXT_REDIRECT")
     expect(redirect).toHaveBeenCalledWith("/login")
   })
 

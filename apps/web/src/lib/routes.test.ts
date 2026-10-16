@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { loginUrl, safeInternalPath } from "./routes"
+import { afterLoginPath, isProtectedPath, loginUrl, safeInternalPath } from "./routes"
 
 describe("safeInternalPath", () => {
   it.each(["/dashboard", "/teams/abc?tab=members", "/"])("accepts %s", (path) => {
@@ -35,5 +35,28 @@ describe("loginUrl", () => {
 
   it("does not point the login back to itself", () => {
     expect(loginUrl("/login?next=%2Fx")).toBe("/login")
+  })
+})
+
+describe("afterLoginPath", () => {
+  it("returns to the page the user wanted", () => {
+    expect(afterLoginPath("/painel?tab=conta")).toBe("/painel?tab=conta")
+  })
+
+  it("falls back to the dashboard for missing, external or login destinations", () => {
+    expect(afterLoginPath(null)).toBe("/painel")
+    expect(afterLoginPath("https://evil.example")).toBe("/painel")
+    expect(afterLoginPath("//evil.example")).toBe("/painel")
+    expect(afterLoginPath("/login?next=%2Fpainel")).toBe("/painel")
+  })
+})
+
+describe("isProtectedPath", () => {
+  it.each(["/painel", "/painel/conta"])("protects %s", (path) => {
+    expect(isProtectedPath(path)).toBe(true)
+  })
+
+  it.each(["/", "/login", "/cadastro", "/status", "/painelx"])("leaves %s public", (path) => {
+    expect(isProtectedPath(path)).toBe(false)
   })
 })

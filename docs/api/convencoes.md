@@ -35,6 +35,7 @@ Toda resposta de erro tem o mesmo formato, aplicado por `app/Support/Http/ApiErr
 | 400 | `bad_request` | original | |
 | 401 | `unauthenticated` | `Unauthenticated.` | sem sessão; o frontend redireciona ao login |
 | 403 | `forbidden` | a da Policy/Gate, ou `This action is unauthorized.` | |
+| 403 | `email_not_verified` | `Your email address is not verified.` | rota que exige e-mail confirmado (`EnsureEmailIsVerified`) |
 | 403 | `frontend_session_required` | `This endpoint is only available to the web application.` | login, cadastro e logout chamados sem a sessão do frontend |
 | 404 | `not_found` | `Not found.` | fixa: não expõe rota nem classe do model; inclui recurso de outra equipe |
 | 405 | `method_not_allowed` | `Method not allowed.` | |
@@ -62,6 +63,10 @@ O health check (`/api/v1/health`) não é afetado: o `503` dele é uma resposta 
 | POST | `/api/v1/auth/login` | não (sessão do frontend + CSRF) | Login |
 | POST | `/api/v1/auth/logout` | sim (+ CSRF) | Logout |
 | GET | `/api/v1/me` | sim | Usuário da sessão |
+| POST | `/api/v1/auth/forgot-password` | não (sessão do frontend + CSRF) | Pede o link de redefinição de senha |
+| POST | `/api/v1/auth/reset-password` | não (sessão do frontend + CSRF) | Redefine a senha com o token do link |
+| GET | `/api/v1/auth/email/verify/{id}/{hash}?expires&signature` | sim + assinatura | Confirma o e-mail |
+| POST | `/api/v1/auth/email/verification-notification` | sim (+ CSRF) | Reenvia o link de confirmação |
 
 ### `POST /api/v1/auth/register`
 
@@ -132,3 +137,19 @@ Verifica PostgreSQL (`select 1`) e Redis (`PING`). Responde `200` quando tudo es
 ```
 
 O bloco `checks` só aparece quando `HEALTH_EXPOSE_DETAILS=true` (padrão apenas em `APP_ENV=local`). Mensagens de erro nunca vão para a resposta; ficam no log da API.
+
+### `POST /api/v1/auth/forgot-password`
+
+Corpo: `{ "email" }`. Resposta **200** `{ "message": "Se houver uma conta com este e-mail, enviaremos um link para redefinir a senha." }`, igual para e-mail cadastrado, desconhecido ou pedido repetido. O link enviado é `FRONTEND_URL/redefinir-senha#token=...&email=...` e vale por 60 minutos. Erros: 422 (formato do e-mail), 409, 429 (5/min por e-mail + IP).
+
+### `POST /api/v1/auth/reset-password`
+
+Corpo: `{ "token", "email", "password", "password_confirmation" }`. Resposta **200** `{ "message" }`; não faz login. Token inválido, expirado, já usado ou de outra conta: **422** com a mesma mensagem em `errors.token`. Senha fora das regras: 422 em `errors.password`, e o token continua válido. Ao redefinir, as outras sessões e os cookies "lembrar-me" deixam de valer.
+
+### `GET /api/v1/auth/email/verify/{id}/{hash}`
+
+Chamado pela página `/verificar-email/{id}/{hash}?expires=...&signature=...` do frontend, com o mesmo caminho e a mesma query. Resposta **204** (também se já estava confirmado). Assinatura inválida, adulterada, expirada (60 minutos) ou link de outra conta: **403** `forbidden`. Sem sessão: 401. Limite: 6/min por usuário.
+
+### `POST /api/v1/auth/email/verification-notification`
+
+Sem corpo. **202** quando envia um novo link; **204** quando o e-mail já está confirmado (nada é enviado). Limite: 6/min por usuário.
