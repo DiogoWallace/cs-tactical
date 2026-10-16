@@ -24,6 +24,8 @@ class UserResource extends JsonResource
             'name' => $this->name,
             'email' => $this->email,
             'email_verified' => $this->email_verified_at !== null,
+            // Novo e-mail aguardando confirmação (ADR 0011), ou null.
+            'pending_email' => $this->pending_email,
             'platform_role' => $this->platform_role->value,
             'profile' => new ProfileResource($this->whenLoaded('profile')),
             'created_at' => $this->created_at?->toIso8601ZuluString(),

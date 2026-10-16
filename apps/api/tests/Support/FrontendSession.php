@@ -58,6 +58,30 @@ final class FrontendSession
         return $this->send('GET', $uri);
     }
 
+    /** @param  array<string, mixed>  $data */
+    public function patch(string $uri, array $data = []): TestResponse
+    {
+        return $this->send('PATCH', $uri, $data);
+    }
+
+    /** @param  array<string, mixed>  $data */
+    public function put(string $uri, array $data = []): TestResponse
+    {
+        return $this->send('PUT', $uri, $data);
+    }
+
+    public function delete(string $uri): TestResponse
+    {
+        return $this->send('DELETE', $uri);
+    }
+
+    public function withXsrfHeader(): self
+    {
+        $this->sendXsrfHeader = true;
+
+        return $this;
+    }
+
     public function cookie(string $name): ?string
     {
         return $this->cookies[$name] ?? null;

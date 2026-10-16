@@ -6,6 +6,9 @@ export const FORGOT_PASSWORD_PATH = "/esqueci-senha"
 /** Para onde o usuário vai depois de entrar, quando não há `next`. */
 export const HOME_PATH = "/painel"
 
+/** Dados da conta: perfil, e-mail e senha. Dentro de /painel, já coberto pelo `proxy.ts`. */
+export const ACCOUNT_PATH = "/painel/conta"
+
 /**
  * Prefixos da área autenticada (grupo `(app)`). O `proxy.ts` usa a mesma lista no `matcher`;
  * uma rota nova da área logada precisa entrar nos dois lugares.

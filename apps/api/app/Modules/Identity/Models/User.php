@@ -30,6 +30,7 @@ use Illuminate\Support\Carbon;
  * @property string $name
  * @property string $email
  * @property Carbon|null $email_verified_at
+ * @property string|null $pending_email
  * @property string $password
  * @property PlatformRole $platform_role
  * @property string|null $remember_token
