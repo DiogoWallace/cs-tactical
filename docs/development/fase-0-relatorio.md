@@ -163,3 +163,60 @@ docker compose exec api php artisan test
 ### Pendências
 
 - `config/auth.php` ainda referencia `App\Models\User` (inexistente até a Fase 1); só seria usado por rotas autenticadas, que ainda não existem.
+
+---
+
+## Etapa 0.4 — Health check, Pest, Pint e Larastan
+
+**Commit:** `feat(api): add system health endpoint and quality tooling`
+
+### Arquivos criados ou modificados
+
+| Arquivo | Conteúdo |
+|---|---|
+| `app/Modules/System/SystemServiceProvider.php` | Primeiro módulo; monta `routes.php` sob `/api/v1` com middleware `api` |
+| `app/Modules/System/Actions/CheckSystemHealth.php` | Testa Postgres e Redis, mede latência, registra falhas no log |
+| `app/Modules/System/Http/Controllers/HealthController.php` | Controller enxuto: chama a Action e monta a resposta (200/503) |
+| `app/Modules/System/routes.php` | `GET /api/v1/health` |
+| `config/health.php` | `expose_details` (padrão: só em `local`) |
+| `bootstrap/providers.php` | Registro dos providers de módulo |
+| `tests/Pest.php`, `tests/Feature/System/HealthCheckTest.php` | 7 testes do health check |
+| `tests/Unit/ArchitectureTest.php` | 5 testes de arquitetura |
+| `phpunit.xml` | Testes no Postgres `cs_tactical_test`, Redis DB 1, fila síncrona, logs desligados |
+| `pint.json`, `phpstan.neon` | Pint preset `laravel`; Larastan nível 6 em `app`, `database`, `routes` |
+| `composer.json` | Pest 4, pest-plugin-laravel, Larastan 3; scripts `test`, `lint`, `fmt` |
+| `Makefile` | `test`, `test-api`, `lint`, `lint-api`, `fmt`, `fmt-api` |
+| `docs/api/convencoes.md` | Documentação do `/api/v1/health` |
+
+### Decisões técnicas
+
+- **`/up` e `/api/v1/health` têm papéis diferentes.** `/up` é *liveness* (o processo responde) e é usado pelo healthcheck do Docker; `/api/v1/health` é *readiness* (as dependências respondem). Se o Docker usasse o segundo, uma queda do Redis reiniciaria a API sem necessidade.
+- **Detalhes só em ambiente local.** Em produção a resposta é só `status` e `timestamp`; erros vão para o log.
+- **Nenhuma abstração de módulo.** Com um único módulo, o provider registra as rotas diretamente; um padrão compartilhado só vale a pena quando houver um segundo módulo.
+- **Variáveis de teste como `<server>` no `phpunit.xml`.** O Laravel lê primeiro `$_SERVER`, onde ficam as variáveis injetadas pelo Compose; sem isso, os testes usariam o banco de desenvolvimento. Há um teste que garante o banco `cs_tactical_test`.
+- **`tests/` fora do Larastan**: a sintaxe do Pest não é analisável sem plugin; os testes são verificados pela execução.
+
+### Comandos executados
+
+```bash
+make composer c='require --dev pestphp/pest:^4.0 pestphp/pest-plugin-laravel:^4.0 larastan/larastan:^3.0'
+make test
+make lint
+curl localhost:8000/api/v1/health
+docker compose stop redis && curl localhost:8000/api/v1/health && docker compose start redis
+```
+
+### Testes realizados
+
+| Verificação | Resultado |
+|---|---|
+| `make test` | ✔ 12 testes, 39 asserções (Pest 4.7) |
+| `make lint` | ✔ Pint sem alterações; Larastan nível 6 sem erros |
+| `GET /api/v1/health` com tudo no ar | ✔ 200, `database` e `redis` ok |
+| Redis parado | ✔ 503, `redis: fail`, banco ok; volta a 200 quando o Redis volta |
+| Rota inexistente em `/api/*` | ✔ 404 em JSON |
+| Testes usam o banco certo | ✔ `cs_tactical_test`, `APP_ENV=testing` |
+
+### Pendências
+
+- Nenhuma nesta etapa.

@@ -18,14 +18,29 @@
         </include>
     </source>
     <php>
-        <env name="APP_ENV" value="testing"/>
+        <!-- No container, o compose injeta variáveis reais de ambiente, que o Laravel lê
+             primeiro de $_SERVER. Por isso os valores de teste também são definidos como <server>. -->
+        <server name="APP_ENV" value="testing" force="true"/>
+        <server name="DB_CONNECTION" value="pgsql" force="true"/>
+        <server name="DB_DATABASE" value="cs_tactical_test" force="true"/>
+        <server name="REDIS_DB" value="1" force="true"/>
+        <server name="LOG_CHANNEL" value="null" force="true"/>
+        <server name="QUEUE_CONNECTION" value="sync" force="true"/>
+        <server name="SESSION_DRIVER" value="array" force="true"/>
+        <server name="CACHE_STORE" value="array" force="true"/>
+        <server name="MAIL_MAILER" value="array" force="true"/>
+        <env name="APP_ENV" value="testing" force="true"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
-        <env name="DB_CONNECTION" value="sqlite"/>
-        <env name="DB_DATABASE" value=":memory:"/>
+        <!-- Testes usam PostgreSQL (paridade com produção), no banco separado cs_tactical_test.
+             force="true" sobrescreve o DB_DATABASE definido pelo compose.yaml. -->
+        <env name="DB_CONNECTION" value="pgsql" force="true"/>
+        <env name="DB_DATABASE" value="cs_tactical_test" force="true"/>
         <env name="DB_URL" value=""/>
+        <env name="REDIS_DB" value="1" force="true"/>
+        <env name="HEALTH_EXPOSE_DETAILS" value="true"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
