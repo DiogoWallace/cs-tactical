@@ -15,10 +15,12 @@
 
 | Ambiente | Navegador acessa | Encaminhamento |
 |---|---|---|
-| Desenvolvimento | `http://localhost:3000` | `rewrites` do Next: `/api/*` e `/sanctum/*` → `http://api:8080` (rede Docker) |
+| Desenvolvimento | `http://localhost:3000` | `rewrites` (`beforeFiles`) do Next: `/api/*` e `/sanctum/*` → `http://api:8080` (rede Docker), em `apps/web/next.config.ts` |
 | Produção | `https://app.<dominio>` | rewrite do Next ou proxy reverso: `/api/*` e `/sanctum/*` → serviço da API, na rede privada |
 
-O caminho `/api` do Next fica reservado para a API do Laravel. O frontend não cria Route Handlers sob `/api`.
+O caminho `/api` do Next fica reservado para a API do Laravel. O frontend não cria Route Handlers sob `/api` (os rewrites usam `beforeFiles`, então teriam prioridade de qualquer forma).
+
+O destino dos rewrites é lido de `API_INTERNAL_URL` quando o Next inicia (`next dev`) ou no build (`next build`). Em produção, a variável precisa estar definida no ambiente do build.
 
 ## Cookies
 
@@ -29,7 +31,7 @@ O caminho `/api` do Next fica reservado para a API do Laravel. O frontend não c
 
 Atributos: `SameSite=Lax`, `Path=/`, sem `Domain` (cookie *host-only* da origem do frontend), `Secure` em produção.
 
-## Configuração do Laravel (Fase 1)
+## Configuração do Laravel (feita na Fase 0)
 
 ```dotenv
 SESSION_DRIVER=redis
@@ -45,6 +47,8 @@ SANCTUM_STATEFUL_DOMAINS=localhost:3000
 - Rotas protegidas usam `auth:sanctum`.
 - Login regenera o ID da sessão (contra *session fixation*); logout invalida a sessão e regenera o token CSRF.
 - `config/cors.php` sem origens permitidas.
+- `/api/v1/health` não usa sessão (`withoutMiddleware(EnsureFrontendRequestsAreStateful)`): ele precisa responder mesmo com o Redis, onde ficam as sessões, fora do ar.
+- A tabela `personal_access_tokens` não é criada: tokens pessoais estão desligados.
 
 ## Fluxos
 
@@ -73,11 +77,13 @@ O Laravel valida as credenciais (Fortify), regenera a sessão e devolve um novo 
 `apiClient` (em `lib/api/client.ts`):
 
 - usa caminhos relativos (`/api/v1/...`) e `credentials: 'same-origin'`;
-- em métodos de escrita, lê `XSRF-TOKEN` de `document.cookie` e envia `X-XSRF-TOKEN`;
+- em métodos de escrita, lê `XSRF-TOKEN` de `document.cookie`, aplica `decodeURIComponent` (o navegador guarda o valor codificado) e envia `X-XSRF-TOKEN`;
 - envia `Accept: application/json`;
 - trata `401` (sessão expirada → redireciona ao login), `403`, `404`, `419` (renova o CSRF e repete uma vez) e `422` (erros de validação para o formulário).
 
 ### 4. Requisições do servidor (Server Components)
+
+> **Next.js 16 com Cache Components:** ler `cookies()` torna o componente dependente da requisição. Ele não pode ser pré-renderizado e **precisa ficar dentro de `<Suspense>`** (caso contrário o build falha). O padrão é: a página renderiza a parte estática e o trecho que chama `serverFetch` fica num componente envolvido por `<Suspense fallback={...}>`. Exemplo: `apps/web/src/app/status/page.tsx`.
 
 No servidor não há navegador, então o cookie precisa ser repassado manualmente. `serverFetch` (em `lib/api/server.ts`, com `import 'server-only'`):
 
@@ -125,10 +131,19 @@ Os contadores ficam no Redis.
 
 ## Plano de validação
 
-**Fase 0 (etapa 0.6)**, sem login real:
+**Fase 0 (etapa 0.6)**, sem login real. Concluído:
 
-- [ ] `GET /sanctum/csrf-cookie` através do Next (porta 3000) devolve `Set-Cookie` de `XSRF-TOKEN` e da sessão, com os atributos esperados.
-- [ ] Um Server Component consegue chamar a API pela rede interna (`/api/v1/health`).
+- [x] `GET /sanctum/csrf-cookie` através do Next (porta 3000) devolve `Set-Cookie` de `XSRF-TOKEN` (`samesite=lax`, legível por JS) e de `cs_tactical_session` (`httponly; samesite=lax`). Verificado com `curl` e num navegador real (Playwright): o cookie de sessão não aparece em `document.cookie`.
+- [x] Escrita vinda do frontend **sem** `X-XSRF-TOKEN` responde 419 (Pest, com verificação CSRF real).
+- [x] Escrita com cookie + `X-XSRF-TOKEN` válidos responde 200 (Pest).
+- [x] Token CSRF de outra sessão responde 419 (Pest).
+- [x] Origem fora de `SANCTUM_STATEFUL_DOMAINS` não recebe sessão (Pest).
+- [x] Preflight CORS de outra origem não recebe `Access-Control-Allow-Origin` (Pest e `curl`).
+- [x] Server Component chama a API pela rede interna, repassando cookies e `Origin` (página `/status`).
+- [x] Client Component chama a API pelo proxy e recebe o cookie CSRF (botão "Testar pelo navegador" em `/status`).
+- [x] `apiClient`: envia o token decodificado, busca o cookie antes da primeira escrita e repete uma vez após 419 (Vitest).
+
+> Nota para os testes do Laravel: com `APP_ENV=testing` o framework **desliga** a verificação CSRF. Os testes de CSRF em `tests/Feature/Auth/SanctumSpaFoundationTest.php` mudam o ambiente para `local` e usam sessões no Redis para reproduzir o comportamento real. Requisições JSON de teste só enviam cookies com `withCredentials()`.
 
 **Fase 1**, testes automatizados:
 
