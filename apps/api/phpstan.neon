@@ -1,0 +1,11 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    # Começa no nível 6 e sobe conforme o código amadurece (ADR 0006).
+    level: 6
+    # tests/ fica de fora: a sintaxe do Pest não é analisável pelo PHPStan sem plugin.
+    paths:
+        - app
+        - database
+        - routes

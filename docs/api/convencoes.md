@@ -38,3 +38,20 @@ Erros de regra de negócio usam `code` estável e legível por máquina (ex.: `t
 |---|---|---|---|
 | GET | `/up` | não | Liveness do Laravel (processo vivo) |
 | GET | `/api/v1/health` | não | Readiness: verifica PostgreSQL e Redis |
+
+### `GET /api/v1/health`
+
+Verifica PostgreSQL (`select 1`) e Redis (`PING`). Responde `200` quando tudo está ok e `503` quando alguma dependência falha.
+
+```json
+{
+  "status": "ok",
+  "timestamp": "2026-10-16T02:54:58+00:00",
+  "checks": {
+    "database": { "status": "ok", "latency_ms": 12.27 },
+    "redis": { "status": "ok", "latency_ms": 2.09 }
+  }
+}
+```
+
+O bloco `checks` só aparece quando `HEALTH_EXPOSE_DETAILS=true` (padrão apenas em `APP_ENV=local`). Mensagens de erro nunca vão para a resposta; ficam no log da API.

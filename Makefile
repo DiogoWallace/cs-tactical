@@ -74,6 +74,29 @@ fresh: ## Recria o banco de dev do zero com seeders. Pede confirmação
 tinker: ## Abre o Tinker
 	$(API) php artisan tinker
 
+##@ Qualidade
+
+.PHONY: test
+test: test-api ## Roda todos os testes
+
+.PHONY: test-api
+test-api: ## Testes da API (Pest, banco cs_tactical_test)
+	$(API) composer test
+
+.PHONY: lint
+lint: lint-api ## Roda todas as verificações de estilo e análise estática
+
+.PHONY: lint-api
+lint-api: ## Pint (modo verificação) + Larastan
+	$(API) composer lint
+
+.PHONY: fmt
+fmt: fmt-api ## Formata o código automaticamente
+
+.PHONY: fmt-api
+fmt-api: ## Formata o PHP com Pint
+	$(API) composer fmt
+
 ##@ Dados
 
 .PHONY: psql
