@@ -1,0 +1,15 @@
+# Registro de decisões arquiteturais (ADRs)
+
+Cada decisão relevante vira um arquivo `NNNN-titulo.md`, a partir de [`0000-template.md`](0000-template.md).
+Uma ADR aceita não é editada para mudar de ideia: cria-se uma nova que a substitui e marca-se a antiga como "Substituída por NNNN".
+
+| ADR | Título | Status |
+|---|---|---|
+| [0001](0001-monorepo-e-monolito-modular.md) | Monorepo com monólito modular e frontend desacoplado | Aceita |
+| [0002](0002-laravel-13-e-php-84.md) | Laravel 13 com PHP 8.4 | Aceita |
+| [0003](0003-autenticacao-sanctum-sessao-mesma-origem.md) | Autenticação por sessão com Sanctum e proxy de mesma origem | Aceita |
+| [0004](0004-runtime-php-em-container.md) | Runtime PHP em container (serversideup/php, FPM + Nginx) | Aceita |
+| [0005](0005-uuidv7-como-chave-primaria.md) | UUIDv7 como chave primária das entidades de domínio | Aceita |
+| [0006](0006-ferramentas-de-qualidade-e-testes.md) | Ferramentas de qualidade e testes | Aceita |
+| [0007](0007-papeis-de-equipe-e-funcoes-no-jogo.md) | Papéis de equipe separados das funções no jogo | Aceita |
+| [0008](0008-conteudo-estruturado-da-academy.md) | Conteúdo da Academy em blocos estruturados | Aceita |

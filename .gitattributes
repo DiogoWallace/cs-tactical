@@ -1,0 +1,14 @@
+# Força LF em todos os arquivos de texto (Windows + WSL2)
+* text=auto eol=lf
+
+*.sh   text eol=lf
+*.bat  text eol=crlf
+
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.webp binary
+*.ico  binary
+*.woff binary
+*.woff2 binary

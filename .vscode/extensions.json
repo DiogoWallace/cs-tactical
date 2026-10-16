@@ -1,0 +1,12 @@
+{
+  "recommendations": [
+    "ms-vscode-remote.remote-wsl",
+    "ms-azuretools.vscode-containers",
+    "editorconfig.editorconfig",
+    "bmewburn.vscode-intelephense-client",
+    "open-southeners.laravel-pint",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "bradlc.vscode-tailwindcss"
+  ]
+}

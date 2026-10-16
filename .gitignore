@@ -1,0 +1,18 @@
+# Ambiente
+.env
+.env.*
+!.env.example
+compose.override.yaml
+
+# Editores e SO
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Dependências e artefatos de build das aplicações ficam nos .gitignore de cada app
