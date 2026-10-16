@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { apiClient, readXsrfToken } from "./client"
-import { ApiError } from "./errors"
+import { apiClient, readXsrfToken, setUnauthenticatedHandler } from "./client"
+import { ApiError, isUnauthenticated } from "./errors"
 
 function jsonResponse(status: number, body: unknown = {}) {
   return new Response(JSON.stringify(body), {
@@ -93,5 +93,55 @@ describe("apiClient", () => {
 
     expect(error).toBeInstanceOf(ApiError)
     expect((error as ApiError).validationErrors).toEqual({ name: ["O nome é obrigatório."] })
+  })
+
+  describe("on 401", () => {
+    const onUnauthenticated = vi.fn()
+
+    beforeEach(() => setUnauthenticatedHandler(onUnauthenticated))
+    afterEach(() => {
+      setUnauthenticatedHandler(null)
+      onUnauthenticated.mockReset()
+    })
+
+    it("sends the user to the login and still rejects with the error", async () => {
+      fetchMock.mockResolvedValueOnce(
+        jsonResponse(401, { message: "Unauthenticated.", code: "unauthenticated" }),
+      )
+
+      const error = await apiClient.get("/api/v1/me").catch((e: unknown) => e)
+
+      expect(onUnauthenticated).toHaveBeenCalledTimes(1)
+      expect(isUnauthenticated(error)).toBe(true)
+      expect((error as ApiError).code).toBe("unauthenticated")
+    })
+
+    it("does not redirect when the caller expects a 401", async () => {
+      fetchMock.mockResolvedValueOnce(jsonResponse(401, { message: "x", code: "unauthenticated" }))
+
+      const error = await apiClient
+        .get("/api/v1/me", { redirectOnUnauthenticated: false })
+        .catch((e: unknown) => e)
+
+      expect(onUnauthenticated).not.toHaveBeenCalled()
+      expect(isUnauthenticated(error)).toBe(true)
+    })
+
+    it("does not redirect on other errors", async () => {
+      fetchMock.mockResolvedValueOnce(jsonResponse(403, { message: "x", code: "forbidden" }))
+
+      const error = await apiClient.get("/api/v1/things").catch((e: unknown) => e)
+
+      expect(onUnauthenticated).not.toHaveBeenCalled()
+      expect((error as ApiError).code).toBe("forbidden")
+    })
+  })
+
+  it("does not send the redirect option to fetch", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, {}))
+
+    await apiClient.get("/api/v1/health", { redirectOnUnauthenticated: false })
+
+    expect(fetchMock.mock.calls[0]![1]).not.toHaveProperty("redirectOnUnauthenticated")
   })
 })

@@ -3,6 +3,17 @@
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
 
+// Alguns testes derrubam a conexão do banco. Antes do rollback do RefreshDatabase,
+// a conexão volta ao endereço real; a transação da conexão descartada morre com ela.
+beforeEach(fn () => $this->originalDbPort = config('database.connections.pgsql.port'));
+
+afterEach(function () {
+    if (config('database.connections.pgsql.port') !== $this->originalDbPort) {
+        config(['database.connections.pgsql.port' => $this->originalDbPort]);
+        DB::purge('pgsql');
+    }
+});
+
 it('reports ok when database and redis are reachable', function () {
     $this->getJson('/api/v1/health')
         ->assertOk()

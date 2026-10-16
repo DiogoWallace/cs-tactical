@@ -100,6 +100,8 @@ compose.yaml        Serviços: web, api, worker, postgres, redis, mailpit
 - [Decisões arquiteturais (ADRs)](docs/decisions/README.md)
 - [Ambiente WSL2 e problemas comuns](docs/development/wsl2.md)
 - [Relatório da Fase 0](docs/development/fase-0-relatorio.md)
+- [Relatório da Fase 1](docs/development/fase-1-relatorio.md) (em andamento)
+- [Bloqueios de produção](docs/deploy/bloqueios-de-producao.md): requisitos obrigatórios antes do deploy público
 
 ## Convenções
 

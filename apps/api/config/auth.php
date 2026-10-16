@@ -1,6 +1,6 @@
 <?php
 
-use App\Models\User;
+use App\Modules\Identity\Models\User;
 
 return [
 
@@ -41,6 +41,8 @@ return [
         'web' => [
             'driver' => 'session',
             'provider' => 'users',
+            // Validade do cookie "lembrar-me", em minutos (30 dias). O padrão do Laravel é 400 dias.
+            'remember' => 43200,
         ],
     ],
 

@@ -12,10 +12,20 @@
 - Arquivos no storage; no banco, apenas caminho e metadados.
 - Enums como `string` + check constraint (mais fácil de evoluir que o tipo `enum` do Postgres).
 
-## Identidade (Fase 1)
+## Identidade (Fase 1) — implementado na etapa 1.1
 
-- **users**: nome, e-mail (único), senha, `email_verified_at`, `platform_role` (`user`, `editor`, `admin`).
-- **profiles** (1:1 com users): apelido (único), avatar, país, bio, links externos.
+Models em `app/Modules/Identity/Models`; migrations `2026_10_16_1000xx_*`.
+
+- **users**: `id` (UUIDv7), `name` (até 120), `email` (até 254), `email_verified_at`, `password` (hash), `platform_role` (`user`, `editor`, `admin`; padrão `user`), `remember_token`, timestamps com fuso.
+  - E-mail único **sem diferenciar maiúsculas**: índice único em `lower(email)`. O model grava o e-mail sem espaços e em minúsculas; buscas usam `User::whereEmailIs()` (índice comum em `email`).
+  - Check constraints: `platform_role` nos três valores; `name` e `email` não vazios.
+  - `platform_role` e `email_verified_at` não são preenchíveis em massa.
+- **profiles** (1:1 com users): `id` (UUIDv7), `user_id` (único, FK com `ON DELETE CASCADE`), `nickname`, `country_code`, `timezone` (padrão `UTC`), `bio` (até 500), timestamps com fuso.
+  - Apelido obrigatório, **único sem diferenciar maiúsculas** (índice em `lower(nickname)`), exibido como o jogador escreveu. Formato: 3 a 24 caracteres `[A-Za-z0-9_.-]` (check constraint). Buscas usam `Profile::whereNicknameIs()`.
+  - `country_code`: ISO 3166-1 alfa-2 em maiúsculas (check constraint); `timezone`: identificador IANA, validado na aplicação.
+  - `user_id` não é preenchível em massa.
+  - Avatar e links externos ficam para quando forem implementados (arquivos no storage, ver princípios).
+- **password_reset_tokens**: tabela técnica do broker do Laravel (`email` como chave, hash do token, `created_at`).
 
 ## Academy — catálogo global (Fase 2)
 

@@ -21,4 +21,24 @@ arch('System actions do not depend on the HTTP layer')
     ->expect('App\Modules\System\Actions')
     ->not->toUse(['Illuminate\Http\Request', 'Illuminate\Http\JsonResponse']);
 
+arch('Identity models are Eloquent models')
+    ->expect('App\Modules\Identity\Models')
+    ->toExtend('Illuminate\Database\Eloquent\Model');
+
+arch('Identity enums are backed enums')
+    ->expect('App\Modules\Identity\Enums')
+    ->toBeStringBackedEnums();
+
+arch('Identity controllers do not query the database directly')
+    ->expect('Illuminate\Support\Facades\DB')
+    ->not->toBeUsedIn('App\Modules\Identity\Http');
+
+arch('Identity actions do not depend on the HTTP layer')
+    ->expect('App\Modules\Identity\Actions')
+    ->not->toUse(['Illuminate\Http\Request', 'Illuminate\Http\JsonResponse']);
+
+arch('the legacy App\Models namespace is not used')
+    ->expect('App\Models')
+    ->not->toBeUsed();
+
 arch()->preset()->security();

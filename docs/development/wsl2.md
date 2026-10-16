@@ -103,3 +103,5 @@ E rode `wsl --shutdown` no PowerShell para aplicar.
 | Hot reload não funciona | Repositório em `/mnt/c` | Mova para `~/projects` |
 | Console do navegador: `WebSocket connection to 'ws://.../_next/hmr' failed` | Endereço não liberado no dev server do Next | Use `localhost:3000` ou `127.0.0.1:3000` (ambos liberados em `allowedDevOrigins`); outro host precisa ser adicionado em `apps/web/next.config.ts` |
 | Scripts falham com `\r: command not found` | Arquivo com CRLF | `git config --global core.autocrlf false` e clone novamente |
+| `Pool overlaps with other one on this address space` | A faixa da rede interna (`172.31.250.0/24`) já é usada por outra rede | Altere `INTERNAL_SUBNET`, `INTERNAL_IP_RANGE` e `WEB_INTERNAL_IP` juntos no `.env` da raiz ([ADR 0009](../decisions/0009-ip-real-do-cliente-e-proxies-confiaveis.md)) e rode `make down && make up` |
+| `network cs-tactical-internal ... has incorrect config` ou o web sem o IP fixo | Rede criada antes da faixa fixa (Fase 0) | `make down && make up` recria a rede (os volumes de dados são mantidos) |

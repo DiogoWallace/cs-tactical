@@ -13,3 +13,5 @@ Uma ADR aceita não é editada para mudar de ideia: cria-se uma nova que a subst
 | [0006](0006-ferramentas-de-qualidade-e-testes.md) | Ferramentas de qualidade e testes | Aceita |
 | [0007](0007-papeis-de-equipe-e-funcoes-no-jogo.md) | Papéis de equipe separados das funções no jogo | Aceita |
 | [0008](0008-conteudo-estruturado-da-academy.md) | Conteúdo da Academy em blocos estruturados | Aceita |
+| [0009](0009-ip-real-do-cliente-e-proxies-confiaveis.md) | IP real do cliente e proxies confiáveis | Aceita |
+| [0010](0010-fortify-headless-em-api-v1-auth.md) | Laravel Fortify headless sob `/api/v1/auth` | Aceita |

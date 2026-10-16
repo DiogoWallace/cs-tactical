@@ -1,11 +1,11 @@
 <?php
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /*
-| Testes em tests/Feature sobem a aplicação Laravel completa.
+| Testes em tests/Feature sobem a aplicação Laravel completa, com o banco cs_tactical_test
+| migrado uma vez e cada teste dentro de uma transação desfeita ao final (RefreshDatabase).
 | Testes em tests/Unit são PHP puro, sem framework.
-| Quando houver tabelas de domínio, adicione RefreshDatabase aqui:
-|   ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
 */
-pest()->extend(TestCase::class)->in('Feature');
+pest()->extend(TestCase::class)->use(RefreshDatabase::class)->in('Feature');
