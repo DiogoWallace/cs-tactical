@@ -71,6 +71,10 @@ fresh: ## Recria o banco de dev do zero com seeders. Pede confirmação
 		[[ "$$ans" == "recriar" ]] || { echo "Cancelado."; exit 1; }
 	$(API) php artisan migrate:fresh --seed
 
+.PHONY: check-infra
+check-infra: ## Enfileira um job que envia um e-mail de teste ao Mailpit
+	$(API) php artisan system:check-infra
+
 .PHONY: tinker
 tinker: ## Abre o Tinker
 	$(API) php artisan tinker
