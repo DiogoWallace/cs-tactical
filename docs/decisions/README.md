@@ -16,3 +16,4 @@ Uma ADR aceita não é editada para mudar de ideia: cria-se uma nova que a subst
 | [0009](0009-ip-real-do-cliente-e-proxies-confiaveis.md) | IP real do cliente e proxies confiáveis | Aceita |
 | [0010](0010-fortify-headless-em-api-v1-auth.md) | Laravel Fortify headless sob `/api/v1/auth` | Aceita |
 | [0011](0011-troca-de-email-com-confirmacao.md) | Troca de e-mail com confirmação no novo endereço | Aceita |
+| [0012](0012-autorizacao-por-capacidades-e-policies.md) | Autorização: capacidades de plataforma e Policies por recurso | Aceita |

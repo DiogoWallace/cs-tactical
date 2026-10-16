@@ -1,3 +1,5 @@
+export type PlatformAbility = "manage-academy-content" | "administer-platform"
+
 /** Usuário autenticado, como devolvido por GET /api/v1/me, login e cadastro (UserResource). */
 export type CurrentUser = {
   id: string
@@ -7,6 +9,11 @@ export type CurrentUser = {
   /** Novo e-mail aguardando confirmação, ou null. */
   pending_email: string | null
   platform_role: "user" | "editor" | "admin"
+  /**
+   * Capacidades efetivas (ADR 0012), só para mostrar ou esconder elementos da interface.
+   * Quem autoriza cada ação é sempre a API.
+   */
+  abilities: PlatformAbility[]
   profile: {
     nickname: string
     country_code: string | null
