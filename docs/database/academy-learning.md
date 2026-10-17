@@ -1,6 +1,7 @@
 # Modelo de dados — Academy e Learning (Fase 2)
 
-> Definido na etapa 2.0 (aprovado em 2026-10-17). **Nenhuma migration existe ainda.** Princípios gerais em
+> Definido na etapa 2.0 (aprovado em 2026-10-17). Tabelas da Academy criadas na etapa 2.1
+> (`database/migrations/2026_10_17_1000*` a `1004*`); as do Learning chegam na 2.4. Princípios gerais em
 > [modelo-conceitual.md](modelo-conceitual.md). Decisões: ADRs
 > [0015](../decisions/0015-academy-e-learning-publicacao-e-visibilidade.md) a
 > [0019](../decisions/0019-midia-externa-markdown-seguro-e-arquivos.md).
@@ -11,7 +12,8 @@ Convenções desta página:
 - Enums como `string` + **check constraint**.
 - `key`: chave imutável do arquivo de conteúdo (ADR 0016), formato `^[a-z0-9]+(?:-[a-z0-9]+)*$`,
   até 80 caracteres.
-- `slug`: mesmo formato, até 80 caracteres, editável.
+- `slug`: mesmo formato, até 80 caracteres, editável; unicidade **adiável**, para a importação
+  poder trocar slugs entre dois itens numa transação.
 - `status`: `draft`, `published`, `archived` (padrão `draft`).
 - Posições: inteiro ≥ 0; unicidade **adiável** (`DEFERRABLE INITIALLY DEFERRED`) para permitir
   reordenar numa transação.
@@ -28,7 +30,7 @@ conferido; arquivos sem linha são órfãos e podem ser removidos por `academy:m
 |---|---|---|
 | `id` | uuid | PK |
 | `sha256` | char(64) | **único**; hexadecimal minúsculo (check) |
-| `path` | varchar(255) | único; `academy/{sha256[0:2]}/{sha256}.{ext}` |
+| `path` | varchar(255) | único; `media/{sha256[0:2]}/{sha256}.{ext}`, relativo à raiz do disco `academy` (`storage/app/academy`); check confere o caminho com `sha256` e `mime` |
 | `mime` | varchar(16) | check `image/png`, `image/jpeg`, `image/webp`, `image/avif` |
 | `bytes` | integer | check 1..2 097 152 |
 | `width` / `height` | smallint | check 1..4096 |
@@ -43,7 +45,7 @@ existe em `academy_media`. Mídia registrada não é apagada na Fase 2.
 |---|---|---|
 | `id` | uuid | PK |
 | `key` | varchar(80) | único; imutável |
-| `slug` | varchar(80) | único |
+| `slug` | varchar(80) | único adiável |
 | `title` | varchar(160) | não vazio |
 | `summary` | varchar(500) | não vazio |
 | `level` | varchar(16) | check `beginner`, `intermediate`, `advanced` |
@@ -63,7 +65,7 @@ não nulo.
 | `id` | uuid | PK |
 | `course_id` | uuid | FK `courses` **ON DELETE RESTRICT** |
 | `key` | varchar(80) | único por curso `(course_id, key)` |
-| `slug` | varchar(80) | único por curso `(course_id, slug)` |
+| `slug` | varchar(80) | único adiável por curso `(course_id, slug)` |
 | `title` | varchar(160) | não vazio |
 | `summary` | varchar(500) | nulo |
 | `position` | integer | único adiável `(course_id, position)` |
@@ -79,7 +81,7 @@ não nulo.
 | `course_id` | uuid | FK `courses` ON DELETE RESTRICT |
 | `module_id` | uuid | FK composta `(module_id, course_id)` → `course_modules (id, course_id)` ON DELETE RESTRICT: a aula sempre pertence a um módulo **do mesmo curso** |
 | `key` | varchar(80) | único `(course_id, key)` |
-| `slug` | varchar(80) | único `(course_id, slug)` (URL `/academy/cursos/{curso}/aulas/{aula}`) |
+| `slug` | varchar(80) | único adiável `(course_id, slug)` (URL `/academy/cursos/{curso}/aulas/{aula}`) |
 | `title` | varchar(160) | não vazio |
 | `summary` | varchar(500) | nulo |
 | `position` | integer | único adiável `(module_id, position)` |
@@ -92,19 +94,27 @@ não nulo.
 Índices: `(module_id, position)`, `(course_id, status)`. Índice GIN em `content` só se surgir
 consulta por bloco (ex.: aulas que usam um quiz); não na 2.1.
 
+A `key` é única **por curso**: mover o arquivo de uma aula para outro módulo do mesmo curso mantém
+o registro (muda `module_id`); movê-la para outro curso cria outra aula, e a antiga fica ausente.
+
 ### `quizzes`
 
 | Coluna | Tipo | Regras |
 |---|---|---|
 | `id` | uuid | PK |
-| `lesson_id` | uuid | FK `lessons` ON DELETE RESTRICT; **único** (0..1 quiz por aula) |
+| `lesson_id` | uuid | FK `lessons` ON DELETE RESTRICT; único parcial `(lesson_id) WHERE retired_at IS NULL` (0..1 quiz **ativo** por aula) |
 | `key` | varchar(80) | único global (referenciado por `quiz_ref`) |
 | `title` | varchar(160) | não vazio |
 | `max_attempts` | smallint | padrão 3; check 1..20 |
 | `pass_percent` | smallint | padrão 70; check 1..100 |
 | `revision` | integer | padrão 1; check ≥ 1 |
+| `retired_at` | timestamptz | nulo; quiz retirado da aula (ou com `key` trocada) que já teve tentativa |
 
-Sem `status`: segue a aula (ADR 0015).
+Sem `status`: segue a aula (ADR 0015). O único **parcial** em `lesson_id` (e não um único simples,
+como previsto na 2.0) é o que permite a aula receber um quiz novo quando o anterior já tem
+tentativas: o antigo é aposentado e continua respondendo pelos snapshots (ADR 0018, item 8).
+`revision` sobe quando muda o que afeta a correção (regras, perguntas, opções, gabarito, ordem);
+o título não conta.
 
 ### `quiz_questions`
 

@@ -1,0 +1,48 @@
+key: counter-strafe
+slug: counter-strafe
+title: Counter-strafe
+summary: Parar na hora para atirar com precisão.
+status: published
+position: 1
+estimated_minutes: 8
+content:
+  version: 1
+  blocks:
+    - type: markdown
+      text: |
+        ## Por que parar antes de atirar
+
+        No CS2, a precisão das armas cai enquanto o personagem se move. Soltar a tecla não basta:
+        o personagem ainda desliza por um instante.
+
+        O **counter-strafe** é apertar rapidamente a tecla da direção oposta para zerar a
+        velocidade e atirar parado.
+    - type: image
+      src: velocidade-counter-strafe.png
+      alt: Gráfico da velocidade do personagem caindo até zero depois de apertar a tecla oposta
+      caption: A velocidade cai a zero poucos instantes depois da tecla oposta.
+    - type: callout
+      variant: tip
+      title: Treine num servidor offline
+      text: Ande para a esquerda com **A**, toque **D** por um instante e atire. Repita até sair natural.
+    - type: quiz_ref
+      quiz: counter-strafe-quiz
+quiz:
+  key: counter-strafe-quiz
+  title: Teste rápido de counter-strafe
+  questions:
+    - key: tecla-oposta
+      kind: single_choice
+      prompt: Indo para a esquerda (**A**), qual tecla para o personagem mais rápido?
+      explanation: A tecla da direção oposta (**D**) zera a velocidade em poucos instantes.
+      options:
+        - { key: a, text: "A", correct: false }
+        - { key: d, text: "D", correct: true }
+        - { key: s, text: "S", correct: false }
+    - key: quando-usar
+      kind: multiple_choice
+      prompt: Em quais situações vale fazer counter-strafe antes do tiro?
+      options:
+        - { key: peek, text: "Ao dar peek num ângulo", correct: true }
+        - { key: duelo, text: "Num duelo a média distância", correct: true }
+        - { key: rotacao, text: "Correndo pelo mapa sem inimigo à vista", correct: false }

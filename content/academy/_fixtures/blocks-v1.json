@@ -1,0 +1,77 @@
+{
+  "description": "Casos compartilhados dos schemas de blocos v1 (docs/academy/conteudo-importavel.md). Usados pelo teste PHP (LessonContentSchemaTest) e, na etapa 2.3, pelo espelho Zod do frontend. 'block' é o bloco como vem do arquivo; 'data' é o que vai para o banco; 'error' é o trecho esperado na mensagem.",
+  "version": 1,
+  "context": {
+    "media": { "existe.png": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+    "quiz": "meu-quiz"
+  },
+  "valid": [
+    {
+      "name": "markdown com título, lista, código e links permitidos",
+      "block": { "type": "markdown", "text": "## Título\n\n- item com **negrito**\n- [interno](/academy) e [externo](https://example.com)\n\n```\n# comentário\n```" },
+      "data": { "text": "## Título\n\n- item com **negrito**\n- [interno](/academy) e [externo](https://example.com)\n\n```\n# comentário\n```" }
+    },
+    {
+      "name": "markdown com menor que seguido de espaço",
+      "block": { "type": "markdown", "text": "Se a < b, use a." },
+      "data": { "text": "Se a < b, use a." }
+    },
+    {
+      "name": "callout sem título",
+      "block": { "type": "callout", "variant": "tip", "text": "Use **D** para parar." },
+      "data": { "variant": "tip", "title": null, "text": "Use **D** para parar." }
+    },
+    {
+      "name": "callout com título",
+      "block": { "type": "callout", "variant": "warning", "title": "Atenção", "text": "Não pare no meio do ângulo." },
+      "data": { "variant": "warning", "title": "Atenção", "text": "Não pare no meio do ângulo." }
+    },
+    {
+      "name": "vídeo por URL watch",
+      "block": { "type": "video", "url": "https://www.youtube.com/watch?v=AbCdEfGhIjK", "title": "Demonstração", "start_seconds": 12 },
+      "data": { "provider": "youtube", "video_id": "AbCdEfGhIjK", "title": "Demonstração", "start_seconds": 12 }
+    },
+    {
+      "name": "vídeo por URL curta",
+      "block": { "type": "video", "url": "https://youtu.be/AbCdEfGhIjK", "title": "Demonstração" },
+      "data": { "provider": "youtube", "video_id": "AbCdEfGhIjK", "title": "Demonstração", "start_seconds": null }
+    },
+    {
+      "name": "imagem com alt e legenda",
+      "block": { "type": "image", "src": "existe.png", "alt": "Gráfico", "caption": "Legenda" },
+      "data": { "media": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "alt": "Gráfico", "decorative": false, "caption": "Legenda" }
+    },
+    {
+      "name": "imagem decorativa",
+      "block": { "type": "image", "src": "existe.png", "decorative": true },
+      "data": { "media": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "alt": "", "decorative": true, "caption": null }
+    },
+    {
+      "name": "quiz_ref do quiz da aula",
+      "block": { "type": "quiz_ref", "quiz": "meu-quiz" },
+      "data": { "quiz": "meu-quiz" }
+    }
+  ],
+  "invalid": [
+    { "name": "tipo desconhecido", "block": { "type": "html", "html": "<b>x</b>" }, "error": "content.blocks[0].type: tipo de bloco desconhecido" },
+    { "name": "campo extra", "block": { "type": "markdown", "text": "x", "style": "red" }, "error": "content.blocks[0].style: campo desconhecido" },
+    { "name": "markdown vazio", "block": { "type": "markdown", "text": "  " }, "error": "content.blocks[0].text: precisa ter de 1 a 20000 caracteres" },
+    { "name": "markdown com tag", "block": { "type": "markdown", "text": "<script>alert(1)</script>" }, "error": "content.blocks[0].text: HTML não é permitido" },
+    { "name": "markdown com comentário HTML", "block": { "type": "markdown", "text": "<!-- x -->" }, "error": "content.blocks[0].text: HTML não é permitido" },
+    { "name": "markdown com autolink", "block": { "type": "markdown", "text": "<https://example.com>" }, "error": "content.blocks[0].text: HTML não é permitido" },
+    { "name": "markdown com imagem", "block": { "type": "markdown", "text": "![x](https://example.com/x.png)" }, "error": "content.blocks[0].text: imagens no Markdown não são permitidas" },
+    { "name": "link javascript", "block": { "type": "markdown", "text": "[x](javascript:alert(1))" }, "error": "content.blocks[0].text: link não permitido" },
+    { "name": "link http", "block": { "type": "markdown", "text": "[x](http://example.com)" }, "error": "content.blocks[0].text: link não permitido" },
+    { "name": "link de protocolo relativo", "block": { "type": "markdown", "text": "[x](//evil.example)" }, "error": "content.blocks[0].text: link não permitido" },
+    { "name": "título h1", "block": { "type": "markdown", "text": "# Título" }, "error": "content.blocks[0].text: títulos começam em ##" },
+    { "name": "callout com variante inválida", "block": { "type": "callout", "variant": "danger", "text": "x" }, "error": "content.blocks[0].variant: use um destes valores: info, tip, warning" },
+    { "name": "callout com lista", "block": { "type": "callout", "variant": "info", "text": "- item" }, "error": "content.blocks[0].text: use só Markdown em linha" },
+    { "name": "vídeo de outro domínio", "block": { "type": "video", "url": "https://vimeo.com/1", "title": "x" }, "error": "content.blocks[0].url: só vídeos do YouTube" },
+    { "name": "vídeo sem título", "block": { "type": "video", "url": "https://youtu.be/AbCdEfGhIjK" }, "error": "content.blocks[0].title: obrigatório" },
+    { "name": "vídeo com início negativo", "block": { "type": "video", "url": "https://youtu.be/AbCdEfGhIjK", "title": "x", "start_seconds": -1 }, "error": "content.blocks[0].start_seconds: precisa ser um número inteiro de 0 a 86400" },
+    { "name": "imagem sem alt", "block": { "type": "image", "src": "existe.png" }, "error": "content.blocks[0].alt: obrigatório" },
+    { "name": "imagem decorativa com alt", "block": { "type": "image", "src": "existe.png", "decorative": true, "alt": "x" }, "error": "content.blocks[0].alt: imagem decorativa tem alt vazio" },
+    { "name": "imagem inexistente", "block": { "type": "image", "src": "sumiu.png", "alt": "x" }, "error": "content.blocks[0].src" },
+    { "name": "quiz_ref de outro quiz", "block": { "type": "quiz_ref", "quiz": "outro-quiz" }, "error": "content.blocks[0].quiz: precisa ser a key do quiz declarado nesta aula" }
+  ]
+}

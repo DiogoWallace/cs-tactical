@@ -10,8 +10,12 @@ use Illuminate\Support\Facades\Schema;
 
 const IDENTITY_TABLES = ['users', 'profiles', 'password_reset_tokens'];
 
+// As migrations da Academy (Fase 2) vêm depois das do Identity; o rollback por passos precisa
+// desfazê-las primeiro.
+const MIGRATIONS_AFTER_IDENTITY = 5;
+
 it('rolls back and re-applies the identity migrations', function () {
-    $this->artisan('migrate:rollback', ['--step' => 4])->assertSuccessful();
+    $this->artisan('migrate:rollback', ['--step' => 4 + MIGRATIONS_AFTER_IDENTITY])->assertSuccessful();
 
     foreach (IDENTITY_TABLES as $table) {
         expect(Schema::hasTable($table))->toBeFalse();
@@ -27,7 +31,7 @@ it('rolls back and re-applies the identity migrations', function () {
 });
 
 it('rolls back the pending e-mail column on its own', function () {
-    $this->artisan('migrate:rollback', ['--step' => 1])->assertSuccessful();
+    $this->artisan('migrate:rollback', ['--step' => 1 + MIGRATIONS_AFTER_IDENTITY])->assertSuccessful();
     expect(Schema::hasColumn('users', 'pending_email'))->toBeFalse()
         ->and(Schema::hasTable('users'))->toBeTrue();
 
