@@ -6,8 +6,21 @@
 
 ## Estrutura dos arquivos
 
-O conteúdo fica no repositório, fora das aplicações, e é importado com
-`php artisan academy:import content/academy` (com `--dry-run` para simular).
+O conteúdo fica no repositório, fora das aplicações, e é importado de dentro do container `api`,
+onde `./content` é montado (só leitura) em `/var/www/content` e `ACADEMY_CONTENT_PATH` aponta para
+`/var/www/content/academy`:
+
+```bash
+docker compose exec api php artisan academy:import --dry-run   # valida e mostra o que mudaria
+docker compose exec api php artisan academy:import             # importa
+```
+
+| Opção | Efeito |
+|---|---|
+| `{path}` | outra pasta (padrão: `config('academy.content_path')`) |
+| `--dry-run` | valida tudo, inclusive contra o banco, e desfaz a transação; não grava imagens |
+| `--archive-missing` | arquiva cursos, módulos e aulas ausentes dos arquivos; lista e pede confirmação |
+| `--force` | dispensa a confirmação do `--archive-missing` |
 
 ```
 content/academy/
@@ -28,8 +41,27 @@ content/academy/
 ```
 
 - A **ordem** vem de `position` nos arquivos, não do nome do diretório.
-- Caminhos de imagem são relativos ao diretório `media/` do curso.
-- Arquivos em UTF-8, YAML 1.2. Chaves desconhecidas em qualquer nível reprovam a importação.
+- Caminhos de imagem são relativos ao diretório `media/` do curso; nome só com minúsculas,
+  números, `.`, `_` e `-`, sem subpastas.
+- Arquivos em UTF-8, YAML 1.2, até 1 MB. Chaves desconhecidas em qualquer nível reprovam a
+  importação; chave repetida, tags personalizadas e objetos PHP (`!php/...`) também.
+- Entradas que começam com `_` ou `.` são ignoradas (rascunhos locais e `_fixtures/`, os casos
+  de teste dos blocos compartilhados com o frontend); arquivos `.md` também (anotações). Outros
+  arquivos fora do lugar e links simbólicos reprovam.
+
+### Identidade, status e itens ausentes
+
+- A identidade é a `key`: curso (global), módulo (por curso), aula (por curso) e quiz (global).
+  Mudar o `slug`, a posição ou o módulo de uma aula (no mesmo curso) atualiza o mesmo registro;
+  slugs e posições podem ser trocados entre itens numa mesma importação.
+- **Mover aula entre cursos é recusado**: aula nova num curso cuja `key` existe em outro curso
+  e sumiu dos arquivos de lá. Crie com outra `key` e arquive a antiga. A mesma `key` em dois
+  cursos, ambas nos arquivos, é permitida (são aulas diferentes).
+- Status: `draft` → `published` → `archived` → `published`. **Publicado não volta a rascunho**
+  (só pode ser arquivado). Curso publicado precisa de um módulo publicado com uma aula publicada.
+- Itens que sumiram dos arquivos **nunca são apagados**: aparecem como "ausentes" e continuam
+  como estão, inclusive com o slug e a posição deles (usar esse slug ou posição em outro item
+  reprova, com mensagem). Só são arquivados com `--archive-missing`.
 
 ## Formatos
 
@@ -113,8 +145,13 @@ quiz:                                                      # opcional (0..1 por 
 
 Uma pergunta ou opção retirada do arquivo é **aposentada** (`retired_at`) se o quiz já tiver
 **qualquer** tentativa (aberta ou enviada), porque tentativas abertas guardam a pergunta no
-snapshot e vão respondê-la; só é removida se o quiz nunca teve tentativa (ADR 0018). Itens de
-curso, módulo e aula que sumirem só são listados como "ausentes" (ADR 0016).
+snapshot e vão respondê-la; só é removida se o quiz nunca teve tentativa (ADR 0018). O mesmo vale
+para o quiz inteiro quando ele sai da aula ou troca de `key`: com tentativa, é aposentado e a aula
+recebe o novo. Item aposentado que volta ao arquivo é reativado. Itens de curso, módulo e aula
+que sumirem só são listados como "ausentes" (ADR 0016).
+
+A `revision` do quiz sobe quando muda o que afeta a correção: `max_attempts`, `pass_percent`,
+perguntas, opções, gabarito, explicações ou ordem. Mudar só o título não cria revisão.
 
 ## Schemas dos blocos (versão 1)
 
@@ -123,7 +160,7 @@ conteúdo canônico (JSON ordenado) até **256 KB**.
 
 | Tipo | Campos (arquivo → banco) | Validação |
 |---|---|---|
-| `markdown` | `text` | 1..20 000 caracteres; **sem HTML** (tags ou comentários reprovam); sem imagens Markdown (`![...]`); links só `https:`, `mailto:` ou caminhos internos; títulos a partir de `##` |
+| `markdown` | `text` | 1..20 000 caracteres; **sem HTML**: `<` seguido de letra, `/`, `!` ou `?` reprova (tags, comentários, autolinks), inclusive em blocos de código; para "menor que", use `<` seguido de espaço; sem imagens Markdown (`![...]`); links só `https:`, `mailto:`, `#âncora` ou caminhos internos `/...` (não `//...` nem `/\...`); títulos a partir de `##` |
 | `callout` | `variant`, `title`?, `text` | `variant`: `info`, `tip`, `warning`; `title` até 120; `text` 1..2000, Markdown **em linha** (negrito, itálico, código, links) com as mesmas restrições |
 | `video` | `url` → `provider`, `video_id`; `title`; `start_seconds`? | `url` de `youtube.com/watch`, `youtu.be` ou `youtube.com/embed`; ID `[A-Za-z0-9_-]{11}`; `title` obrigatório (1..160); `start_seconds` 0..86 400 |
 | `image` | `src` → `media` (sha256 do arquivo, registrado em `academy_media` com tipo e dimensões); `alt`; `caption`? | arquivo em `media/`; PNG, JPEG, WebP ou AVIF (tipo conferido pelo conteúdo); até 2 MB; até 4096 px de lado; `alt` obrigatório (1..300), exceto com `decorative: true` (então `alt` vazio); `caption` até 300 |
@@ -143,7 +180,7 @@ frontend); um teste compara os dois a partir de fixtures compartilhadas.
 | `questions` | 1..30 perguntas |
 | `kind` | `single_choice` (exatamente 1 correta) ou `multiple_choice` (ao menos 1 correta) |
 | `prompt` / `explanation` | 1..1000 / até 2000, Markdown em linha |
-| `options` | 2..8 por pergunta; `text` 1..500; `key` único na pergunta |
+| `options` | 2..8 por pergunta; `text` 1..500, Markdown em linha; `key` único na pergunta; `correct` obrigatório |
 
 ## Imagens e falhas
 
@@ -158,15 +195,26 @@ disponível).
 ## Saída do importador
 
 ```
-academy:import content/academy --dry-run
+academy:import /var/www/content/academy --dry-run
   cursos   criados 1 · alterados 0 · sem mudança 0
   módulos  criados 2 · alterados 0 · sem mudança 0
   aulas    criadas 3 · alteradas 0 · sem mudança 0
-  quizzes  criados 1 · revisão +0
+  quizzes  criados 1 · alterados 0 · sem mudança 0
+  quizzes  revisão +0 · itens aposentados 0 · itens removidos 0
+  mídias   registradas 2 · arquivos gravados 0
   ausentes (não serão alterados): nenhum
+  arquivados: nenhum
   erros: 0
 Simulação: nada foi gravado.
 ```
 
-Erros indicam arquivo e caminho do campo, por exemplo
+Sem mudança nos arquivos, a importação não escreve nada (nem no banco nem no disco) e termina
+com "Importação concluída: nada mudou.".
+
+Erros indicam arquivo e caminho do campo e cancelam tudo, por exemplo
 `fundamentos-cs2/01-movimentacao/01-counter-strafe.yaml: content.blocks[3].alt: obrigatório`.
+
+Falha depois da validação (ex.: erro do banco) desfaz a transação inteira; as imagens já gravadas
+ficam sem registro e o comando avisa que `academy:media-prune` as remove depois de 24 horas.
+Importação e limpeza usam o mesmo *advisory lock*: com outra em andamento, o comando sai na hora
+com erro, sem gravar nada.

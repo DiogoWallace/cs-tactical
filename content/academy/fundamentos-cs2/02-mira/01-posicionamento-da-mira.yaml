@@ -1,0 +1,21 @@
+# Rascunho: troque o vídeo de exemplo por um vídeo real antes de publicar.
+key: posicionamento-da-mira
+slug: posicionamento-da-mira
+title: Posicionamento da mira
+summary: Deixe a mira onde o inimigo vai aparecer.
+status: draft
+position: 1
+estimated_minutes: 10
+content:
+  version: 1
+  blocks:
+    - type: markdown
+      text: |
+        ## Mira na altura da cabeça
+
+        Ande com a mira na altura da cabeça e encostada nos cantos por onde um inimigo pode
+        surgir. Assim o ajuste na hora do tiro é mínimo.
+    - type: video
+      url: https://www.youtube.com/watch?v=AbCdEfGhIjK
+      title: Exemplo de posicionamento da mira
+      start_seconds: 0

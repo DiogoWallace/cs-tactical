@@ -144,6 +144,25 @@ Fora da 2.1: rotas HTTP (2.2), telas (2.3), `Learning` (2.4), tentativas pela AP
 conteúdo de exemplo idempotente; nenhum endpoint novo (o teste de rotas confirma); nenhum arquivo
 órfão depois da suíte.
 
+### Etapa 2.1 — ajustes feitos na implementação
+
+Diferenças em relação ao desenho da 2.0, já refletidas nos documentos de referência:
+
+| # | Desenho da 2.0 | Implementado | Motivo |
+|---|---|---|---|
+| A1 | `quizzes.lesson_id` único | `retired_at` em `quizzes` + único **parcial** `(lesson_id) WHERE retired_at IS NULL` | P2: uma aula pode receber um quiz novo enquanto o anterior, com tentativas, continua respondendo pelos snapshots |
+| A2 | Slug único simples | Slug único **adiável** (cursos, módulos, aulas) | Trocar slugs entre dois itens numa mesma importação |
+| A3 | Caminho `academy/{sha[0:2]}/{sha}.{ext}` | `media/{sha[0:2]}/{sha}.{ext}` no disco `academy` (`storage/app/academy`) | O nome do disco já diz "academy"; temporários ficam em `tmp/` no mesmo disco (rename atômico) |
+| A4 | — | `content/` montado só leitura no container `api` (`/var/www/content`) e `ACADEMY_CONTENT_PATH` no `compose.yaml` | O container só monta `apps/api`; na CI (sem container) vale o padrão `base_path('../../content/academy')` |
+| A5 | — | Dependência `symfony/yaml` | Leitura estrita do YAML (chave repetida, tags e objetos PHP reprovam) |
+| A6 | — | Contrato `QuizUsage` (Academy), implementação nula até a 2.4 | A Academy não conhece o Learning; o teste de aposentadoria usa um `QuizUsage` falso no lugar de uma tentativa no banco, que só existe na 2.4 |
+| A7 | P5: CI valida com `--dry-run` | Um teste Pest importa `content/academy` (simulação e importação real) em toda execução da suíte | Mesmo efeito, sem passo extra na CI |
+| A8 | — | Arquivos `.md` e entradas com `_`/`.` ignorados; links simbólicos reprovam; `_fixtures/blocks-v1.json` com os casos dos blocos | Anotações e rascunhos ao lado do conteúdo; casos compartilhados com o Zod da 2.3 |
+
+Limpeza de arquivos (ADR 0019): **capa citada sem registro** não pode acontecer (FK de
+`cover_media_id`), então o `media-prune` reconfere registro e blocos `image`; aula que cite um
+hash sem registro é anomalia (arquivo mantido, comando termina com erro).
+
 ## Etapas seguintes (resumo)
 
 | Etapa | Entrega |

@@ -47,6 +47,15 @@ return [
             'report' => false,
         ],
 
+        // Imagens da Academy (ADR 0019): privado, endereçado por hash. Trocar o driver para S3
+        // depois não muda o código; as imagens são servidas pela própria origem (etapa 2.2).
+        'academy' => [
+            'driver' => 'local',
+            'root' => storage_path('app/academy'),
+            'throw' => true,
+            'report' => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

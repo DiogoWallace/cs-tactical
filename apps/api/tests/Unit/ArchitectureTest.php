@@ -37,6 +37,33 @@ arch('Identity actions do not depend on the HTTP layer')
     ->expect('App\Modules\Identity\Actions')
     ->not->toUse(['Illuminate\Http\Request', 'Illuminate\Http\JsonResponse']);
 
+arch('Academy models are Eloquent models')
+    ->expect('App\Modules\Academy\Models')
+    ->toExtend('Illuminate\Database\Eloquent\Model');
+
+arch('Academy enums are backed enums')
+    ->expect('App\Modules\Academy\Enums')
+    ->toBeStringBackedEnums();
+
+// Fronteira (plano da 2.1): só a própria Academy usa os models dela; o Learning entra na 2.4.
+arch('only the Academy module uses Academy models')
+    ->expect('App\Modules\Academy\Models')
+    ->toOnlyBeUsedIn(['App\Modules\Academy', 'Database\Factories\Academy']);
+
+// ADR 0015: o Learning depende da Academy, nunca o contrário (o uso de quizzes vem por contrato).
+arch('Academy does not depend on Learning, Teams or Identity')
+    ->expect('App\Modules\Academy')
+    ->not->toUse(['App\Modules\Learning', 'App\Modules\Teams', 'App\Modules\Identity']);
+
+arch('Academy content schemas are pure: no database, files or HTTP')
+    ->expect('App\Modules\Academy\Content')
+    ->not->toUse(['Illuminate\Support\Facades\DB', 'Illuminate\Support\Facades\Storage', 'Illuminate\Database', 'Illuminate\Http', 'App\Modules\Academy\Models']);
+
+// Fase (a) da importação (ADR 0016): validar tudo sem gravar nada.
+arch('the content parser neither touches the database nor the media disk')
+    ->expect(['App\Modules\Academy\Import\ContentParser', 'App\Modules\Academy\Import\CourseMedia', 'App\Modules\Academy\Import\ImageInspector'])
+    ->not->toUse(['Illuminate\Support\Facades\DB', 'Illuminate\Support\Facades\Storage', 'App\Modules\Academy\Models']);
+
 arch('the legacy App\Models namespace is not used')
     ->expect('App\Models')
     ->not->toBeUsed();

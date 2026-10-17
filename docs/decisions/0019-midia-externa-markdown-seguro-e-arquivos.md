@@ -48,7 +48,8 @@ abstração Storage do Laravel (disco local agora, S3 depois).
 O PostgreSQL desfaz a transação, mas não desfaz arquivos gravados no Storage. Para que uma
 falha não deixe referência quebrada nem publicação parcial:
 
-11. **Endereçamento por conteúdo**: cada imagem é gravada como `academy/{sha256[0:2]}/{sha256}.{ext}`.
+11. **Endereçamento por conteúdo**: cada imagem é gravada como `media/{sha256[0:2]}/{sha256}.{ext}`
+    no disco `academy` (raiz `storage/app/academy`; caminho ajustado na implementação, etapa 2.1).
     O nome é o hash do conteúdo, então o arquivo é **imutável** e gravar o mesmo conteúdo de novo
     é um no-op (idempotente, deduplicado).
 12. **Arquivos antes, banco depois**: a importação (a) valida tudo, (b) grava os arquivos que

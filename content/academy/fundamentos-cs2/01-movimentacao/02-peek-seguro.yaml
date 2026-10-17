@@ -1,0 +1,22 @@
+key: peek-seguro
+slug: peek-seguro
+title: Peek seguro
+summary: Mostrar o mínimo do corpo ao checar um ângulo.
+status: published
+position: 2
+estimated_minutes: 6
+content:
+  version: 1
+  blocks:
+    - type: markdown
+      text: |
+        ## Mostre só o necessário
+
+        Ao checar um ângulo, aproxime-se da parede e revele o espaço aos poucos. Assim você
+        enfrenta um inimigo de cada vez.
+
+        - Mire na altura da cabeça antes de aparecer.
+        - Pare com counter-strafe assim que vir o alvo.
+    - type: callout
+      variant: warning
+      text: Evite parar no meio do ângulo aberto; quem espera parado leva vantagem.

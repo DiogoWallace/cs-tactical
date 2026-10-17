@@ -66,8 +66,11 @@ services:
       TRUSTED_PROXIES: ${WEB_INTERNAL_IP:-172.31.250.10}
       # Escuta só IPv4: evita falha do Nginx em ambientes sem IPv6 (comum em Docker/WSL).
       NGINX_LISTEN_IP_PROTOCOL: ipv4
+      # Conteúdo da Academy (docs/academy/conteudo-importavel.md), só leitura.
+      ACADEMY_CONTENT_PATH: /var/www/content/academy
     volumes:
       - ./apps/api:/var/www/html
+      - ./content:/var/www/content:ro
     ports:
       - "127.0.0.1:${API_PORT:-8000}:8080"
     depends_on:
