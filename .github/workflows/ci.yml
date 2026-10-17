@@ -13,10 +13,13 @@ concurrency:
 permissions:
   contents: read
 
+# Runners fixados em ubuntu-24.04 temporariamente, durante a migração do ubuntu-latest para a
+# 26.04 (19/10–19/11/2026). Testar a 26.04 depois de 19/11 e revisar até 15/12/2026.
+# docs/development/dependencias.md
 jobs:
   api:
     name: API (Laravel)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: apps/api
@@ -85,7 +88,7 @@ jobs:
 
   web:
     name: Web (Next.js)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: apps/web
@@ -125,7 +128,7 @@ jobs:
   e2e:
     # Mesma stack isolada usada localmente (compose.e2e.yaml, scripts/e2e.sh). docs/development/e2e.md
     name: E2E (Playwright)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
 
     steps:
