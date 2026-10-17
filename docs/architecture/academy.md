@@ -69,7 +69,9 @@ demais casos) · "próprio" = só os dados do próprio usuário.
 | Ver progresso de outro jogador | — | — | — | — |
 | Importar conteúdo | terminal do servidor (sem HTTP) | | | |
 
-Implementação (ADR 0012): `can:manage-academy-content` só para `include_unpublished`; Policies
+Implementação (ADR 0012): `manage-academy-content` só para `include_unpublished` (na 2.2, pelo
+Gate dentro das rotas públicas, `App\Modules\Academy\Http\EditorialAccess`: a rota não exige
+sessão, então não usa o middleware `can:`); Policies
 `EnrollmentPolicy`, `LessonProgressPolicy` e `QuizAttemptPolicy` decidem por **posse**. Tentativa
 de outro jogador responde **404** (não revela que existe). Cada linha da matriz vira teste
 (todos os papéis × ação). E-mail confirmado não é exigido (decisão P3).
@@ -79,6 +81,7 @@ de outro jogador responde **404** (não revela que existe). Cada linha da matriz
 | Grupo | Limite | Chave | Rotas |
 |---|---|---|---|
 | `academy-public` | 120/min | IP real (ADR 0009) | leitura do catálogo e das aulas |
+| `academy-media` | 600/min | IP real (ADR 0009) | imagens do catálogo e das aulas (etapa 2.2: uma página carrega várias de uma vez) |
 | `api` (existente) | 120/min | usuário | leituras autenticadas de progresso e tentativas |
 | `learning-write` | 30/min | usuário | matrícula, abrir/concluir aula |
 | `quiz-attempt` | 10/min | usuário | iniciar tentativa e enviar respostas |

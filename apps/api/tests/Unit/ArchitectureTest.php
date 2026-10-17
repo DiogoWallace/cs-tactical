@@ -59,6 +59,16 @@ arch('Academy content schemas are pure: no database, files or HTTP')
     ->expect('App\Modules\Academy\Content')
     ->not->toUse(['Illuminate\Support\Facades\DB', 'Illuminate\Support\Facades\Storage', 'Illuminate\Database', 'Illuminate\Http', 'App\Modules\Academy\Models']);
 
+// ADR 0015 (consequências): controllers públicos não consultam models; tudo passa pelo
+// CatalogQuery, que aplica o escopo de visibilidade.
+arch('Academy controllers neither query the database nor touch models directly')
+    ->expect('App\Modules\Academy\Http\Controllers')
+    ->not->toUse(['Illuminate\Support\Facades\DB', 'Illuminate\Database', 'App\Modules\Academy\Models', 'Illuminate\Support\Facades\Storage']);
+
+arch('Academy HTTP layer does not run the importer')
+    ->expect('App\Modules\Academy\Http')
+    ->not->toUse(['App\Modules\Academy\Import\ContentImporter', 'App\Modules\Academy\Import\ContentParser', 'App\Modules\Academy\Console']);
+
 // Fase (a) da importação (ADR 0016): validar tudo sem gravar nada.
 arch('the content parser neither touches the database nor the media disk')
     ->expect(['App\Modules\Academy\Import\ContentParser', 'App\Modules\Academy\Import\CourseMedia', 'App\Modules\Academy\Import\ImageInspector'])

@@ -427,10 +427,21 @@ it('does not run while another process holds the content lock', function () {
     expect(runImport(AcademyContent::tree())[0])->toBe(0);
 });
 
-it('exposes no Academy HTTP route in step 2.1', function () {
-    $academyRoutes = collect(Route::getRoutes()->getRoutes())->filter(fn ($route) => str_contains($route->uri(), 'academy'));
+// Importar é só pelo terminal (matriz de autorização): na 2.1 não havia rota da Academy; desde a
+// 2.2 existem apenas as leituras do catálogo (docs/api/academy-v1.md), nenhuma que escreva.
+it('exposes only the read-only catalog routes over HTTP, never the import', function () {
+    $academyRoutes = collect(Route::getRoutes()->getRoutes())
+        ->filter(fn ($route) => str_contains($route->uri(), 'academy'))
+        ->mapWithKeys(fn ($route) => [$route->uri() => $route->methods()])
+        ->sortKeys()
+        ->all();
 
-    expect($academyRoutes)->toBeEmpty();
+    expect($academyRoutes)->toBe([
+        'api/v1/academy/courses' => ['GET', 'HEAD'],
+        'api/v1/academy/courses/{course}' => ['GET', 'HEAD'],
+        'api/v1/academy/courses/{course}/lessons/{lesson}' => ['GET', 'HEAD'],
+        'api/v1/academy/media/{file}' => ['GET', 'HEAD'],
+    ]);
 });
 
 it('releases the lock even when the import fails', function () {
