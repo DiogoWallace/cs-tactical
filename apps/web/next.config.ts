@@ -1,5 +1,7 @@
 import type { NextConfig } from "next"
 
+import { PAGE_HEADERS_SOURCE, securityHeaders } from "./src/lib/security-headers"
+
 /**
  * Endereço da API Laravel na rede interna do Docker. O navegador nunca o acessa
  * diretamente: as rotas abaixo encaminham /api e /sanctum pela mesma origem do
@@ -12,6 +14,8 @@ const nextConfig: NextConfig = {
   // O dev server roda no container com --hostname 0.0.0.0 e só libera "localhost" por padrão.
   // Sem isto, abrir http://127.0.0.1:3000 bloqueia o WebSocket do hot reload (/_next/hmr).
   allowedDevOrigins: ["127.0.0.1"],
+  // Não anuncia o framework (X-Powered-By: Next.js).
+  poweredByHeader: false,
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {
@@ -21,6 +25,15 @@ const nextConfig: NextConfig = {
         as: "*.css",
       },
     },
+  },
+  // Headers de segurança das páginas (src/lib/security-headers.ts, docs/architecture/seguranca-http.md).
+  async headers() {
+    return [
+      {
+        source: PAGE_HEADERS_SOURCE,
+        headers: securityHeaders(process.env.NODE_ENV === "development"),
+      },
+    ]
   },
   async rewrites() {
     return {

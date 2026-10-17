@@ -25,7 +25,8 @@ class RequestEmailChangeRequest extends FormRequest
 
         return [
             'email' => ['required', ...AccountRules::email($user), 'not_in:'.$user->email],
-            'current_password' => ['required', 'string', 'current_password:web'],
+            // bail: sem ele, uma lista no lugar da senha chegava ao password_verify() (erro 500).
+            'current_password' => ['bail', 'required', 'string', 'current_password:web'],
         ];
     }
 

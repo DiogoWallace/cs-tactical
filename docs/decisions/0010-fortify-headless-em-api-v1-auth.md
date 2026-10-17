@@ -78,3 +78,10 @@ Os limitadores ficam no `IdentityServiceProvider`, com contadores no Redis e o I
 
 - Os fluxos seguem o comportamento testado do Fortify. Os pontos alterados (recuperação de senha sem revelar o e-mail, verificação com assinatura relativa) são poucos e têm testes próprios.
 - Atualizações do Fortify precisam ser verificadas contra essas customizações.
+
+## Nota de implementação (revisão da etapa 1.8)
+
+A decisão continua valendo. Dois detalhes da implementação diferem do texto acima:
+
+- **Troca de senha** (etapa 1.5) não usa o Fortify: é `PUT /api/v1/me/password` do módulo Identity (`ChangePasswordController` e a action `ChangePassword`), porque precisa manter a sessão atual e encerrar as outras ([autenticacao.md](../architecture/autenticacao.md)). Por isso não existe `UpdateUserPassword` em `Actions/`.
+- `features` liga `registration`, `resetPasswords` e `emailVerification`; `updatePasswords` não é usado.

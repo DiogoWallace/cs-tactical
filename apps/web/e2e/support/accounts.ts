@@ -17,6 +17,7 @@ export const ACCOUNTS = {
   password: { email: "password@e2e.test", nickname: "e2e_password" },
   mobile: { email: "mobile@e2e.test", nickname: "e2e_mobile" },
   a11y: { email: "a11y@e2e.test", nickname: "e2e_a11y" },
+  csp: { email: "csp@e2e.test", nickname: "e2e_csp" },
 } as const
 
 export type Account = { email: string; nickname: string }

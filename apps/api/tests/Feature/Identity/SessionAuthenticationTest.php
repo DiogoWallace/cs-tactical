@@ -283,6 +283,9 @@ describe('me', function () {
     });
 
     it('is limited to 120 requests per minute per user', function () {
+        // Relógio parado: com instrumentação pesada (Xdebug path coverage) as 121 requisições
+        // passavam de 60 s, a janela do limitador expirava no meio e o teste falhava.
+        $this->freezeTime();
         $session = browser();
         loginAs($session)->assertOk();
 

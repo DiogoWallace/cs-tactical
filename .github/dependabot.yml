@@ -1,0 +1,70 @@
+# Atualizações de dependências (etapa 1.8). Revisão dos PRs: docs/development/dependencias.md
+#
+# Sem automerge: todo PR do Dependabot passa pela CI (API, Web, E2E) e por revisão humana.
+# Atualizações de patch e minor são agrupadas por ecossistema para reduzir ruído; majors vêm
+# em PRs separados, porque costumam exigir mudanças de código.
+version: 2
+
+updates:
+  - package-ecosystem: composer
+    directory: /apps/api
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      composer-minor-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm # pnpm (apps/web/pnpm-lock.yaml)
+    directory: /apps/web
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      web-minor-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    commit-message:
+      prefix: "chore(ci)"
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directories:
+      - /infra/docker/api
+      - /infra/docker/web
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    commit-message:
+      prefix: "chore(docker)"
+
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    commit-message:
+      prefix: "chore(docker)"

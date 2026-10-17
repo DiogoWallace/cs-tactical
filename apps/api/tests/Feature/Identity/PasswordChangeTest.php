@@ -141,6 +141,16 @@ it('validates the new password', function (array $overrides) {
     'same as current' => [['password' => 'old-password-1', 'password_confirmation' => 'old-password-1']],
 ]);
 
+it('answers 422, not 500, when the fields are not strings', function (array $overrides, string $field) {
+    changePassword(signedIn(), $overrides)->assertUnprocessable()->assertJsonValidationErrors([$field]);
+
+    expect(Hash::check('old-password-1', $this->user->fresh()->password))->toBeTrue();
+})->with([
+    'current password as a list' => [['current_password' => ['old-password-1']], 'current_password'],
+    'current password as an object' => [['current_password' => ['x' => 'old-password-1']], 'current_password'],
+    'new password as a list' => [['password' => ['a'], 'password_confirmation' => ['a']], 'password'],
+]);
+
 it('requires the CSRF token', function () {
     changePassword(signedIn()->withoutXsrfHeader())->assertStatus(419);
 });

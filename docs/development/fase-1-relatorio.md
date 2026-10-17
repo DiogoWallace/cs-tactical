@@ -557,12 +557,73 @@ Branch `feat/phase-1-dashboard-e2e`. Guia completo dos testes E2E: [e2e.md](e2e.
 - `make e2e` (stack nova, do zero): 25 testes passando (24 desktop, 1 mobile) em 1,3 min.
 - Primeira execução de validação: falhas por contas ainda não criadas e por campos duplicados pelo `<Activity>` do Next, corrigidas nos testes; nenhuma falha da aplicação.
 
+### GitHub Actions (PR #5)
+
+Os três jobs passaram na primeira execução, no commit `049e475`: **API (Laravel)** em 1m13s, **Web (Next.js)** em 56s e **E2E (Playwright)** em 3m33s (12 contas criadas, 24 testes desktop passando em 53s, 2 workers). PR #5 integrado na `main` com merge commit `497c4e7`.
+
 ### Pendências e riscos
 
-- **Check obrigatório para o merge**: depende de marcar `E2E (Playwright)` como obrigatório na proteção da `main` no GitHub (configuração do repositório, não do código).
-- **Tempo de CI**: o job E2E constrói as imagens e o frontend a cada execução (estimativa de 8 a 12 minutos); cache de imagens pode ser avaliado depois.
+- **Governança do repositório (pendente)**: o repositório é privado numa conta gratuita, e o GitHub recusa branch protection e rulesets ("Upgrade to GitHub Pro or make this repository public"). Hoje não há checks obrigatórios (API, Web e E2E) nem bloqueio técnico de push direto, force push ou exclusão da `main`; essas regras valem só por processo. Resolver exige GitHub Pro, repositório público ou uma organização com plano Team; depois, criar um ruleset na `main` exigindo PR, os três checks, e bloqueando force push e exclusão.
+- **Tempo de CI**: o job E2E levou 3m33s, com build das imagens e do frontend a cada execução.
 - **Projeto mobile** roda só localmente por enquanto.
 - **Limite de cadastro (3/min por IP)**: a suíte faz um cadastro; novos testes de cadastro precisam respeitar o limite.
+
+---
+
+## Etapa 1.8 — Auditoria e fechamento da Fase 1
+
+Branch `feat/phase-1-final-review`. Achados, evidências e verificações completas:
+[fase-1-auditoria.md](fase-1-auditoria.md).
+
+### Encerramento
+
+- **Fase 1 concluída e validada para desenvolvimento**: nenhum achado alto ou crítico em aberto
+  que dependa de código; Pest (326), Vitest (104), concorrência, Playwright (32), lint e build
+  passando.
+- **Produção bloqueada** até a resolução e a verificação de P1–P4
+  ([bloqueios-de-producao.md](../deploy/bloqueios-de-producao.md)); G1 (proteção da `main`)
+  deve ser resolvido antes do primeiro deploy.
+
+### Decisões aprovadas (D1–D4) e o que foi feito
+
+- **D1 — Segurança HTTP** ([ADR 0014](../decisions/0014-headers-de-seguranca-e-csp.md),
+  [seguranca-http.md](../architecture/seguranca-http.md)): headers no frontend
+  (`src/lib/security-headers.ts`) e na API (`infra/docker/api/nginx/security.conf`, sem HSTS).
+  CSP validada primeiro em Report-Only; a aplicada é compatível com PPR (`'unsafe-inline'` em
+  scripts e estilos, todo o resto restrito à própria origem) e não teve violações nos fluxos.
+- **D2 — Cobertura** ([cobertura.md](cobertura.md)): pcov na imagem de desenvolvimento
+  (desligado por padrão) e `@vitest/coverage-v8`; `make coverage`. Branches da API medidos uma vez
+  com Xdebug. Sem percentual mínimo.
+- **D3 — Dependabot** ([dependencias.md](dependencias.md)): semanal para Composer, pnpm, GitHub
+  Actions, Dockerfiles e Compose; sem automerge.
+- **D4 — Concorrência**: `tests/Concurrency/LastAdminDemotionTest.php` (`make test-concurrency`),
+  fora da suíte padrão: banco próprio descartável, dois processos independentes, sincronização
+  pelo `pg_stat_activity`, tempo máximo e limpeza garantida. Contraprova registrada.
+
+### Achados corrigidos nesta etapa
+
+- Erro 500 com lista no campo de senha atual (`/me/password`, `/me/email`): `bail` + testes.
+- Contraste abaixo de WCAG AA no tema claro: tokens `--primary`, `--success` e `--destructive`.
+- Frontend sem headers de segurança; API com HSTS em HTTP.
+- Teste do limite de 120/min dependente do relógio (falhava sob Xdebug): `freezeTime()`.
+- ADR 0010 e comentário de `config/fortify.php` desatualizados.
+
+### Preparação para produção (sem deploy)
+
+`infra/deploy/edge/nginx.conf.example`, `infra/deploy/production.env.example`,
+`php artisan system:check-production-config` e `scripts/verify-edge.sh`.
+
+### Ocorrência do aviso `instant` (dev)
+
+Causa identificada: o `next dev` continuou rodando durante o `pnpm add @playwright/test` (peer
+dependency do Next), ficando com duas cópias do Next/React. Sem mudança de código; procedimento
+documentado em [wsl2.md](wsl2.md#problemas-comuns).
+
+### Riscos que permanecem
+
+- P1–P4 (produção) e G1 (governança).
+- `braces` (só desenvolvimento): aceitação temporária condicionada.
+- CSP com `'unsafe-inline'`: reavaliar antes de conteúdo gerado por usuário (Academy).
 
 ---
 
@@ -570,4 +631,4 @@ Branch `feat/phase-1-dashboard-e2e`. Guia completo dos testes E2E: [e2e.md](e2e.
 
 | Melhoria | Origem | Situação |
 |---|---|---|
-| Teste automatizado de concorrência do último admin: dois `identity:set-role` em processos paralelos contra o banco de testes, com a trava das linhas de admin segura numa segunda conexão; espera um sucesso, uma recusa e um admin restante (grupo Pest `concurrency`, fora da suíte padrão) | Etapa 1.6 (PR #4); hoje coberto por verificação manual com contraprova | Não iniciada |
+| Teste automatizado de concorrência do último admin: dois `identity:set-role` em processos paralelos contra o banco de testes, com a trava das linhas de admin segura numa segunda conexão; espera um sucesso, uma recusa e um admin restante (grupo Pest `concurrency`, fora da suíte padrão) | Etapa 1.6 (PR #4) | **Concluída na etapa 1.8** (`make test-concurrency`, banco descartável, contraprova) |

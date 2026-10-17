@@ -40,6 +40,14 @@
             "@php artisan config:clear --ansi",
             "pest"
         ],
+        "test:coverage": [
+            "@php artisan config:clear --ansi",
+            "@php -d pcov.enabled=1 vendor/bin/pest --coverage-text --coverage-html=build/coverage --coverage-clover=build/coverage/clover.xml"
+        ],
+        "test:concurrency": [
+            "@php artisan config:clear --ansi",
+            "pest tests/Concurrency --group=concurrency"
+        ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi"
