@@ -23,6 +23,8 @@ abstração Storage do Laravel (disco local agora, S3 depois).
    `referrerpolicy="strict-origin-when-cross-origin"` e `sandbox` com o mínimo necessário.
 4. **CSP por rota**: só as páginas de aula ganham `frame-src https://www.youtube-nocookie.com`.
    As demais páginas mantêm `frame-src 'none'`. Testes E2E verificam as duas situações.
+   (Implementado na etapa 2.3: `LESSON_HEADERS_SOURCE` em `apps/web/src/lib/security-headers.ts`;
+   o `iframe` só é criado depois do clique, então abrir a aula não faz requisição ao YouTube.)
 
 ### Markdown
 

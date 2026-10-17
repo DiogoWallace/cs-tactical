@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest"
 
 import {
   enforcedCsp,
+  LESSON_HEADERS_SOURCE,
+  lessonCspHeaders,
   PAGE_HEADERS_SOURCE,
   reportOnlyCsp,
   securityHeaders,
@@ -58,5 +60,34 @@ describe("security headers", () => {
     expect(pattern.test("/login")).toBe(true)
     expect(pattern.test("/api/v1/me")).toBe(false)
     expect(pattern.test("/sanctum/csrf-cookie")).toBe(false)
+  })
+})
+
+describe("lesson pages CSP (ADR 0019, item 4)", () => {
+  it("keeps frames blocked on every other page", () => {
+    expect(directives(enforcedCsp(false)).get("frame-src")).toEqual(["'none'"])
+    expect(directives(reportOnlyCsp(false)).get("frame-src")).toEqual(["'none'"])
+  })
+
+  it("only adds the privacy-enhanced YouTube player to frame-src", () => {
+    const headers = new Map(lessonCspHeaders(false).map((header) => [header.key, header.value]))
+    const enforced = headers.get("Content-Security-Policy") ?? ""
+    const reportOnly = headers.get("Content-Security-Policy-Report-Only") ?? ""
+    const player = "frame-src https://www.youtube-nocookie.com"
+
+    expect(directives(enforced).get("frame-src")).toEqual(["https://www.youtube-nocookie.com"])
+    expect(directives(reportOnly).get("frame-src")).toEqual(["https://www.youtube-nocookie.com"])
+    // Fora o frame-src, as duas políticas são idênticas às das demais páginas.
+    expect(enforced.replace(player, "frame-src 'none'")).toBe(enforcedCsp(false))
+    expect(reportOnly.replace(player, "frame-src 'none'")).toBe(reportOnlyCsp(false))
+  })
+
+  it("matches only lesson pages", () => {
+    const pattern = new RegExp(`^${LESSON_HEADERS_SOURCE.replace(/:[a-z]+/g, "[^/]+")}$`)
+
+    expect(pattern.test("/academy/cursos/fundamentos-cs2/aulas/counter-strafe")).toBe(true)
+    expect(pattern.test("/academy/cursos/fundamentos-cs2")).toBe(false)
+    expect(pattern.test("/academy")).toBe(false)
+    expect(pattern.test("/painel")).toBe(false)
   })
 })

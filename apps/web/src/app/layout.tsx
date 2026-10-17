@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils"
 import "./globals.css"
 
 export const metadata: Metadata = {
+  // Base das URLs absolutas dos metadados (Open Graph, canonical). Fixada no build, como a URL da API.
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
   title: {
     default: "CS Tactical",
     template: "%s · CS Tactical",

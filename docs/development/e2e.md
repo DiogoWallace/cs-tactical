@@ -20,6 +20,7 @@ do frontend (alguns minutos).
 | Comando | `php artisan e2e:prepare` só é registrado com `APP_ENV=e2e`, e se recusa a rodar se o ambiente não for `e2e` ou se a conexão não for PostgreSQL no banco `cs_tactical_e2e` (confere a configuração e o `current_database()` do servidor). Testado em `tests/Feature/System/PrepareE2eDatabaseCommandTest.php`. |
 | Portas | Nenhuma porta conflita com a stack de desenvolvimento. Só o Mailpit é publicado (`127.0.0.1:8026`, para depuração). |
 | Frontend | O container `web` copia o código para dentro dele e roda `next build && next start`: não escreve em `apps/web` (onde o `next dev` continua rodando). |
+| Academy | Conteúdo próprio dos testes (`apps/web/e2e/fixtures/academy`, montado só leitura), importado pelo `scripts/e2e.sh` com `academy:import`. As imagens vão para um `tmpfs` em `storage/app/academy`: nada é gravado na pasta da API, compartilhada com a stack de desenvolvimento. Mudar o conteúdo real (`content/academy`) não afeta os testes. |
 
 As duas stacks podem ficar no ar ao mesmo tempo.
 
@@ -54,7 +55,7 @@ Nenhum `sleep` ou `waitForTimeout`. A sincronização usa as esperas automática
 | Projeto | Dispositivo | Testes | Onde roda |
 | --- | --- | --- | --- |
 | `chromium-desktop` | Desktop Chrome | todos, menos `@mobile` | local e CI (obrigatório) |
-| `chromium-mobile` | Pixel 7 | só `@mobile` (menu do celular) | local |
+| `chromium-mobile` | Pixel 7 | só `@mobile` (menu do celular, aula e catálogo da Academy) | local |
 
 ## O que é coberto
 
@@ -71,8 +72,9 @@ Nenhum `sleep` ou `waitForTimeout`. A sincronização usa as esperas automática
 | `accessibility` | axe (WCAG 2.1 A/AA) nos temas escuro e claro: home, `/status`, login, cadastro, esqueci-senha, redefinir-senha (formulário e link inválido), painel, conta, 404, verificar-email e confirmar-email (estados de erro); falha em violações sérias ou críticas (todas vão anexadas ao relatório). Navegação por teclado no login e foco visível |
 | `security-headers` | headers de segurança das páginas (build de produção) e das respostas da API pelo proxy ([seguranca-http.md](../architecture/seguranca-http.md)) |
 | `csp` | nenhuma violação da CSP aplicada nos fluxos principais; violações da CSP Report-Only anexadas ao relatório |
+| `academy` | catálogo com cursos publicados, capa pela rota de mídia e filtro por nível (inclusive vazio); curso com módulos e aulas públicos em ordem; aula com Markdown, imagem, callout e quiz (sem gabarito no HTML) e navegação anterior/próxima entre módulos; vídeo só depois do clique, pelo `youtube-nocookie.com` (interceptado: sem internet); 404 com `noindex` para rascunho, ancestral em rascunho, aula de outro curso e slug inválido; CSP com o player só nas aulas e sem violações; axe nos dois temas; teclado; `@mobile`: lista de aulas recolhível e nenhuma rolagem horizontal |
 
-Total: 32 testes (31 desktop, 1 mobile).
+Total: 46 testes (43 desktop, 3 mobile).
 
 ## Executar só uma parte
 

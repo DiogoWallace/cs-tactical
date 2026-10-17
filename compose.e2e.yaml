@@ -46,6 +46,13 @@ services:
   api:
     ports: !reset []
     restart: "no"
+    # Conteúdo da Academy só dos testes (apps/web/e2e/fixtures/academy), importado pelo
+    # scripts/e2e.sh. As imagens ficam em tmpfs: nada é gravado em apps/api/storage, que é a
+    # mesma pasta da stack de desenvolvimento.
+    volumes:
+      - ./apps/web/e2e/fixtures/academy:/var/www/e2e-content/academy:ro
+    tmpfs:
+      - /var/www/html/storage/app/academy:uid=${HOST_UID:-1000},gid=${HOST_GID:-1000},mode=0755
     environment: &e2e-api-environment
       # Ambiente próprio: só nele existe o comando e2e:prepare.
       APP_ENV: e2e

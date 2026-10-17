@@ -1,0 +1,53 @@
+key: counter-strafe
+slug: counter-strafe
+title: Counter-strafe
+summary: Parar na hora para atirar com precisão.
+status: published
+position: 1
+estimated_minutes: 8
+content:
+  version: 1
+  blocks:
+    - type: markdown
+      text: |
+        ## Por que parar antes de atirar
+
+        A precisão cai enquanto o personagem se move. O **counter-strafe** zera a velocidade.
+
+        - Solte a tecla do movimento
+        - Toque a tecla *oposta*
+
+        ```
+        bind "mouse4" "+left"
+        ```
+
+        Leia o [guia externo](https://example.com/guia) ou volte ao [catálogo](/academy).
+    - type: image
+      src: grafico.png
+      alt: Gráfico da velocidade caindo a zero
+      caption: A velocidade cai a zero logo depois da tecla oposta.
+    - type: callout
+      variant: tip
+      title: Treine offline
+      text: Ande com **A**, toque **D** e atire.
+    - type: quiz_ref
+      quiz: counter-strafe-e2e
+quiz:
+  key: counter-strafe-e2e
+  title: Teste rápido E2E
+  max_attempts: 2
+  pass_percent: 80
+  questions:
+    - key: tecla
+      kind: single_choice
+      prompt: Indo para a esquerda, qual tecla para o personagem?
+      explanation: EXPLICACAO-SECRETA-E2E
+      options:
+        - { key: a, text: "OPCAO-ERRADA-E2E", correct: false }
+        - { key: d, text: "OPCAO-CERTA-E2E", correct: true }
+    - key: quando
+      kind: multiple_choice
+      prompt: Quando usar?
+      options:
+        - { key: peek, text: "No peek", correct: true }
+        - { key: rotacao, text: "Na rotação", correct: false }

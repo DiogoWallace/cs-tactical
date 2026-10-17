@@ -1,0 +1,10 @@
+key: compras
+slug: compras
+title: Compras (publicada num módulo em rascunho)
+status: published
+position: 1
+content:
+  version: 1
+  blocks:
+    - type: markdown
+      text: Esta aula não pode aparecer enquanto o módulo estiver em rascunho.

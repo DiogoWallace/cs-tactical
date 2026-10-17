@@ -14,6 +14,12 @@ estado atual, quem envia cada header e como verificar.
 Os headers das páginas não se aplicam a `/api/*` e `/sanctum/*`, que são respostas da API passando
 pelo proxy do Next (`PAGE_HEADERS_SOURCE`); assim nenhum header sai duplicado.
 
+**Exceção por rota (etapa 2.3, ADR 0019 item 4):** as páginas de aula da Academy
+(`/academy/cursos/{curso}/aulas/{aula}`, `LESSON_HEADERS_SOURCE`) recebem as mesmas duas CSPs com
+uma única diferença, `frame-src https://www.youtube-nocookie.com`, para o player de vídeo. A
+regra vem depois da geral em `headers()` (no Next, a última regra que casa vale para o mesmo
+header). Todas as outras páginas, inclusive catálogo e curso, continuam com `frame-src 'none'`.
+
 ## Valores
 
 ### Páginas
@@ -64,6 +70,23 @@ Nenhuma violação por recurso externo. A **CSP aplicada não teve nenhuma viola
 
 Para aplicar a política meta seria preciso CSP com nonce (desligando o PPR) ou que o Next passe a
 suportar hash/nonce com PPR. Reavaliar antes de renderizar conteúdo gerado por usuário (Academy).
+
+### Conteúdo editorial da Academy (etapa 2.3) com `'unsafe-inline'`
+
+A reavaliação foi feita ao renderizar as aulas. A CSP **continua** com `'unsafe-inline'` (o motivo
+acima não mudou), e o conteúdo editorial não depende dela para ser seguro:
+
+| Camada | Proteção |
+| --- | --- |
+| Importação (PHP) | Markdown com HTML, imagem embutida ou link fora de `https:`/`mailto:`/`#`/`/` é recusado (ADR 0019, itens 5–6) |
+| Next (Zod) | os mesmos testes de novo em cada bloco; bloco inválido não é renderizado; imagem só da rota `/api/v1/academy/media/...`; vídeo só por ID |
+| Renderização | `react-markdown` sem `rehype-raw` e com `skipHtml`, lista fechada de elementos, links filtrados; nenhum `dangerouslySetInnerHTML`; tudo no servidor (sem script do conteúdo) |
+| Player | `iframe` só depois do clique, de `youtube-nocookie.com`, com `sandbox` mínimo; `frame-src` só nas aulas |
+
+Risco remanescente: se uma das três camadas falhar ao mesmo tempo (ex.: dependência com falha de
+escape), um script inline injetado executaria, porque a CSP não o barra. Ele sobe de prioridade
+quando houver conteúdo escrito por jogadores (ainda não existe): aí a CSP com nonce ou hash
+volta a ser bloqueadora.
 
 ## Verificação
 

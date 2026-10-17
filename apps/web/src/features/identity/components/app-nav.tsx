@@ -8,15 +8,23 @@ import { Dialog } from "radix-ui"
 
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
-import { ACCOUNT_PATH, HOME_PATH } from "@/lib/routes"
+import { ACADEMY_PATH, ACCOUNT_PATH, HOME_PATH } from "@/lib/routes"
 import { cn } from "@/lib/utils"
 
 import { LogoutButton } from "./logout-button"
 
 const LINKS = [
   { href: HOME_PATH, label: "Painel" },
+  { href: ACADEMY_PATH, label: "Academy" },
   { href: ACCOUNT_PATH, label: "Conta" },
 ] as const
+
+/** A Academy é uma seção: cursos e aulas também marcam o link. As demais, só a própria página. */
+function isActive(pathname: string, href: string): boolean {
+  return href === ACADEMY_PATH
+    ? pathname === href || pathname.startsWith(`${href}/`)
+    : pathname === href
+}
 
 type Props = { displayName: string; email: string }
 
@@ -30,7 +38,7 @@ export function AppNav({ displayName, email }: Props) {
 
   const links = (onNavigate?: () => void) =>
     LINKS.map(({ href, label }) => {
-      const active = pathname === href
+      const active = isActive(pathname, href)
       return (
         <Link
           key={href}
