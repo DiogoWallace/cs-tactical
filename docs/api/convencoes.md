@@ -72,6 +72,10 @@ O health check (`/api/v1/health`) não é afetado: o `503` dele é uma resposta 
 | POST | `/api/v1/me/email` | sim (+ CSRF) | Pede a troca de e-mail (link ao novo endereço) |
 | DELETE | `/api/v1/me/email` | sim (+ CSRF) | Cancela a troca pendente |
 | GET | `/api/v1/me/email/confirm/{id}/{hash}?expires&signature` | sim + assinatura | Conclui a troca de e-mail |
+| GET | `/api/v1/academy/courses` | não | Catálogo de cursos públicos ([academy-v1.md](academy-v1.md)) |
+| GET | `/api/v1/academy/courses/{course}` | não | Curso público com módulos e aulas |
+| GET | `/api/v1/academy/courses/{course}/lessons/{lesson}` | não | Aula pública com o conteúdo resolvido |
+| GET | `/api/v1/academy/media/{sha256}.{ext}` | não | Imagem de conteúdo público da Academy |
 
 ### `POST /api/v1/auth/register`
 

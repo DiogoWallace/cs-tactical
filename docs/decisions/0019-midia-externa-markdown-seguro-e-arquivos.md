@@ -41,7 +41,10 @@ abstração Storage do Laravel (disco local agora, S3 depois).
    (modelo conceitual).
 9. Aceita só `image/png`, `image/jpeg`, `image/webp` e `image/avif`, até 2 MB e 4096 px de lado,
    com o tipo conferido pelo conteúdo, não pela extensão. SVG não é aceito.
-10. As imagens são servidas pela própria origem (`img-src 'self'` continua valendo).
+10. As imagens são servidas pela própria origem (`img-src 'self'` continua valendo). Na etapa
+    2.2: `GET /api/v1/academy/media/{sha256}.{ext}` (passa pelo mesmo proxy que `/api`), só para
+    imagem referenciada por conteúdo público ou para quem tem `manage-academy-content`
+    ([academy-v1.md](../api/academy-v1.md)).
 
 ### Arquivos e transação do banco
 

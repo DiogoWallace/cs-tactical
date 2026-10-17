@@ -163,6 +163,42 @@ Limpeza de arquivos (ADR 0019): **capa citada sem registro** não pode acontecer
 `cover_media_id`), então o `media-prune` reconfere registro e blocos `image`; aula que cite um
 hash sem registro é anomalia (arquivo mantido, comando termina com erro).
 
+## Etapa 2.2 — API do catálogo (implementada)
+
+Entregas: `GET /api/v1/academy/courses`, `/courses/{course}`, `/courses/{course}/lessons/{lesson}`
+e `/media/{sha256}.{ext}` ([academy-v1.md](../api/academy-v1.md)), na lista pública do
+`RouteAuthorizationTest`, com `throttle:academy-public` / `throttle:academy-media`.
+
+Estrutura no módulo `Academy`:
+
+| Arquivo | Papel |
+|---|---|
+| `routes.php` | rotas e formato dos slugs e do nome do arquivo (404 no roteador) |
+| `Queries/CatalogQuery.php`, `Queries/LessonPage.php` | único ponto de leitura dos controllers; `visible()` em tudo fora do modo editorial; carregamento antecipado (3, 4 e 6 consultas) |
+| `Http/EditorialAccess.php` | `include_unpublished` + Gate `manage-academy-content` pelo usuário da sessão (Sanctum), calculado uma vez por requisição |
+| `Http/Controllers/*` | sem acesso a models nem ao banco (teste de arquitetura) |
+| `Http/Resources/*` | lista fechada de campos; resolução dos blocos (`image` → URL, `quiz_ref` → resumo) |
+| `Http/MediaResponse.php` | resposta da imagem: tipo do registro, conferência do arquivo, `no-store` |
+
+### Etapa 2.2 — ajustes feitos na implementação
+
+| # | Desenho da 2.0 | Implementado | Motivo |
+|---|---|---|---|
+| B1 | URL de imagem `/media/academy/{sha[0:2]}/{sha}.{ext}` (exemplo do contrato) | `/api/v1/academy/media/{sha256}.{ext}` | O proxy do Next e a borda de referência só encaminham `/api` e `/sanctum` à API; a rota nova não muda frontend nem borda e entra no teste de rotas (decisão do responsável, 2026-10-17) |
+| B2 | Acesso à mídia não definido | Só imagem referenciada por conteúdo público (capa de curso público ou bloco `image` de aula pública); editores recebem as demais registradas. Nenhuma imagem vai para cache (`no-store`, sem `ETag` nem 304) | Não expor imagem de rascunho ou de conteúdo arquivado a quem conheça o hash, nem deixar um cache reaproveitar uma autorização anterior depois de arquivar ou despublicar (decisões do responsável; o `no-store` veio na revisão da 2.2) |
+| B3 | Imagens no limite `academy-public` | Limite próprio `academy-media`, 600/min por IP | Uma página do catálogo ou de aula carrega várias imagens (decisão do responsável) |
+| B4 | `include_unpublished` só descrito na listagem | Vale nos três endpoints; no modo editorial curso, módulos e aulas ganham `status`, as contagens incluem tudo e `previous`/`next` consideram todas as aulas | Matriz de autorização (ler rascunho e arquivado com `include_unpublished`) |
+| B5 | `page ≥ 1` | `level` e `page` (1..10 000) validados: **422** | Evita OFFSET gigante e erro do banco com número fora do inteiro |
+| B6 | `links`/`meta` padrão do Laravel | `links` relativos à origem; `meta` com `current_page`, `last_page`, `per_page`, `total` | Atrás do proxy do Next o Host é o endereço interno da API (`api:8080`), que não deve sair nas respostas |
+| B7 | Teste "nenhuma rota HTTP da Academy" (critério da 2.1) | Substituído pela lista exata das quatro rotas de leitura | A 2.2 cria as rotas; a importação continua só pelo terminal |
+
+Testes: `tests/Feature/Academy/CatalogApiTest.php` (listagem, filtros, paginação, detalhe,
+aula, matriz 3×3×3 pelo HTTP, papéis × `include_unpublished`, sessão real do frontend, ausência
+de gabarito e de campos internos, slugs manipulados, leitura sem escrita, número de consultas,
+limite 429) e `tests/Feature/Academy/MediaApiTest.php` (matriz de visibilidade da imagem, capa,
+editores, órfão, arquivo ausente ou alterado, extensão trocada, nomes manipulados, ausência de
+cache e de 304, inclusive depois de arquivar o conteúdo ou entre editor e visitante).
+
 ## Etapas seguintes (resumo)
 
 | Etapa | Entrega |

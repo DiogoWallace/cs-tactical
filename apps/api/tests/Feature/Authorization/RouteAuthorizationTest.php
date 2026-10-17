@@ -16,6 +16,11 @@ const PUBLIC_API_ROUTES = [
     'v1.auth.password.email' => 'esqueci minha senha',
     'v1.auth.password.update' => 'redefinição com token do e-mail',
     'sanctum.csrf-cookie' => 'emite o cookie CSRF',
+    // Catálogo da Academy (ADR 0015, item 6): leitura pública, só de conteúdo público.
+    'v1.academy.courses.index' => 'catálogo público de cursos',
+    'v1.academy.courses.show' => 'curso público',
+    'v1.academy.lessons.show' => 'aula pública',
+    'v1.academy.media.show' => 'imagens de conteúdo público (ADR 0019)',
 ];
 
 /** @return list<RouteDefinition> */
