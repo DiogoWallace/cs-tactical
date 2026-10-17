@@ -28,7 +28,18 @@ export function lessonPosition(course: Course, lessonSlug: string) {
  * rolar). Celular: o conteúdo ocupa a largura toda; a lista de aulas fica recolhida acima dele
  * (`<details>`, funciona sem JavaScript e pelo teclado).
  */
-export function LessonView({ course, lesson }: { course: Course; lesson: Lesson }) {
+export function LessonView({
+  course,
+  lesson,
+  completion,
+  renderLessonStatus,
+}: {
+  course: Course
+  lesson: Lesson
+  /** Conclusão da aula (Learning, etapa 2.4), montada pela página: a Academy não depende do Learning. */
+  completion?: React.ReactNode
+  renderLessonStatus?: (lesson: string) => React.ReactNode
+}) {
   const { number, total } = lessonPosition(course, lesson.slug)
 
   return (
@@ -86,7 +97,12 @@ export function LessonView({ course, lesson }: { course: Course; lesson: Lesson 
             />
           </summary>
           <div className="border-t px-2 py-3">
-            <CourseLessonsNav course={course} currentSlug={lesson.slug} idPrefix="celular" />
+            <CourseLessonsNav
+              course={course}
+              currentSlug={lesson.slug}
+              idPrefix="celular"
+              renderLessonStatus={renderLessonStatus}
+            />
           </div>
         </details>
 
@@ -100,6 +116,8 @@ export function LessonView({ course, lesson }: { course: Course; lesson: Lesson 
           )}
         </article>
 
+        {completion}
+
         <LessonPager course={course.slug} previous={lesson.previous} next={lesson.next} />
       </div>
 
@@ -111,7 +129,12 @@ export function LessonView({ course, lesson }: { course: Course; lesson: Lesson 
           >
             {course.title}
           </Link>
-          <CourseLessonsNav course={course} currentSlug={lesson.slug} idPrefix="lateral" />
+          <CourseLessonsNav
+            course={course}
+            currentSlug={lesson.slug}
+            idPrefix="lateral"
+            renderLessonStatus={renderLessonStatus}
+          />
         </div>
       </aside>
     </div>
@@ -126,10 +149,12 @@ export function CourseLessonsNav({
   course,
   currentSlug,
   idPrefix,
+  renderLessonStatus,
 }: {
   course: Course
   currentSlug: string
   idPrefix: string
+  renderLessonStatus?: (lesson: string) => React.ReactNode
 }) {
   return (
     <nav aria-label="Aulas do curso">
@@ -159,6 +184,7 @@ export function CourseLessonsNav({
                       )}
                     >
                       <span className="min-w-0 flex-1">{item.title}</span>
+                      {renderLessonStatus?.(item.slug)}
                       {item.has_quiz && (
                         <>
                           <ListChecksIcon aria-hidden className="size-3.5 shrink-0" />

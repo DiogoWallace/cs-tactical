@@ -23,9 +23,19 @@ export function courseTotals(course: Course) {
 
 /**
  * Página de um curso: identificação, capa, números e a sequência de módulos e aulas.
- * Sem progresso nem matrícula (chegam com o Learning, etapa 2.4).
+ *
+ * Matrícula e progresso (Learning, etapa 2.4) entram por slots, montados pela página: a Academy
+ * não depende do Learning. `learningPanel` fica no cabeçalho; `renderLessonStatus` marca cada aula.
  */
-export function CourseOverview({ course }: { course: Course }) {
+export function CourseOverview({
+  course,
+  learningPanel,
+  renderLessonStatus,
+}: {
+  course: Course
+  learningPanel?: React.ReactNode
+  renderLessonStatus?: (lesson: string) => React.ReactNode
+}) {
   const { moduleCount, lessonCount, minutes, firstLesson } = courseTotals(course)
   // Número da aula na ordem do curso inteiro (a primeira do módulo 2 continua a contagem).
   const firstNumber = course.modules.map((_, index) =>
@@ -64,6 +74,7 @@ export function CourseOverview({ course }: { course: Course }) {
               </Link>
             </Button>
           )}
+          {learningPanel}
         </div>
         <CourseCover url={course.cover_image_url} className="rounded-xl border shadow-sm" />
       </header>
@@ -103,6 +114,7 @@ export function CourseOverview({ course }: { course: Course }) {
                             {order}
                           </span>
                           <span className="min-w-0 flex-1 font-medium">{lesson.title}</span>
+                          {renderLessonStatus?.(lesson.slug)}
                           <span className="flex shrink-0 items-center gap-3 text-xs text-muted-foreground">
                             {lesson.has_quiz && (
                               <span className="inline-flex items-center gap-1">

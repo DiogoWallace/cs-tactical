@@ -146,6 +146,11 @@ ativas; `single_choice` com exatamente 1 correta; `multiple_choice` com pelo men
 
 ## Learning (dados do jogador)
 
+> `enrollments` e `lesson_progress` criadas na etapa 2.4
+> (`database/migrations/2026_10_17_2000*` e `2001*`); `quiz_attempts` e `quiz_attempt_answers`
+> chegam na 2.5. Na 2.4, `lesson_progress` só recebe `completed` (concluir a aula);
+> `in_progress` fica reservado para o início de tentativa de quiz (R10).
+
 ### `enrollments`
 
 | Coluna | Tipo | Regras |
@@ -158,7 +163,7 @@ ativas; `single_choice` com exatamente 1 correta; `multiple_choice` com pelo men
 | `last_activity_at` | timestamptz | não nulo |
 
 Único `(user_id, course_id)`. Índices `(user_id, last_activity_at desc)` ("continuar de onde
-parou") e `(course_id)`.
+parou") e `(course_id)`. Checks: `completed_at ≥ enrolled_at` e `last_activity_at ≥ enrolled_at`.
 
 ### `lesson_progress`
 
@@ -166,7 +171,7 @@ parou") e `(course_id)`.
 |---|---|---|
 | `id` | uuid | PK |
 | `user_id` | uuid | FK `users` ON DELETE CASCADE |
-| `lesson_id` | uuid | FK `lessons` ON DELETE RESTRICT |
+| `lesson_id` | uuid | FK composta com `course_id` (abaixo), ON DELETE RESTRICT |
 | `course_id` | uuid | FK `courses` ON DELETE RESTRICT (desnormalizado para consultas por curso) |
 | `status` | varchar(16) | check `in_progress`, `completed` |
 | `started_at` | timestamptz | não nulo |
@@ -175,7 +180,9 @@ parou") e `(course_id)`.
 
 Único `(user_id, lesson_id)`. Índice `(user_id, course_id)`. A coerência `lesson.course_id =
 course_id` é garantida por FK composta `(lesson_id, course_id)` → `lessons (id, course_id)`
-(único adicional em `lessons`).
+(único adicional em `lessons`); ela também cumpre o papel da FK simples de `lesson_id`, que por
+isso não existe à parte. Checks: `status = 'completed'` ⇔ `completed_at` e
+`completed_content_hash` preenchidos (hash hexadecimal de 64); `completed_at ≥ started_at`.
 
 ### `quiz_attempts`
 

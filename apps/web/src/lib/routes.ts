@@ -12,6 +12,9 @@ export const ACCOUNT_PATH = "/painel/conta"
 /** Catálogo público da Academy (cursos e aulas abaixo dele: features/academy/lib/paths.ts). */
 export const ACADEMY_PATH = "/academy"
 
+/** "Meu progresso" (Learning): dentro de /painel, já coberto pelo `proxy.ts`. */
+export const MY_PROGRESS_PATH = "/painel/academy"
+
 /**
  * Prefixos da área autenticada (grupo `(app)`). O `proxy.ts` usa a mesma lista no `matcher`;
  * uma rota nova da área logada precisa entrar nos dois lugares.
