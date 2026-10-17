@@ -23,11 +23,7 @@ for (const theme of THEMES) {
       await expect(page.locator("html")).toHaveClass(new RegExp(`\\b${theme}\\b`))
       await expectNoSeriousA11yViolations(page, `home-${theme}`)
 
-      await page.goto("/status")
-      await expect(
-        page.getByRole("heading", { level: 1, name: "Status da plataforma" }),
-      ).toBeVisible()
-      await expectNoSeriousA11yViolations(page, `status-${theme}`)
+      // /status tem teste próprio, com os dois estados controlados (abaixo).
 
       await page.goto("/login")
       await expect(page.getByRole("button", { name: "Entrar" })).toBeVisible()
@@ -76,7 +72,85 @@ for (const theme of THEMES) {
       await expect(page.getByText("Este link é inválido")).toBeVisible()
       await expectNoSeriousA11yViolations(page, `confirmar-email-${theme}`)
     })
+
+    test("/status: carregando e carregado", async ({ page }) => {
+      // Os dados de saúde são lidos no servidor (Server Component); no navegador, o que chega
+      // depois é o payload RSC da navegação. Ele fica retido até o skeleton ser analisado, então
+      // o estado "carregando" é garantido, sem depender do tempo da API. Prefetches passam.
+      const gate = await holdNavigationPayload(page, "/status")
+      const skeleton = page.getByRole("status", { name: "Carregando status" })
+      try {
+        await page.goto("/")
+        await expect(page.getByRole("heading", { level: 1 })).toBeVisible()
+
+        // O skeleton vem do shell estático pré-carregado; sem ele, o Next mantém a página antiga
+        // até o payload chegar. Espera a resposta desse prefetch chegar antes do clique.
+        const link = page.getByRole("link", { name: "Status da plataforma" })
+        await link.hover()
+        await expect
+          .poll(gate.shellPrefetched, { message: "prefetch do shell de /status" })
+          .toBe(true)
+
+        await link.click()
+        await expect(skeleton).toBeVisible()
+        expect(gate.held(), "payload da navegação retido").toBe(true)
+        // Durante a navegação de cliente o Next 16 remove o <title> antigo e só escreve o novo
+        // quando o payload chega (comportamento do framework em todas as rotas, ~35 ms em
+        // /cadastro). Só essa regra fica fora aqui; o título é conferido no estado carregado.
+        await expectNoSeriousA11yViolations(page, `status-carregando-${theme}`, {
+          disableRules: ["document-title"],
+        })
+      } finally {
+        // Libera mesmo se uma asserção falhar, para o teste nunca ficar preso.
+        gate.release()
+      }
+
+      await expect(skeleton).toBeHidden()
+      await expect(page.getByText("/api/v1/health")).toBeVisible()
+      await expect(page).toHaveTitle("Status · CS Tactical")
+      await expectNoSeriousA11yViolations(page, `status-carregado-${theme}`)
+    })
   })
+}
+
+/**
+ * Retém a requisição do payload RSC de uma navegação de cliente para `path` (não os prefetches)
+ * até `release()`. `held()` diz se alguma requisição chegou a ser retida; `shellPrefetched()`,
+ * se a resposta do prefetch do conteúdo da rota (o shell estático) já chegou. Essa resposta não
+ * "termina": o Next a mantém aberta para a parte dinâmica, então o sinal é a chegada dela.
+ */
+async function holdNavigationPayload(page: Page, path: string) {
+  let release!: () => void
+  const released = new Promise<void>((resolve) => (release = resolve))
+  let held = false
+  let shellPrefetched = false
+
+  page.on("response", (response) => {
+    const request = response.request()
+    const headers = request.headers()
+    if (
+      new URL(request.url()).pathname === path &&
+      headers["next-router-prefetch"] &&
+      !headers["next-router-segment-prefetch"] &&
+      response.ok()
+    ) {
+      shellPrefetched = true
+    }
+  })
+
+  await page.route(
+    (url) => url.pathname === path,
+    async (route) => {
+      const headers = route.request().headers()
+      if (headers["rsc"] === "1" && !headers["next-router-prefetch"]) {
+        held = true
+        await released
+      }
+      await route.continue()
+    },
+  )
+
+  return { held: () => held, shellPrefetched: () => shellPrefetched, release }
 }
 
 test.describe("navegação por teclado", () => {

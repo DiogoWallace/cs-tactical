@@ -58,9 +58,15 @@ export async function HealthOverview() {
   )
 }
 
+/** `role="status"`: sem um papel, o `aria-label` num `div` é proibido pelo ARIA (axe). */
 export function HealthOverviewSkeleton() {
   return (
-    <div className="grid gap-4 sm:grid-cols-3" aria-busy="true" aria-label="Carregando status">
+    <div
+      className="grid gap-4 sm:grid-cols-3"
+      role="status"
+      aria-busy="true"
+      aria-label="Carregando status"
+    >
       {[0, 1, 2].map((i) => (
         <Skeleton key={i} className="h-32 rounded-xl" />
       ))}
