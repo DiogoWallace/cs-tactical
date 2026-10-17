@@ -75,12 +75,15 @@ make test && make lint
 | `make fresh` | Recria o banco de desenvolvimento (pede confirmação) |
 | `make test`, `make test-api`, `make test-web` | Testes |
 | `make e2e`, `make e2e-report`, `make e2e-down` | Testes E2E (Playwright) numa stack isolada e descartável; ver [docs/development/e2e.md](docs/development/e2e.md) |
+| `make coverage` | Cobertura de testes da API (pcov) e do frontend (v8); ver [docs/development/cobertura.md](docs/development/cobertura.md) |
+| `make test-concurrency` | Teste de concorrência do último admin (PostgreSQL real, banco descartável) |
 | `make lint`, `make fmt` | Verificação e formatação de código |
 | `make artisan c="..."`, `make composer c="..."` | Artisan e Composer no container da API |
 | `make pnpm c="..."` | pnpm no container do frontend |
 | `make sh-api`, `make sh-web` | Shell nos containers |
 | `make psql`, `make redis-cli` | Acesso ao banco e ao Redis |
 | `make check-infra` | Valida fila, worker e e-mail |
+| `make artisan c="system:check-production-config"` | Confere se a configuração atual é segura para produção (bloqueios P3 e P4) |
 | `make artisan c="identity:set-role email@x.com editor"` | Muda o papel de plataforma (`user`, `editor`, `admin`) |
 | `make destroy` | Apaga containers **e dados** (pede confirmação) |
 
@@ -90,9 +93,10 @@ make test && make lint
 apps/api            API Laravel, monólito modular (app/Modules/<Modulo>)
 apps/web            Frontend Next.js (src/app, src/features, src/lib/api)
 infra/docker        Dockerfiles e configuração dos containers
+infra/deploy        Modelos para produção (borda, variáveis); nada implantado
 docs/               Arquitetura, banco, API, ADRs e guias de desenvolvimento
-scripts/            Scripts usados pelo Makefile (setup, doctor)
-.github/workflows   CI (lint e testes, sem deploy)
+scripts/            Scripts usados pelo Makefile (setup, doctor, e2e) e verificação da borda
+.github/            CI (lint, testes e E2E, sem deploy) e Dependabot
 compose.yaml        Serviços: web, api, worker, postgres, redis, mailpit
 ```
 
@@ -101,13 +105,16 @@ compose.yaml        Serviços: web, api, worker, postgres, redis, mailpit
 - [Visão geral da arquitetura](docs/architecture/visao-geral.md)
 - [Autenticação entre Next.js e Laravel](docs/architecture/autenticacao.md)
 - [Autorização (capacidades, Policies, regras para novos módulos)](docs/architecture/autorizacao.md)
+- [Segurança HTTP: headers e CSP](docs/architecture/seguranca-http.md)
 - [Modelo conceitual de dados](docs/database/modelo-conceitual.md)
 - [Convenções da API](docs/api/convencoes.md)
 - [Decisões arquiteturais (ADRs)](docs/decisions/README.md)
 - [Ambiente WSL2 e problemas comuns](docs/development/wsl2.md)
 - [Testes E2E (Playwright): executar, depurar e reproduzir](docs/development/e2e.md)
+- [Cobertura de testes](docs/development/cobertura.md)
+- [Dependências: atualizações e alertas de segurança](docs/development/dependencias.md)
 - [Relatório da Fase 0](docs/development/fase-0-relatorio.md)
-- [Relatório da Fase 1](docs/development/fase-1-relatorio.md) (em andamento)
+- [Relatório da Fase 1](docs/development/fase-1-relatorio.md) e [auditoria de fechamento](docs/development/fase-1-auditoria.md)
 - [Bloqueios de produção](docs/deploy/bloqueios-de-producao.md): requisitos obrigatórios antes do deploy público
 
 ## Convenções

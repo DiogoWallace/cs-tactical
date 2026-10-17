@@ -6,6 +6,9 @@ USER root
 # A imagem já traz as extensões necessárias: pdo_pgsql, redis, pcntl, zip, opcache.
 # Novas extensões entram aqui com `install-php-extensions <nome>` quando forem usadas.
 
+# Headers de segurança próprios da API, sem HSTS (responsabilidade da borda).
+COPY nginx/security.conf /etc/nginx/server-opts.d/security.conf
+
 # ---------------------------------------------------------------------------
 # Desenvolvimento: processos rodam com o UID/GID do usuário do WSL,
 # para que vendor/, storage/ e arquivos gerados pertençam a ele.
@@ -17,5 +20,11 @@ ARG HOST_GID=1000
 
 RUN docker-php-serversideup-set-id www-data ${HOST_UID}:${HOST_GID} \
  && docker-php-serversideup-set-file-permissions --owner ${HOST_UID}:${HOST_GID} --service nginx
+
+# Cobertura de testes (etapa 1.8): pcov só na imagem de desenvolvimento e desligado por padrão,
+# para não pesar nos testes comuns. `make coverage` liga com -d pcov.enabled=1.
+# pcov mede linhas e métodos; cobertura de branches exige Xdebug (docs/development/cobertura.md).
+RUN install-php-extensions pcov \
+ && echo "pcov.enabled=0" > /usr/local/etc/php/conf.d/zz-pcov.ini
 
 USER www-data

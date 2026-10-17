@@ -12,9 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
-    // Relatórios e resultados gerados pelo Playwright.
+    // Relatórios gerados: Playwright e cobertura do Vitest (make coverage).
     "e2e/.report/**",
     "e2e/.results/**",
+    "coverage/**",
   ]),
 ])
 

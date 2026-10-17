@@ -1,0 +1,69 @@
+# Proxy de borda de referência (bloqueios P1 e P2, ADR 0009 e ADR 0014). MODELO: não é usado
+# por nenhum ambiente ainda. Ajuste domínio, certificados e endereços internos antes de usar.
+#
+# Responsabilidades da borda:
+# - TLS e HSTS (a aplicação não envia HSTS);
+# - ser o ÚNICO ponto de entrada público (P2): web e API só na rede privada;
+# - SUBSTITUIR X-Forwarded-For pelo IP da conexão e descartar cabeçalhos de IP do cliente (P1);
+# - encaminhar /api e /sanctum direto para a API e o resto para o Next.js (topologia recomendada).
+# Verificação depois de subir: scripts/verify-edge.sh https://SEU_DOMINIO
+
+upstream cs_web { server 10.0.1.10:3000; }  # Next.js (rede privada)
+upstream cs_api { server 10.0.1.20:8080; }  # API Laravel (rede privada)
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name cstactical.example;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name cstactical.example;
+
+    ssl_certificate     /etc/ssl/cstactical/fullchain.pem;
+    ssl_certificate_key /etc/ssl/cstactical/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    server_tokens off;
+
+    # HSTS só aqui (ADR 0014). Adicionar "preload" apenas depois de decidir a inscrição na lista.
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+    client_max_body_size 2m;
+
+    # --- P1: IP real definido pela borda ------------------------------------------------------
+    # SUBSTITUI o valor do cliente ($remote_addr, nunca $proxy_add_x_forwarded_for).
+    proxy_set_header X-Forwarded-For   $remote_addr;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header Host              $host;
+    # Cabeçalhos de IP/host enviados pelo cliente são descartados.
+    proxy_set_header Forwarded          "";
+    proxy_set_header X-Forwarded-Host   "";
+    proxy_set_header X-Forwarded-Port   "";
+    proxy_set_header X-Forwarded-Prefix "";
+    proxy_set_header X-Real-IP          "";
+    proxy_set_header Client-IP          "";
+    proxy_set_header True-Client-IP     "";
+    proxy_set_header CF-Connecting-IP   "";
+    # Com CDN na frente: restaurar o IP só das faixas publicadas pela CDN, ANTES das regras acima:
+    # set_real_ip_from <faixa da CDN>; real_ip_header CF-Connecting-IP; real_ip_recursive on;
+
+    # --- Mesma origem: API e cookie CSRF direto para a API ------------------------------------
+    location /api/ {
+        proxy_pass http://cs_api;
+    }
+    location /sanctum/ {
+        proxy_pass http://cs_api;
+    }
+
+    # --- Resto: Next.js -----------------------------------------------------------------------
+    location / {
+        proxy_pass http://cs_web;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade    $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}

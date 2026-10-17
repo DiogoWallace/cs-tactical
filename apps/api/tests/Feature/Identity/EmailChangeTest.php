@@ -118,6 +118,17 @@ describe('request', function () {
         requestChange($this->user, 'not-an-email')->assertUnprocessable()->assertJsonValidationErrors(['email']);
     });
 
+    it('answers 422, not 500, when the fields are not strings', function (array $payload, string $field) {
+        asOwner($this->user)->postJson('/api/v1/me/email', $payload)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors([$field]);
+
+        expect($this->user->fresh()->pending_email)->toBeNull();
+    })->with([
+        'current password as a list' => [['email' => 'new@example.com', 'current_password' => ['secret-password-1']], 'current_password'],
+        'email as a list' => [['email' => ['new@example.com'], 'current_password' => 'secret-password-1'], 'email'],
+    ]);
+
     it('can be cancelled', function () {
         requestChange($this->user)->assertStatus(202);
 

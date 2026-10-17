@@ -48,7 +48,8 @@
   --card-foreground: oklch(0.2 0.015 260);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.2 0.015 260);
-  --primary: oklch(0.66 0.17 55);
+  /* Contraste AA (4,5:1) com texto claro por cima e como texto sobre o fundo (auditoria 1.8). */
+  --primary: oklch(0.55 0.17 55);
   --primary-foreground: oklch(0.99 0.01 70);
   --secondary: oklch(0.95 0.005 260);
   --secondary-foreground: oklch(0.25 0.015 260);
@@ -56,12 +57,12 @@
   --muted-foreground: oklch(0.5 0.015 260);
   --accent: oklch(0.94 0.008 260);
   --accent-foreground: oklch(0.25 0.015 260);
-  --destructive: oklch(0.58 0.22 27);
-  --success: oklch(0.58 0.15 150);
+  --destructive: oklch(0.52 0.22 27);
+  --success: oklch(0.52 0.15 150);
   --warning: oklch(0.72 0.16 75);
   --border: oklch(0.9 0.006 260);
   --input: oklch(0.88 0.006 260);
-  --ring: oklch(0.66 0.17 55 / 60%);
+  --ring: oklch(0.55 0.17 55 / 60%);
 }
 
 .dark {

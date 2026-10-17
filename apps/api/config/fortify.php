@@ -44,7 +44,7 @@ return [
     'views' => false,
 
     // Recursos ligados conforme as etapas da Fase 1. Login e logout não são "features":
-    // existem sempre. Alteração de senha entra na etapa 1.5. Autenticação em dois fatores e
+    // existem sempre. A troca de senha é do módulo Identity (PUT /api/v1/me/password, ADR 0010). Dois fatores e
     // passkeys: fora da Fase 1.
     'features' => [
         Features::registration(),

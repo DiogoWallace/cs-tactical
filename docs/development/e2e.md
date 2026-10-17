@@ -68,7 +68,11 @@ Nenhum `sleep` ou `waitForTimeout`. A sincronização usa as esperas automática
 | `password-reset` | mesma resposta com e sem conta; token no fragmento e fragmento removido da URL; redefinição; link não reutilizável; senha antiga recusada e nova aceita |
 | `account` | perfil atualiza o apelido no cabeçalho; troca de e-mail com link no novo endereço e aviso no antigo; troca de senha mantém a sessão atual e encerra as outras |
 | `mobile-nav` (`@mobile`) | menu lateral: abre, Esc fecha e devolve o foco, navega, marca a página atual, sai |
-| `accessibility` | axe (WCAG 2.1 A/AA) em login, cadastro, painel e conta; falha em violações sérias ou críticas (todas vão anexadas ao relatório) |
+| `accessibility` | axe (WCAG 2.1 A/AA) nos temas escuro e claro: home, `/status`, login, cadastro, esqueci-senha, redefinir-senha (formulário e link inválido), painel, conta, 404, verificar-email e confirmar-email (estados de erro); falha em violações sérias ou críticas (todas vão anexadas ao relatório). Navegação por teclado no login e foco visível |
+| `security-headers` | headers de segurança das páginas (build de produção) e das respostas da API pelo proxy ([seguranca-http.md](../architecture/seguranca-http.md)) |
+| `csp` | nenhuma violação da CSP aplicada nos fluxos principais; violações da CSP Report-Only anexadas ao relatório |
+
+Total: 32 testes (31 desktop, 1 mobile).
 
 ## Executar só uma parte
 

@@ -102,6 +102,15 @@ test-api: ## Testes da API (Pest, banco cs_tactical_test)
 test-web: ## Testes do frontend (Vitest)
 	$(WEB) pnpm test
 
+.PHONY: coverage
+coverage: ## Cobertura de testes da API (pcov) e do frontend (v8), sem percentual mínimo
+	$(API) composer test:coverage
+	$(WEB) pnpm test:coverage
+
+.PHONY: test-concurrency
+test-concurrency: ## Teste de concorrência do último admin (PostgreSQL real, banco descartável)
+	$(API) composer test:concurrency
+
 .PHONY: e2e
 e2e: ## Testes E2E (Playwright) numa stack isolada e descartável (ex.: make e2e a="--project=chromium-desktop")
 	./scripts/e2e.sh $(a)
