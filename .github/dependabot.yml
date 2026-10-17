@@ -3,6 +3,10 @@
 # Sem automerge: todo PR do Dependabot passa pela CI (API, Web, E2E) e por revisão humana.
 # Atualizações de patch e minor são agrupadas por ecossistema para reduzir ruído; majors vêm
 # em PRs separados, porque costumam exigir mudanças de código.
+#
+# Node.js: o projeto fica na versão LTS em uso (hoje Node 24). Majors do Node (imagem `node`) e de
+# `@types/node` são ignorados: a migração para uma nova LTS é uma decisão planejada, não uma
+# atualização automática. Minor e patch continuam liberados. docs/development/dependencias.md
 version: 2
 
 updates:
@@ -33,6 +37,10 @@ updates:
     groups:
       web-minor-patch:
         update-types: [minor, patch]
+    ignore:
+      # Os tipos acompanham o major do Node em uso (LTS); trocar de major é migração planejada.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /
@@ -58,6 +66,10 @@ updates:
       timezone: America/Sao_Paulo
     commit-message:
       prefix: "chore(docker)"
+    ignore:
+      # Imagem do frontend fica na LTS em uso (node:24-*); a próxima LTS é migração planejada.
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: docker-compose
     directory: /

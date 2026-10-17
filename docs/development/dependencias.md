@@ -26,6 +26,21 @@ Dockerfiles (`infra/docker/api`, `infra/docker/web`) e imagens do `compose.yaml`
    (`docker compose restart web`). Instalar ou mover pacotes com o `next dev` rodando deixa o
    servidor com duas cópias do Next/React (ocorrência registrada na auditoria da Fase 1).
 
+## Política de versão do Node.js
+
+O projeto usa a **versão LTS** do Node em vigor: hoje **Node 24** (imagem `node:24-bookworm-slim`
+em `infra/docker/web/Dockerfile`, `engines.node >=24` e `node-version: 24` na CI).
+
+- O Dependabot **ignora atualizações major** da imagem `node` (ecossistema `docker`) e de
+  `@types/node` (ecossistema `npm`). Minor e patch continuam chegando normalmente (ex.:
+  `node:24-bookworm-slim` com correções, `@types/node` 24.x).
+- Versões ímpares (25, 27…) não são LTS e nunca são adotadas.
+- **Migrar para a próxima LTS é uma decisão planejada**, não uma atualização automática: abrir uma
+  branch própria que troque, juntos, a imagem do `Dockerfile`, o `engines.node` do `package.json`,
+  o `node-version` da CI e o major de `@types/node`; rodar `make test`, `make lint`, `make e2e` e
+  o build; registrar a decisão no relatório da fase. Só depois atualizar este documento e,
+  se necessário, a regra de ignore.
+
 ## Alertas de segurança
 
 - Ativar em **Settings → Code security**: *Dependabot alerts* e *Dependabot security updates*
