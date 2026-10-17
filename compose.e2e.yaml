@@ -1,0 +1,104 @@
+# Stack E2E isolada e descartável (etapa 1.7). Usada só por scripts/e2e.sh / `make e2e`:
+#
+#   docker compose -p cs-tactical-e2e -f compose.yaml -f compose.e2e.yaml ...
+#
+# - Projeto Compose próprio (`cs-tactical-e2e`): containers, rede e volumes separados da stack
+#   de desenvolvimento. O banco de desenvolvimento nem fica acessível daqui.
+# - Postgres e Redis em tmpfs: os dados somem quando a stack é derrubada.
+# - Nenhuma porta conflita com a stack de desenvolvimento; só o Mailpit é publicado (8026),
+#   para depuração.
+# - O frontend roda o build de produção a partir de uma cópia do código dentro do container:
+#   não escreve na pasta do projeto, onde o `next dev` continua rodando.
+# - O Playwright compartilha a rede do container web (`network_mode: service:web`): o navegador
+#   acessa http://localhost:3000, a mesma origem do uso real (cookies host-only, Sanctum
+#   stateful, proxy /api do Next), e resolve `mailpit` pelo DNS da rede da stack.
+# docs/development/e2e.md
+
+services:
+  web:
+    ports: !reset []
+    restart: "no"
+    volumes: !override
+      - ./apps/web:/src:ro
+    environment:
+      API_INTERNAL_URL: http://api:8080
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      NEXT_TELEMETRY_DISABLED: "1"
+    # Copia o código (com node_modules, sem .next e artefatos de teste) e roda o build de produção.
+    command:
+      - sh
+      - -c
+      - >-
+        set -e;
+        tar -C /src --exclude=./.next --exclude=./e2e --exclude=./test-results -cf - . | tar -C /app -xf -;
+        ./node_modules/.bin/next build;
+        exec ./node_modules/.bin/next start --hostname 0.0.0.0 --port 3000
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 600s
+    networks: !override
+      internal:
+        ipv4_address: 172.31.251.10
+
+  api:
+    ports: !reset []
+    restart: "no"
+    environment: &e2e-api-environment
+      # Ambiente próprio: só nele existe o comando e2e:prepare.
+      APP_ENV: e2e
+      DB_DATABASE: cs_tactical_e2e
+      TRUSTED_PROXIES: 172.31.251.10
+      HEALTH_EXPOSE_DETAILS: "false"
+
+  worker:
+    restart: "no"
+    environment: *e2e-api-environment
+
+  postgres:
+    restart: "no"
+    environment:
+      POSTGRES_DB: cs_tactical_e2e
+    volumes: !override []
+    tmpfs:
+      - /var/lib/postgresql
+
+  redis:
+    restart: "no"
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    volumes: !override []
+    tmpfs:
+      - /data
+
+  mailpit:
+    restart: "no"
+    ports: !override
+      - "127.0.0.1:${E2E_MAILPIT_UI_PORT:-8026}:8025"
+
+  playwright:
+    image: mcr.microsoft.com/playwright:v1.64.1-noble
+    profiles: [e2e-runner]
+    network_mode: "service:web"
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    working_dir: /app
+    volumes:
+      - ./apps/web:/app
+    environment:
+      HOME: /tmp
+      CI: ${CI:-}
+      E2E_BASE_URL: http://localhost:3000
+      E2E_MAILPIT_URL: http://mailpit:8025
+    depends_on:
+      web:
+        condition: service_healthy
+    command: ["npx", "playwright", "test"]
+
+networks:
+  internal:
+    name: cs-tactical-e2e-internal
+    ipam:
+      config: !override
+        - subnet: 172.31.251.0/24
+          ip_range: 172.31.251.128/25

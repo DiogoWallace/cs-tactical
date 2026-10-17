@@ -74,6 +74,7 @@ make test && make lint
 | `make migrate` | Aplica migrations pendentes |
 | `make fresh` | Recria o banco de desenvolvimento (pede confirmação) |
 | `make test`, `make test-api`, `make test-web` | Testes |
+| `make e2e`, `make e2e-report`, `make e2e-down` | Testes E2E (Playwright) numa stack isolada e descartável; ver [docs/development/e2e.md](docs/development/e2e.md) |
 | `make lint`, `make fmt` | Verificação e formatação de código |
 | `make artisan c="..."`, `make composer c="..."` | Artisan e Composer no container da API |
 | `make pnpm c="..."` | pnpm no container do frontend |
@@ -104,6 +105,7 @@ compose.yaml        Serviços: web, api, worker, postgres, redis, mailpit
 - [Convenções da API](docs/api/convencoes.md)
 - [Decisões arquiteturais (ADRs)](docs/decisions/README.md)
 - [Ambiente WSL2 e problemas comuns](docs/development/wsl2.md)
+- [Testes E2E (Playwright): executar, depurar e reproduzir](docs/development/e2e.md)
 - [Relatório da Fase 0](docs/development/fase-0-relatorio.md)
 - [Relatório da Fase 1](docs/development/fase-1-relatorio.md) (em andamento)
 - [Bloqueios de produção](docs/deploy/bloqueios-de-producao.md): requisitos obrigatórios antes do deploy público

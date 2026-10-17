@@ -43,3 +43,8 @@ next-env.d.ts
 
 # pnpm
 /.pnpm-store
+
+# playwright (e2e)
+/e2e/.report/
+/e2e/.results/
+/playwright/.cache/

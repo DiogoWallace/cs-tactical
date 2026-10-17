@@ -1,11 +1,15 @@
 import type { Metadata } from "next"
+import Link from "next/link"
 import { Suspense } from "react"
+import { GraduationCapIcon, UserRoundCogIcon, UsersRoundIcon } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getCurrentUser } from "@/features/identity/api/get-current-user"
 import { ResendVerificationButton } from "@/features/identity/components/resend-verification-button"
+import { ACCOUNT_PATH } from "@/lib/routes"
 
 export const metadata: Metadata = {
   title: "Painel",
@@ -45,32 +49,72 @@ async function Dashboard() {
         </Card>
       )}
 
-      <Card className="max-w-xl">
-        <CardHeader>
-          <CardTitle className="text-lg">Sua conta</CardTitle>
-          <CardDescription>Dados da sessão atual.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
-            <dt className="text-muted-foreground">Nome</dt>
-            <dd>{user.name}</dd>
-            <dt className="text-muted-foreground">E-mail</dt>
-            <dd className="flex flex-wrap items-center gap-2">
-              <span className="break-all">{user.email}</span>
-              {user.email_verified ? (
-                <Badge variant="secondary">Verificado</Badge>
-              ) : (
-                <Badge variant="outline">Não verificado</Badge>
-              )}
-            </dd>
-            <dt className="text-muted-foreground">Apelido</dt>
-            <dd>{user.profile?.nickname ?? "—"}</dd>
-            <dt className="text-muted-foreground">Fuso horário</dt>
-            <dd>{user.profile?.timezone ?? "UTC"}</dd>
-          </dl>
-        </CardContent>
-      </Card>
+      <section aria-labelledby="dashboard-sections" className="flex flex-col gap-4">
+        <h2 id="dashboard-sections" className="sr-only">
+          Áreas da plataforma
+        </h2>
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <UserRoundCogIcon className="size-5 text-primary" aria-hidden />
+                Sua conta
+              </CardTitle>
+              <CardDescription className="flex flex-wrap items-center gap-2">
+                <span className="break-all">{user.email}</span>
+                {user.email_verified ? (
+                  <Badge variant="secondary">Verificado</Badge>
+                ) : (
+                  <Badge variant="outline">Não verificado</Badge>
+                )}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button asChild variant="outline" size="sm">
+                <Link href={ACCOUNT_PATH}>Editar perfil, e-mail e senha</Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Só informativos: Academy (Fase 2) e Teams (Fase 3) ainda não existem. */}
+          <UpcomingModule
+            icon={<GraduationCapIcon className="size-5 text-primary" aria-hidden />}
+            title="Academy"
+            description="Aulas, lineups e quizzes para evoluir no seu ritmo."
+          />
+          <UpcomingModule
+            icon={<UsersRoundIcon className="size-5 text-primary" aria-hidden />}
+            title="Teams"
+            description="Sua equipe, estratégias, playbooks e treinos em um só lugar."
+          />
+        </div>
+      </section>
     </div>
+  )
+}
+
+function UpcomingModule({
+  icon,
+  title,
+  description,
+}: {
+  icon: React.ReactNode
+  title: string
+  description: string
+}) {
+  return (
+    <Card className="border-dashed" data-testid={`upcoming-${title.toLowerCase()}`}>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-lg">
+          {icon}
+          {title}
+          <Badge variant="outline" className="ml-auto">
+            Em breve
+          </Badge>
+        </CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+    </Card>
   )
 }
 
@@ -78,7 +122,11 @@ function DashboardSkeleton() {
   return (
     <div className="flex flex-col gap-8" aria-hidden>
       <Skeleton className="h-10 w-64" />
-      <Skeleton className="h-48 max-w-xl" />
+      <div className="grid gap-4 md:grid-cols-3">
+        <Skeleton className="h-40" />
+        <Skeleton className="h-40" />
+        <Skeleton className="h-40" />
+      </div>
     </div>
   )
 }

@@ -522,3 +522,52 @@ Cenário: só duas contas admin; uma sessão `psql` segura a trava das linhas de
 - Teste automatizado de concorrência do último admin (proposta acima).
 - Interface administrativa e gerenciamento de equipes: fora do escopo.
 - Auditoria persistente (activity_log, Fase 4); por ora a mudança de papel vai para o log da aplicação.
+
+---
+
+## Etapa 1.7 — Dashboard autenticado e testes E2E
+
+Branch `feat/phase-1-dashboard-e2e`. Guia completo dos testes E2E: [e2e.md](e2e.md).
+
+### Arquivos criados ou modificados
+
+- **Dashboard e navegação**: `painel/page.tsx` (saudação, aviso de e-mail não verificado, cartão da conta, Academy e Teams só informativos com "Em breve"), `app-nav.tsx` (links com `aria-current`; no celular, painel lateral com Dialog do Radix), `app-header.tsx`, `(app)/loading.tsx`, `(app)/error.tsx`, `(app)/not-found.tsx`, `painel/[...rest]/page.tsx` (404 da área logada).
+- **Stack E2E isolada**: `compose.e2e.yaml`, `scripts/e2e.sh`, alvos `make e2e`, `make e2e-down`, `make e2e-report`.
+- **Preparo do banco**: `app/Modules/System/Console/PrepareE2eDatabaseCommand.php` (`e2e:prepare`, registrado só com `APP_ENV=e2e`) e testes das proteções.
+- **Playwright**: `apps/web/playwright.config.ts`, `apps/web/e2e/support/*` (contas, login, Mailpit, axe), `apps/web/e2e/specs/*` (10 specs, 25 testes).
+- **Vitest**: `app-nav.test.tsx`.
+- **CI**: job `E2E (Playwright)` com artefatos em falha.
+- **Docs**: `docs/development/e2e.md`, README, checklist de `autenticacao.md`.
+
+### Decisões técnicas
+
+- **Banco isolado e descartável** (exigência da etapa): projeto Compose `cs-tactical-e2e` com rede própria (172.31.251.0/24) e Postgres/Redis em `tmpfs`; o banco de desenvolvimento não é alcançável da stack E2E. O `e2e:prepare` confere ambiente, driver, nome do banco na configuração e `current_database()` antes do `migrate:fresh`. Verificado: o banco de desenvolvimento ficou idêntico antes e depois da suíte.
+- **`network_mode: "service:web"` validado na prática**: o navegador acessa `http://localhost:3000` (mesma origem, cookies host-only, Sanctum stateful, proxy `/api` do Next) e resolve `mailpit` pela rede da stack. Nenhuma alternativa foi necessária.
+- **Build de produção** do frontend dentro do container, a partir de uma cópia somente leitura do código: não interfere no `next dev`.
+- **Limites de segurança preservados**: nenhum rate limit ou proteção foi relaxado; uma conta por fluxo que altera dados, um único cadastro por execução e `retries: 0`.
+- **Esperas condicionais**: sem `sleep`/`waitForTimeout`; `expect` com auto-espera e `expect.poll` no Mailpit, aceitando só mensagens novas desde a abertura da caixa.
+- **Next 16 mantém páginas visitadas escondidas no DOM** (`<Activity>`): o mesmo formulário pode existir duas vezes. Os testes buscam campos só entre os visíveis (`field()` em `e2e/support/auth.ts`).
+- **Projetos**: `chromium-desktop` (obrigatório na CI) e `chromium-mobile` (`@mobile`, local).
+- **axe** (WCAG 2.1 A/AA) em login, cadastro, painel e conta, reprovando violações sérias ou críticas. Nenhuma encontrada.
+
+### Testes realizados
+
+- `make test`: Pest 306 testes (1348 asserções); Vitest 99 testes em 16 arquivos.
+- `make lint`: Pint, Larastan, ESLint, Prettier e TypeScript sem erros. `pnpm build` concluído.
+- `make e2e` (stack nova, do zero): 25 testes passando (24 desktop, 1 mobile) em 1,3 min.
+- Primeira execução de validação: falhas por contas ainda não criadas e por campos duplicados pelo `<Activity>` do Next, corrigidas nos testes; nenhuma falha da aplicação.
+
+### Pendências e riscos
+
+- **Check obrigatório para o merge**: depende de marcar `E2E (Playwright)` como obrigatório na proteção da `main` no GitHub (configuração do repositório, não do código).
+- **Tempo de CI**: o job E2E constrói as imagens e o frontend a cada execução (estimativa de 8 a 12 minutos); cache de imagens pode ser avaliado depois.
+- **Projeto mobile** roda só localmente por enquanto.
+- **Limite de cadastro (3/min por IP)**: a suíte faz um cadastro; novos testes de cadastro precisam respeitar o limite.
+
+---
+
+## Melhorias futuras registradas
+
+| Melhoria | Origem | Situação |
+|---|---|---|
+| Teste automatizado de concorrência do último admin: dois `identity:set-role` em processos paralelos contra o banco de testes, com a trava das linhas de admin segura numa segunda conexão; espera um sucesso, uma recusa e um admin restante (grupo Pest `concurrency`, fora da suíte padrão) | Etapa 1.6 (PR #4); hoje coberto por verificação manual com contraprova | Não iniciada |
