@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test"
 
 import { ACCOUNTS, E2E_PASSWORD } from "../support/accounts"
-import { field, login } from "../support/auth"
+import { field, login, text } from "../support/auth"
 import { linkFrom, openMailbox } from "../support/mailpit"
 
 const account = ACCOUNTS.verify
@@ -14,12 +14,12 @@ test.describe("verificação de e-mail", () => {
 
   test("conta não verificada vê o aviso e reenvia o link", async ({ page, request }) => {
     await login(page, account)
-    await expect(page.getByText("Não verificado", { exact: true })).toBeVisible()
-    await expect(page.getByText("Confirme seu e-mail")).toBeVisible()
+    await expect(text(page, "Não verificado", { exact: true })).toBeVisible()
+    await expect(text(page, "Confirme seu e-mail")).toBeVisible()
 
     const mailbox = await openMailbox(request, account.email)
     await page.getByRole("button", { name: "Reenviar e-mail de confirmação" }).click()
-    await expect(page.getByText(`Enviamos um novo link para ${account.email}`)).toBeVisible()
+    await expect(text(page, `Enviamos um novo link para ${account.email}`)).toBeVisible()
 
     const message = await mailbox.next(/Confirme seu e-mail/)
     verificationLink = linkFrom(message, "/verificar-email/")
@@ -34,7 +34,7 @@ test.describe("verificação de e-mail", () => {
     await page.goto(tampered.pathname + tampered.search)
 
     await expect(
-      page.getByText("Este link é inválido, expirou ou pertence a outra conta."),
+      text(page, "Este link é inválido, expirou ou pertence a outra conta."),
     ).toBeVisible()
   })
 
@@ -47,9 +47,10 @@ test.describe("verificação de e-mail", () => {
     await field(page, "Senha").fill(E2E_PASSWORD)
     await page.getByRole("button", { name: "Entrar" }).click()
 
-    await expect(page.getByText("E-mail confirmado. Obrigado!")).toBeVisible()
+    await expect(text(page, "E-mail confirmado. Obrigado!")).toBeVisible()
     await page.getByRole("link", { name: "Ir para o painel" }).click()
-    await expect(page.getByText("Verificado", { exact: true })).toBeVisible()
-    await expect(page.getByText("Confirme seu e-mail")).toHaveCount(0)
+    await expect(text(page, "Verificado", { exact: true })).toBeVisible()
+    // Só a página atual: a cópia escondida de outra visita pode ainda ter o aviso antigo.
+    await expect(text(page, "Confirme seu e-mail")).toHaveCount(0)
   })
 })

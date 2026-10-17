@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test"
 
 import { ACCOUNTS } from "../support/accounts"
-import { login, submitLogin } from "../support/auth"
+import { login, submitLogin, text } from "../support/auth"
 
 const DAY_IN_SECONDS = 24 * 60 * 60
 
@@ -16,9 +16,9 @@ test.describe("login", () => {
   test("entra, mostra o painel e os módulos futuros só como informação", async ({ page }) => {
     await login(page, ACCOUNTS.login)
 
-    const account = page.getByText(ACCOUNTS.login.email).first()
+    const account = text(page, ACCOUNTS.login.email).first()
     await expect(account).toBeVisible()
-    await expect(page.getByText("Verificado", { exact: true })).toBeVisible()
+    await expect(text(page, "Verificado", { exact: true })).toBeVisible()
 
     for (const area of ["academy", "teams"]) {
       const card = page.getByTestId(`upcoming-${area}`)
