@@ -102,6 +102,18 @@ test-api: ## Testes da API (Pest, banco cs_tactical_test)
 test-web: ## Testes do frontend (Vitest)
 	$(WEB) pnpm test
 
+.PHONY: e2e
+e2e: ## Testes E2E (Playwright) numa stack isolada e descartável (ex.: make e2e a="--project=chromium-desktop")
+	./scripts/e2e.sh $(a)
+
+.PHONY: e2e-down
+e2e-down: ## Derruba a stack E2E e descarta os dados dela (não toca a de desenvolvimento)
+	docker compose -p cs-tactical-e2e -f compose.yaml -f compose.e2e.yaml --profile e2e-runner down --volumes --remove-orphans
+
+.PHONY: e2e-report
+e2e-report: ## Abre o relatório HTML da última execução E2E (http://localhost:9323)
+	$(COMPOSE) run --rm --no-deps -p 127.0.0.1:9323:9323 web ./node_modules/.bin/playwright show-report e2e/.report --host 0.0.0.0
+
 .PHONY: lint
 lint: lint-api lint-web ## Roda todas as verificações de estilo e análise estática
 

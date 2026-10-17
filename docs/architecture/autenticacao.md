@@ -233,4 +233,4 @@ Os contadores ficam no Redis.
 - [x] Logout invalida a sessão (o cookie antigo passa a receber 401) e troca o token CSRF.
 - [x] Rate limit de login responde 429 após o limite.
 - [x] Login regenera o ID da sessão; senha errada e e-mail inexistente têm a mesma resposta; `Bearer` é ignorado.
-- [ ] Teste E2E (Playwright): cadastro → login → página protegida → logout.
+- [x] Teste E2E (Playwright): cadastro → login → página protegida → logout, além de verificação de e-mail, recuperação de senha, conta, sessões e redirecionamentos seguros (etapa 1.7, [docs/development/e2e.md](../development/e2e.md)).
