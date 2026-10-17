@@ -41,6 +41,26 @@ em `infra/docker/web/Dockerfile`, `engines.node >=24` e `node-version: 24` na CI
   o build; registrar a decisão no relatório da fase. Só depois atualizar este documento e,
   se necessário, a regra de ignore.
 
+## Runners da CI: `ubuntu-24.04` fixado temporariamente
+
+Os três jobs de `.github/workflows/ci.yml` usam `runs-on: ubuntu-24.04` em vez de
+`ubuntu-latest`. **O pin é temporário.**
+
+- **Motivo**: o GitHub migra o `ubuntu-latest` para o Ubuntu 26.04 de forma gradual entre
+  **19/10 e 19/11/2026** (`actions/runner-images#14748`). Nesse período o mesmo workflow poderia
+  rodar ora numa imagem, ora na outra. O pin mantém a CI determinística.
+- **Principal mudança da 26.04 para o projeto**: Docker Engine 28 → 29 e Docker Compose 2.38 → 5.x
+  no runner. O job E2E usa rede com sub-rede e IPs fixos e `tmpfs`, e isso precisa ser validado.
+  Também a compilação das extensões do PHP 8.4 pelo `setup-php` (`redis`, `pdo_pgsql`, `pcntl`).
+  Node, pnpm, Playwright (em container) e os serviços (Postgres, Redis, Mailpit, em containers)
+  não dependem da versão do Ubuntu do runner.
+- **Plano**:
+  1. Depois de **19/11/2026**, rodar a CI uma vez com `ubuntu-26.04`, numa branch de teste.
+  2. Se os três jobs passarem, remover o pin até **15/12/2026** (prazo de revisão).
+  3. Se algo falhar, manter o pin, investigar e registrar o problema; o pin não deve seguir sem
+     prazo.
+- O Dependabot não atualiza `runs-on`: essa revisão é manual.
+
 ## Alertas de segurança
 
 - Ativar em **Settings → Code security**: *Dependabot alerts* e *Dependabot security updates*
