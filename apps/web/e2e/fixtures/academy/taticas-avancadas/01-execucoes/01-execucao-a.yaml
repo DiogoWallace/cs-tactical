@@ -1,0 +1,14 @@
+key: execucao-a
+slug: execucao-a
+title: Execução no bomb A
+status: published
+position: 1
+estimated_minutes: 12
+content:
+  version: 1
+  blocks:
+    - type: markdown
+      text: |
+        ## Utilitários primeiro
+
+        Smokes e flashes antes de entrar.

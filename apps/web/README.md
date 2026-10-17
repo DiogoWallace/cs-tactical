@@ -14,6 +14,7 @@ src/
 ├── app/            # rotas (App Router)
 ├── components/
 │   └── ui/         # componentes shadcn/ui (sem regra de negócio)
+├── features/       # um módulo por área: identity, system, academy (api/, components/, lib/)
 ├── lib/            # utilitários e acesso à API
 └── test/           # configuração dos testes (Vitest)
 ```

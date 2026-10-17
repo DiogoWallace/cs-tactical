@@ -199,6 +199,42 @@ limite 429) e `tests/Feature/Academy/MediaApiTest.php` (matriz de visibilidade d
 editores, órfão, arquivo ausente ou alterado, extensão trocada, nomes manipulados, ausência de
 cache e de 304, inclusive depois de arquivar o conteúdo ou entre editor e visitante).
 
+## Etapa 2.3 — Telas do catálogo e da aula (implementada)
+
+Rotas públicas (grupo `(marketing)` do Next, sem login): `/academy` (catálogo, filtro `level` e
+página), `/academy/cursos/{curso}` e `/academy/cursos/{curso}/aulas/{aula}`. Dados só da API real
+(2.2), lidos no servidor pelo `serverFetch` existente e validados por Zod.
+
+Estrutura em `apps/web/src/features/academy`:
+
+| Pasta/arquivo | Papel |
+|---|---|
+| `api/catalog.ts` | leitura no servidor: filtros e slugs conferidos antes da URL da API, Zod, `not_found`/`unavailable`, `cache()` (página e metadados numa chamada); nunca `include_unpublished` |
+| `lib/schemas.ts`, `lib/markdown-rules.ts` | espelho Zod dos blocos v1 no formato resolvido da API e das regras do Markdown do PHP; testados com `content/academy/_fixtures/blocks-v1.json` |
+| `components/safe-markdown.tsx` | `react-markdown` sem HTML (`skipHtml`, sem `rehype-raw`), lista fechada de elementos, links filtrados, títulos a partir de `h2` |
+| `components/blocks/*` | um renderizador por tipo: Markdown, callout, imagem (URL da API, `alt`, decorativa, falha), vídeo (clique para carregar, `youtube-nocookie`, `sandbox`), quiz_ref (só o resumo) |
+| `components/catalog.tsx`, `course-overview.tsx`, `lesson-view.tsx` | telas, estados (carregando, vazio, filtro vazio, página inexistente, indisponível) e navegação |
+
+### Etapa 2.3 — ajustes feitos na implementação
+
+| # | Ponto | Implementado | Motivo |
+|---|---|---|---|
+| C1 | URL das telas | `/academy/cursos/{curso}/aulas/{aula}` | O padrão previsto no modelo de dados |
+| C2 | Biblioteca de Markdown | `react-markdown` 10 (só CommonMark, sem `rehype-raw`/GFM) | Consolidada, renderiza no servidor sem HTML; GFM traria tabelas e autolinks que o importador não prevê |
+| C3 | Fixtures compartilhadas | `./content` montado só leitura em `/content` no container `web` de desenvolvimento | O Vitest lê `../../content/academy/_fixtures` pelo mesmo caminho no host, no container e na CI (como A4 fez para a API) |
+| C4 | Vídeo | `iframe` só depois do clique | Nenhuma requisição ao YouTube só por abrir a aula; mesma CSP |
+| C5 | Imagens | `<img>` com a URL da API, sem `next/image` | O otimizador do Next buscaria a imagem no servidor, sem a sessão, e guardaria cópia; a API manda `no-store` |
+| C6 | 404 | `notFound()` dentro do Suspense: corpo e `noindex` corretos, status **200** | Comportamento do Next com PPR (o stream já começou); igual às demais páginas do projeto |
+| C7 | E2E | Conteúdo próprio em `apps/web/e2e/fixtures/academy`, importado pelo `scripts/e2e.sh`; mídia em `tmpfs` | Testes independentes do conteúdo real e do banco de desenvolvimento |
+| C8 | Modo editorial | Fora das telas | Ver rascunhos pela interface seria um CMS/preview, fora da 2.3; a API continua sendo a única que decide |
+| C9 | Navegação | Link "Academy" no cabeçalho público e no da área logada | Acesso ao catálogo de qualquer página |
+
+Riscos remanescentes: CSP com `'unsafe-inline'` (ver
+[seguranca-http.md](../architecture/seguranca-http.md#conteúdo-editorial-da-academy-etapa-23-com-unsafe-inline));
+404 com status 200 (C6); no E2E sem borda, todas as leituras do servidor chegam à API com o IP do
+container `web` (o limite `academy-public` é compartilhado); em produção a borda define o IP real
+(P1).
+
 ## Etapas seguintes (resumo)
 
 | Etapa | Entrega |

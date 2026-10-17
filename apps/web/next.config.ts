@@ -1,6 +1,11 @@
 import type { NextConfig } from "next"
 
-import { PAGE_HEADERS_SOURCE, securityHeaders } from "./src/lib/security-headers"
+import {
+  LESSON_HEADERS_SOURCE,
+  lessonCspHeaders,
+  PAGE_HEADERS_SOURCE,
+  securityHeaders,
+} from "./src/lib/security-headers"
 
 /**
  * Endereço da API Laravel na rede interna do Docker. O navegador nunca o acessa
@@ -28,10 +33,16 @@ const nextConfig: NextConfig = {
   },
   // Headers de segurança das páginas (src/lib/security-headers.ts, docs/architecture/seguranca-http.md).
   async headers() {
+    const isDev = process.env.NODE_ENV === "development"
     return [
       {
         source: PAGE_HEADERS_SOURCE,
-        headers: securityHeaders(process.env.NODE_ENV === "development"),
+        headers: securityHeaders(isDev),
+      },
+      // Só as aulas da Academy aceitam o player do YouTube em frame-src (ADR 0019, item 4).
+      {
+        source: LESSON_HEADERS_SOURCE,
+        headers: lessonCspHeaders(isDev),
       },
     ]
   },

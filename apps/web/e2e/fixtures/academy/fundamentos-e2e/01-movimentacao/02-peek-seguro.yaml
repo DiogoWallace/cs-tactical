@@ -1,0 +1,20 @@
+key: peek-seguro
+slug: peek-seguro
+title: Peek seguro
+status: published
+position: 2
+estimated_minutes: 6
+content:
+  version: 1
+  blocks:
+    - type: callout
+      variant: warning
+      title: Cuidado com o ângulo aberto
+      text: Mostre só o necessário.
+    - type: video
+      url: https://www.youtube.com/watch?v=AbCdEfGhIjK
+      title: Demonstração do peek seguro
+      start_seconds: 5
+    - type: image
+      src: decorativa.png
+      decorative: true

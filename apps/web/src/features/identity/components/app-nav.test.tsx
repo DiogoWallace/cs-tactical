@@ -23,6 +23,17 @@ describe("AppNav", () => {
     expect(within(nav).getByRole("link", { name: "Painel" })).not.toHaveAttribute("aria-current")
   })
 
+  it("links the Academy and marks it on its courses and lessons", () => {
+    pathname.current = "/academy/cursos/fundamentos-cs2/aulas/counter-strafe"
+    render(<AppNav displayName="ana_cs" email="ana@example.com" />)
+
+    const nav = screen.getByRole("navigation", { name: "Principal" })
+    const academy = within(nav).getByRole("link", { name: "Academy" })
+    expect(academy).toHaveAttribute("href", "/academy")
+    expect(academy).toHaveAttribute("aria-current", "page")
+    expect(within(nav).getByRole("link", { name: "Painel" })).not.toHaveAttribute("aria-current")
+  })
+
   it("opens the mobile menu with the account and closes it after navigating", () => {
     render(<AppNav displayName="ana_cs" email="ana@example.com" />)
 

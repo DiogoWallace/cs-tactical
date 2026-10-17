@@ -17,6 +17,9 @@ services:
       API_INTERNAL_URL: http://api:8080
     volumes:
       - ./apps/web:/app
+      # Casos dos blocos da Academy (content/academy/_fixtures), lidos pelo Vitest: em /content o
+      # caminho relativo `../../content` vale igual no container, no host e na CI. Só leitura.
+      - ./content:/content:ro
       - pnpm-store:/home/node/.local/share/pnpm
       - corepack-cache:/home/node/.cache
     ports:

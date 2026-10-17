@@ -9,6 +9,9 @@ export const HOME_PATH = "/painel"
 /** Dados da conta: perfil, e-mail e senha. Dentro de /painel, já coberto pelo `proxy.ts`. */
 export const ACCOUNT_PATH = "/painel/conta"
 
+/** Catálogo público da Academy (cursos e aulas abaixo dele: features/academy/lib/paths.ts). */
+export const ACADEMY_PATH = "/academy"
+
 /**
  * Prefixos da área autenticada (grupo `(app)`). O `proxy.ts` usa a mesma lista no `matcher`;
  * uma rota nova da área logada precisa entrar nos dois lugares.

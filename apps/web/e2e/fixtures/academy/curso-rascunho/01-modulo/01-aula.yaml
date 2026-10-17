@@ -1,0 +1,10 @@
+key: aula
+slug: aula
+title: Aula do rascunho
+status: draft
+position: 1
+content:
+  version: 1
+  blocks:
+    - type: markdown
+      text: Conteúdo em rascunho.

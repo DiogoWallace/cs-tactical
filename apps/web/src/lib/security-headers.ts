@@ -20,8 +20,16 @@ function policy(directives: Record<string, string[]>): string {
     .join("; ")
 }
 
+/** Player sem cookies do YouTube: o único frame permitido, só nas páginas de aula (ADR 0019). */
+export const YOUTUBE_FRAME_ORIGIN = "https://www.youtube-nocookie.com"
+
+type CspOptions = {
+  /** Páginas de aula da Academy: `frame-src` aceita o player do YouTube. Padrão: `'none'`. */
+  youtubeFrames?: boolean
+}
+
 /** Diretivas comuns às duas políticas: tudo restrito à própria origem. */
-function baseDirectives(): Record<string, string[]> {
+function baseDirectives({ youtubeFrames = false }: CspOptions = {}): Record<string, string[]> {
   return {
     "default-src": ["'self'"],
     "img-src": ["'self'", "data:", "blob:"],
@@ -31,7 +39,7 @@ function baseDirectives(): Record<string, string[]> {
     "worker-src": ["'self'", "blob:"],
     "media-src": ["'none'"],
     "object-src": ["'none'"],
-    "frame-src": ["'none'"],
+    "frame-src": youtubeFrames ? [YOUTUBE_FRAME_ORIGIN] : ["'none'"],
     "base-uri": ["'self'"],
     "form-action": ["'self'"],
     "frame-ancestors": ["'none'"],
@@ -39,21 +47,32 @@ function baseDirectives(): Record<string, string[]> {
 }
 
 /** CSP aplicada. Em desenvolvimento, o React precisa de `'unsafe-eval'` (stacks de erro). */
-export function enforcedCsp(isDev: boolean): string {
+export function enforcedCsp(isDev: boolean, options: CspOptions = {}): string {
   return policy({
-    ...baseDirectives(),
+    ...baseDirectives(options),
     "script-src": ["'self'", "'unsafe-inline'", ...(isDev ? ["'unsafe-eval'"] : [])],
     "style-src": ["'self'", "'unsafe-inline'"],
   })
 }
 
 /** CSP meta, só observada (Report-Only): sem scripts nem estilos inline. */
-export function reportOnlyCsp(isDev: boolean): string {
+export function reportOnlyCsp(isDev: boolean, options: CspOptions = {}): string {
   return policy({
-    ...baseDirectives(),
+    ...baseDirectives(options),
     "script-src": ["'self'", ...(isDev ? ["'unsafe-eval'"] : [])],
     "style-src": ["'self'"],
   })
+}
+
+/** As duas CSPs das páginas de aula: iguais às demais, com o player do YouTube em `frame-src`. */
+export function lessonCspHeaders(isDev: boolean): Header[] {
+  return [
+    { key: "Content-Security-Policy", value: enforcedCsp(isDev, { youtubeFrames: true }) },
+    {
+      key: "Content-Security-Policy-Report-Only",
+      value: reportOnlyCsp(isDev, { youtubeFrames: true }),
+    },
+  ]
 }
 
 export function securityHeaders(isDev: boolean): Header[] {
@@ -74,3 +93,9 @@ export function securityHeaders(isDev: boolean): Header[] {
 
 /** Todas as rotas, menos as encaminhadas à API (ver `rewrites` em next.config.ts). */
 export const PAGE_HEADERS_SOURCE = "/((?!api/|sanctum/).*)"
+
+/**
+ * Páginas de aula da Academy (`/academy/cursos/{curso}/aulas/{aula}`). Vem depois de
+ * PAGE_HEADERS_SOURCE em `headers()`: para o mesmo header, a última regra que casa vale.
+ */
+export const LESSON_HEADERS_SOURCE = "/academy/cursos/:course/aulas/:lesson"

@@ -1,0 +1,14 @@
+key: posicionamento
+slug: posicionamento
+title: Posicionamento da mira
+status: published
+position: 1
+estimated_minutes: 5
+content:
+  version: 1
+  blocks:
+    - type: markdown
+      text: |
+        ## Altura da cabeça
+
+        Mantenha a mira na altura em que a cabeça do adversário vai aparecer.
