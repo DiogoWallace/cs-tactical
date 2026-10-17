@@ -29,7 +29,9 @@ Models em `app/Modules/Identity/Models`; migrations `2026_10_16_1000xx_*`.
 
 ## Academy — catálogo global (Fase 2)
 
-- **courses** 1:N **course_modules** 1:N **lessons**, cada nível com `slug`, `position` e `status` (`draft`, `published`).
+> Modelo detalhado (colunas, índices, constraints, exclusões): [academy-learning.md](academy-learning.md), definido na etapa 2.0.
+
+- **courses** 1:N **course_modules** 1:N **lessons**, cada nível com `key` imutável, `slug`, `position` e `status` (`draft`, `published`, `archived`; [ADR 0015](../decisions/0015-academy-e-learning-publicacao-e-visibilidade.md)).
 - `courses.level`: `beginner`, `intermediate`, `advanced`. Trilhas começam como filtro por nível; uma tabela `tracks` só entra se a trilha precisar de mais que isso.
 - **lessons.content**: JSONB com lista de blocos tipados + `content_version` ([ADR 0008](../decisions/0008-conteudo-estruturado-da-academy.md)).
 - **quizzes** (de uma aula) 1:N **quiz_questions** 1:N **quiz_options**.
@@ -38,9 +40,9 @@ Models em `app/Modules/Identity/Models`; migrations `2026_10_16_1000xx_*`.
 
 - **enrollments**: user × course, único por par.
 - **lesson_progress**: user × lesson, `status`, `completed_at`, único por par.
-- **quiz_attempts** 1:N **quiz_attempt_answers**.
+- **quiz_attempts** 1:N **quiz_attempt_answers**; cada tentativa guarda um snapshot do quiz ([ADR 0018](../decisions/0018-quizzes-tentativas-e-historico.md)).
 
-O progresso é **do jogador**. Nenhuma equipe lê essas tabelas diretamente; o acesso passa pelas atribuições (abaixo).
+O progresso é **do jogador** e sobrevive a mudanças no conteúdo ([ADR 0017](../decisions/0017-progresso-diante-de-mudancas-no-conteudo.md)). Nenhuma equipe lê essas tabelas diretamente; o acesso passa pelas atribuições (abaixo).
 
 ## Teams (Fase 3)
 
