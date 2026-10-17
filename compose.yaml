@@ -123,7 +123,7 @@ services:
     networks: [internal]
 
   mailpit:
-    image: axllent/mailpit:v1.27
+    image: axllent/mailpit:v1.30
     restart: unless-stopped
     environment:
       MP_SMTP_AUTH_ACCEPT_ANY: 1
