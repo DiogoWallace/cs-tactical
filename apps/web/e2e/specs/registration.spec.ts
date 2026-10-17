@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test"
 
-import { field } from "../support/auth"
+import { field, text } from "../support/auth"
 import { linkFrom, openMailbox } from "../support/mailpit"
 
 // Um único cadastro por execução: o limite da API (3 por minuto por IP) continua valendo aqui.
@@ -20,7 +20,7 @@ test("cadastro cria a conta, entra no painel e envia a confirmação", async ({ 
 
   await expect(page).toHaveURL("/painel")
   await expect(page.getByRole("heading", { level: 1, name: `Olá, ${nickname}` })).toBeVisible()
-  await expect(page.getByText("Não verificado", { exact: true })).toBeVisible()
+  await expect(text(page, "Não verificado", { exact: true })).toBeVisible()
 
   const message = await mailbox.next(/Confirme seu e-mail/)
   expect(linkFrom(message, "/verificar-email/")).toMatch(

@@ -12,6 +12,14 @@ export function field(scope: Page | Locator, label: string): Locator {
   return scope.getByLabel(label, { exact: true }).filter({ visible: true })
 }
 
+/**
+ * Texto só entre os elementos visíveis, pelo mesmo motivo de `field()`: a cópia escondida de uma
+ * página já visitada (ex.: o painel antes da verificação) duplica o texto ou mostra um estado antigo.
+ */
+export function text(scope: Page | Locator, value: string, options?: { exact?: boolean }): Locator {
+  return scope.getByText(value, options).filter({ visible: true })
+}
+
 type LoginOptions = { password?: string; remember?: boolean; next?: string }
 
 /** Preenche e envia o login. Não espera o destino: cada teste confere para onde foi. */
