@@ -24,3 +24,8 @@ Uma ADR aceita não é editada para mudar de ideia: cria-se uma nova que a subst
 | [0017](0017-progresso-diante-de-mudancas-no-conteudo.md) | Progresso do jogador diante de mudanças no conteúdo | Aceita |
 | [0018](0018-quizzes-tentativas-e-historico.md) | Quizzes: correção no servidor, tentativas e histórico | Aceita |
 | [0019](0019-midia-externa-markdown-seguro-e-arquivos.md) | Mídia externa, Markdown seguro e arquivos da Academy | Aceita |
+| [0021](0021-arquitetura-do-cs-tactical-training.md) | Arquitetura do CS Tactical Training (prática em servidores CS2) | Proposta |
+
+A **0020** está reservada para a futura decisão de busca da Academy com Elasticsearch
+([proposta 2.3.1](../development/proposta-2.3.1-busca-elasticsearch.md)); ainda não foi criada nem
+aprovada.
