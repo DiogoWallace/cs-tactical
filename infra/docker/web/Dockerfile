@@ -1,7 +1,7 @@
 # Imagem do frontend Next.js para desenvolvimento.
 # Debian (glibc), não Alpine: binários nativos (SWC, Tailwind, lightningcss) ficam
 # compatíveis com o Ubuntu do WSL, já que node_modules é compartilhado pelo bind mount.
-FROM node:24-bookworm-slim AS development
+FROM node:25-bookworm-slim AS development
 
 ARG HOST_UID=1000
 ARG HOST_GID=1000
