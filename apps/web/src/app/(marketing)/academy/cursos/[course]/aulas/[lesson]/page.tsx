@@ -6,6 +6,10 @@ import { getCourse, getLesson } from "@/features/academy/api/catalog"
 import { AcademyUnavailable } from "@/features/academy/components/catalog"
 import { LessonSkeleton, LessonView } from "@/features/academy/components/lesson-view"
 import { lessonPath } from "@/features/academy/lib/paths"
+import { getCourseProgress } from "@/features/learning/api/progress"
+import { CompleteLessonCard } from "@/features/learning/components/complete-lesson-card"
+import { CourseLearningProvider } from "@/features/learning/components/course-learning-provider"
+import { LessonStatusMark } from "@/features/learning/components/lesson-status-mark"
 
 type Props = PageProps<"/academy/cursos/[course]/aulas/[lesson]">
 
@@ -40,15 +44,25 @@ export default function LessonPage({ params }: Props) {
 
 async function LessonContent({ params }: { params: Props["params"] }) {
   const { course, lesson } = await params
-  // Em paralelo: a aula e o curso (para a lista de módulos e a posição da aula).
-  const [lessonResult, courseResult] = await Promise.all([
+  // Em paralelo: a aula, o curso (lista de módulos e posição da aula) e o progresso do jogador.
+  const [lessonResult, courseResult, learning] = await Promise.all([
     getLesson(course, lesson),
     getCourse(course),
+    getCourseProgress(course),
   ])
 
   if (lessonResult.status === "not_found" || courseResult.status === "not_found") notFound()
   if (lessonResult.status === "unavailable" || courseResult.status === "unavailable") {
     return <AcademyUnavailable retryHref={lessonPath(course, lesson)} />
   }
-  return <LessonView course={courseResult.data} lesson={lessonResult.data} />
+  return (
+    <CourseLearningProvider course={courseResult.data.slug} initial={learning}>
+      <LessonView
+        course={courseResult.data}
+        lesson={lessonResult.data}
+        completion={<CompleteLessonCard lesson={lessonResult.data.slug} />}
+        renderLessonStatus={(item) => <LessonStatusMark lesson={item} />}
+      />
+    </CourseLearningProvider>
+  )
 }

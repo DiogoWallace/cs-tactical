@@ -8,7 +8,7 @@ import { Dialog } from "radix-ui"
 
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
-import { ACADEMY_PATH, ACCOUNT_PATH, HOME_PATH } from "@/lib/routes"
+import { ACADEMY_PATH, ACCOUNT_PATH, HOME_PATH, MY_PROGRESS_PATH } from "@/lib/routes"
 import { cn } from "@/lib/utils"
 
 import { LogoutButton } from "./logout-button"
@@ -16,6 +16,7 @@ import { LogoutButton } from "./logout-button"
 const LINKS = [
   { href: HOME_PATH, label: "Painel" },
   { href: ACADEMY_PATH, label: "Academy" },
+  { href: MY_PROGRESS_PATH, label: "Meu progresso" },
   { href: ACCOUNT_PATH, label: "Conta" },
 ] as const
 

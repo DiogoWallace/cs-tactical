@@ -9,6 +9,10 @@ import {
   CourseOverviewSkeleton,
 } from "@/features/academy/components/course-overview"
 import { coursePath } from "@/features/academy/lib/paths"
+import { getCourseProgress } from "@/features/learning/api/progress"
+import { CourseLearningProvider } from "@/features/learning/components/course-learning-provider"
+import { EnrollmentPanel } from "@/features/learning/components/enrollment-panel"
+import { LessonStatusMark } from "@/features/learning/components/lesson-status-mark"
 
 type Props = PageProps<"/academy/cursos/[course]">
 
@@ -47,9 +51,18 @@ export default function CoursePage({ params }: Props) {
 
 async function CourseContent({ params }: { params: Props["params"] }) {
   const { course } = await params
-  const result = await getCourse(course)
+  // Em paralelo: o curso (público, igual para todos) e o progresso do jogador (só com sessão).
+  const [result, learning] = await Promise.all([getCourse(course), getCourseProgress(course)])
 
   if (result.status === "not_found") notFound()
   if (result.status === "unavailable") return <AcademyUnavailable retryHref={coursePath(course)} />
-  return <CourseOverview course={result.data} />
+  return (
+    <CourseLearningProvider course={result.data.slug} initial={learning}>
+      <CourseOverview
+        course={result.data}
+        learningPanel={<EnrollmentPanel />}
+        renderLessonStatus={(lesson) => <LessonStatusMark lesson={lesson} />}
+      />
+    </CourseLearningProvider>
+  )
 }

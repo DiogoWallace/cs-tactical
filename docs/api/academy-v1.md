@@ -1,7 +1,7 @@
 # API da Academy e do Learning — contratos iniciais (v1)
 
 > Definido na etapa 2.0 (aprovado em 2026-10-17). **Catálogo implementado na etapa 2.2**
-> (`app/Modules/Academy/routes.php`); Learning e quizzes ainda não. Convenções gerais
+> (`app/Modules/Academy/routes.php`); **Learning na etapa 2.4** (`app/Modules/Learning/routes.php`); quizzes ainda não. Convenções gerais
 > (formato, erros, códigos) em [convencoes.md](convencoes.md). Regras e autorização em
 > [academy.md](../architecture/academy.md).
 
@@ -13,10 +13,10 @@
 | GET | `/api/v1/academy/courses/{course}` | não | `academy-public` | 2.2 ✔ |
 | GET | `/api/v1/academy/courses/{course}/lessons/{lesson}` | não | `academy-public` | 2.2 ✔ |
 | GET | `/api/v1/academy/media/{sha256}.{ext}` | não | `academy-media` | 2.2 ✔ |
-| GET | `/api/v1/me/enrollments` | sim | `api` | 2.4 |
-| PUT | `/api/v1/academy/courses/{course}/enrollment` | sim (+CSRF) | `learning-write` | 2.4 |
-| GET | `/api/v1/academy/courses/{course}/progress` | sim | `api` | 2.4 |
-| PUT | `/api/v1/academy/courses/{course}/lessons/{lesson}/completion` | sim (+CSRF) | `learning-write` | 2.4 |
+| GET | `/api/v1/me/enrollments` | sim | `api` | 2.4 ✔ |
+| PUT | `/api/v1/academy/courses/{course}/enrollment` | sim (+CSRF) | `learning-write` | 2.4 ✔ |
+| GET | `/api/v1/academy/courses/{course}/progress` | sim | `api` | 2.4 ✔ |
+| PUT | `/api/v1/academy/courses/{course}/lessons/{lesson}/completion` | sim (+CSRF) | `learning-write` | 2.4 ✔ |
 | POST | `/api/v1/academy/quizzes/{quiz}/attempts` | sim (+CSRF) | `quiz-attempt` | 2.5 |
 | POST | `/api/v1/academy/quiz-attempts/{attempt}/submission` | sim (+CSRF) | `quiz-attempt` | 2.5 |
 | GET | `/api/v1/academy/quiz-attempts/{attempt}` | sim | `api` | 2.5 |
@@ -157,19 +157,37 @@ Nginx da API. Não exige `include_unpublished` (o `<img>` não manda parâmetros
 
 ## Learning (autenticado)
 
+> Implementado na etapa 2.4 (`app/Modules/Learning`). Regras comuns:
+>
+> - O jogador é **sempre o da sessão**: nenhuma rota recebe id de usuário nem de matrícula, e um
+>   `user_id` no corpo é ignorado (R13). Policies `EnrollmentPolicy`/`LessonProgressPolicy`
+>   conferem a posse como segunda barreira; nenhum papel, nem `admin`, lê dados de outro jogador.
+> - Visibilidade em toda leitura e escrita (R2): curso, módulo e aula publicados. Fora disso,
+>   **404** sem revelar o motivo (rascunho, arquivado, aula de outro curso, inexistente).
+> - Escritas travam as linhas do conteúdo com `FOR SHARE` na transação (ordem curso → módulo →
+>   aula, a mesma da importação): nada é gravado em conteúdo que deixou de ser público no meio da
+>   operação. Unicidade `(user_id, course_id)` e `(user_id, lesson_id)` com `ON CONFLICT`: duas
+>   requisições simultâneas geram um registro só.
+> - Repetir uma escrita não grava nada (idempotência verificada sem nenhum INSERT/UPDATE).
+> - Lista fechada de campos: nenhum `id`, hash, `user_id` ou dado de quiz.
+> - Número fixo de consultas: `/progress` 4, `/me/enrollments` 4, qualquer que seja o número de
+>   aulas ou matrículas.
+
 ### `PUT /api/v1/academy/courses/{course}/enrollment`
 
-Sem corpo. **201** na primeira matrícula, **200** se já existia (idempotente).
+Sem corpo. **201** na primeira matrícula, **200** se já existia (idempotente, sem escrita).
 
 ```json
 { "data": { "course": "fundamentos-cs2", "enrolled_at": "2026-11-02T13:05:00Z", "completed_at": null } }
 ```
 
-Curso não público: 404. Sem sessão: 401.
+Curso não público: 404 (também para `editor`/`admin`, mesmo com `include_unpublished`). Sem
+sessão: 401. Token CSRF da sessão do frontend obrigatório (419 sem ele).
 
 ### `GET /api/v1/me/enrollments`
 
-Lista as matrículas do usuário, mais recentes primeiro, com progresso resumido:
+Lista as matrículas do usuário, atividade mais recente primeiro (`last_activity_at`), com
+progresso resumido. Sem paginação: uma por curso, limitada pelo tamanho do catálogo.
 
 ```json
 {
@@ -186,7 +204,9 @@ Lista as matrículas do usuário, mais recentes primeiro, com progresso resumido
 }
 ```
 
-Cursos arquivados aparecem com `status: "archived"` e sem `next_lesson` (ADR 0017).
+Cursos arquivados aparecem com `status: "archived"` só como histórico (R13a):
+`completed_lessons` conta as conclusões gravadas (inclusive de aulas arquivadas),
+`total_lessons` e `percent` são `null` e não há `next_lesson`.
 
 ### `GET /api/v1/academy/courses/{course}/progress`
 
@@ -194,23 +214,40 @@ Cursos arquivados aparecem com `status: "archived"` e sem `next_lesson` (ADR 001
 {
   "data": {
     "enrolled": true,
+    "enrolled_at": "2026-11-02T13:05:00Z",
     "completed_at": null,
     "percent": 41.67,
+    "completed_lessons": 5,
+    "total_lessons": 12,
+    "new_lessons_available": false,
+    "next_lesson": { "slug": "peek-seguro", "title": "Peek seguro" },
     "lessons": [
-      { "slug": "counter-strafe", "status": "completed", "completed_at": "...", "updated_since_completion": false, "quiz": { "attempts_used": 1, "best_score_percent": 75.0, "passed": true } }
+      { "slug": "counter-strafe", "status": "completed", "completed_at": "...", "updated_since_completion": false },
+      { "slug": "peek-seguro", "status": "not_started", "completed_at": null, "updated_since_completion": false }
     ]
   }
 }
 ```
 
-Não matriculado: `enrolled: false` e lista vazia (200). `updated_since_completion` compara
-`content_hash` (ADR 0017). Curso não público (rascunho ou arquivado): **404**; o histórico de
-cursos arquivados fica em `/me/enrollments` e `/me/quiz-attempts` (R13a).
+- `lessons`: todas as aulas **públicas** do curso, na ordem do curso (posição do módulo, depois
+  da aula). `status`: `not_started` ou `completed` (`in_progress` chega com os quizzes, 2.5).
+- `percent` = concluídas ÷ públicas (R11), com duas casas; aulas arquivadas saem do cálculo.
+- `next_lesson`: primeira aula pública não concluída (R10); `null` com tudo concluído.
+- `completed_at`: gravado ao concluir a última aula pública, nunca apagado (R12);
+  `new_lessons_available` = curso concluído que ganhou aulas depois (ADR 0017).
+- `updated_since_completion` compara o `content_hash` atual com o da conclusão (ADR 0017).
+- O resumo do quiz por aula (`quiz`: tentativas, melhor nota) entra na etapa 2.5.
+
+Não matriculado: `enrolled: false`, números e `next_lesson` nulos, `new_lessons_available: false`
+e lista vazia (200). Curso não público (rascunho ou arquivado): **404**; o histórico de cursos
+arquivados fica em `/me/enrollments` e `/me/quiz-attempts` (R13a).
 
 ### `PUT /api/v1/academy/courses/{course}/lessons/{lesson}/completion`
 
-Sem corpo. Conclui a aula (idempotente; auto-matrícula, R8). **200** com o progresso do curso
-(como em `/progress`). Aula não pública: 404.
+Sem corpo. Conclui a aula (idempotente; auto-matrícula, R8): **200** com o progresso do curso
+(igual a `/progress`). Concluir de novo mantém a primeira data e o hash daquele momento (R9) e
+não grava nada; só uma conclusão nova atualiza `last_activity_at`. Aula não pública, de outro
+curso ou inexistente: 404.
 
 ## Quizzes (autenticado)
 

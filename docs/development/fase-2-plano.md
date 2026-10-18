@@ -235,6 +235,37 @@ Riscos remanescentes: CSP com `'unsafe-inline'` (ver
 container `web` (o limite `academy-public` é compartilhado); em produção a borda define o IP real
 (P1).
 
+## Etapa 2.4 — Learning: matrícula, conclusão e progresso (implementada)
+
+Módulo `app/Modules/Learning` (depende da Academy; a Academy não o conhece): tabelas
+`enrollments` e `lesson_progress`, os quatro endpoints de [academy-v1.md](../api/academy-v1.md#learning-autenticado)
+e, no frontend, `apps/web/src/features/learning`.
+
+| Peça | Papel |
+|---|---|
+| `Actions/EnrollInCourse`, `Actions/CompleteLesson` | escritas numa transação: `Support/PublicContentLocks` confere a visibilidade travando curso, módulo e aula com `FOR SHARE` (ordem da importação); `INSERT ... ON CONFLICT` nos únicos; consulta antes, para repetir não escrever nada; `completed_at` da matrícula ao concluir a última aula pública |
+| `Queries/ProgressQuery` | progresso calculado a cada leitura (nada guardado): aulas públicas ÷ conclusões, próxima aula, "atualizada desde a conclusão", histórico de cursos arquivados; 4 consultas por endpoint |
+| `Policies/*` | posse (R13), segunda barreira: as rotas não recebem ids |
+| Frontend | `CourseLearningProvider` (estado inicial lido no servidor, trocado pela resposta de cada escrita), `EnrollmentPanel`, `CompleteLessonCard`, `LessonStatusMark`, `EnrollmentBadge` no catálogo e a página "Meu progresso" (`/painel/academy`); as telas da Academy recebem tudo por slots |
+
+### Etapa 2.4 — ajustes feitos na implementação
+
+| # | Ponto | Implementado | Motivo |
+|---|---|---|---|
+| L1 | `QuizUsage` real "na 2.4" (A6) | Continua `NoQuizUsage` | As tentativas (`quiz_attempts`) só existem na 2.5; criar a tabela agora anteciparia a 2.5 |
+| L2 | `lessons[].quiz` em `/progress` | Fora da resposta até a 2.5 | Sem tentativas não há o que resumir; `null` sugeriria aula sem quiz |
+| L3 | `/progress` | Campos aditivos `enrolled_at`, `completed_lessons`, `total_lessons`, `new_lessons_available`, `next_lesson`; `lessons` com todas as aulas públicas e `status` `not_started`/`completed` | O frontend precisa distinguir progresso, total, curso concluído com aulas novas e onde continuar sem recalcular regras |
+| L4 | `/me/enrollments` de curso arquivado | `total_lessons` e `percent` nulos; `completed_lessons` = conclusões gravadas | Conteúdo arquivado não tem aulas públicas; o histórico continua do jogador (R13a) |
+| L5 | `last_activity_at` | Só muda com uma conclusão nova (ou na matrícula) | Repetir uma escrita não grava nada; "continuar" usa a atividade real |
+| L6 | FK de `lesson_progress.lesson_id` | Só a composta `(lesson_id, course_id)` | Ela já garante a aula e o curso da aula; a simples seria redundante |
+| L7 | Zod no navegador | `z.config({ jitless: true })` | O teste de `new Function` do Zod violaria a CSP sem `unsafe-eval` |
+| L8 | Painel | Cartão "Academy · Em breve" mantido; "Meu progresso" no menu da área logada | O cartão é escopo da 2.6 |
+| L9 | Concorrência | Teste com dois processos reais (`tests/Concurrency/LearningConcurrencyTest.php`), trava segura por uma terceira conexão | Mesmo método do teste do último admin: determinístico, banco descartável |
+
+Riscos remanescentes: o cabeçalho público continua mostrando "Entrar" para quem está logado (as
+ações de Learning nas páginas públicas reconhecem a sessão); o percentual é calculado a cada
+leitura (barato com os índices atuais; revisar se o catálogo crescer muito).
+
 ## Etapas seguintes (resumo)
 
 | Etapa | Entrega |

@@ -48,7 +48,33 @@ arch('Academy enums are backed enums')
 // Fronteira (plano da 2.1): só a própria Academy usa os models dela; o Learning entra na 2.4.
 arch('only the Academy module uses Academy models')
     ->expect('App\Modules\Academy\Models')
-    ->toOnlyBeUsedIn(['App\Modules\Academy', 'Database\Factories\Academy']);
+    ->toOnlyBeUsedIn(['App\Modules\Academy', 'Database\Factories\Academy', 'App\Modules\Learning', 'Database\Factories\Learning']);
+
+// Learning (etapa 2.4): dados do jogador. Usa o catálogo da Academy; ninguém usa os models dele.
+arch('Learning models are Eloquent models')
+    ->expect('App\Modules\Learning\Models')
+    ->toExtend('Illuminate\Database\Eloquent\Model');
+
+arch('Learning enums are backed enums')
+    ->expect('App\Modules\Learning\Enums')
+    ->toBeStringBackedEnums();
+
+arch('only the Learning module uses Learning models')
+    ->expect('App\Modules\Learning\Models')
+    ->toOnlyBeUsedIn(['App\Modules\Learning', 'Database\Factories\Learning']);
+
+arch('Learning does not depend on Teams')
+    ->expect('App\Modules\Learning')
+    ->not->toUse(['App\Modules\Teams']);
+
+arch('Learning controllers do not query the database directly')
+    ->expect('Illuminate\Support\Facades\DB')
+    ->not->toBeUsedIn('App\Modules\Learning\Http');
+
+arch('Learning policies are classes named *Policy')
+    ->expect('App\Modules\Learning\Policies')
+    ->toBeClasses()
+    ->toHaveSuffix('Policy');
 
 // ADR 0015: o Learning depende da Academy, nunca o contrário (o uso de quizzes vem por contrato).
 arch('Academy does not depend on Learning, Teams or Identity')

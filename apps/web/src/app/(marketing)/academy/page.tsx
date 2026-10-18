@@ -11,6 +11,8 @@ import {
   LevelFilter,
 } from "@/features/academy/components/catalog"
 import { ACADEMY_PATH } from "@/features/academy/lib/paths"
+import { getMyEnrollments } from "@/features/learning/api/progress"
+import { EnrollmentBadge } from "@/features/learning/components/enrollment-badge"
 
 const DESCRIPTION =
   "Cursos de Counter-Strike 2 com método: movimentação, mira, utilitários e tomada de decisão, do iniciante ao avançado."
@@ -69,13 +71,24 @@ async function CatalogResults({
   searchParams: PageProps<"/academy">["searchParams"]
 }) {
   const { level, page } = catalogFilters(await searchParams)
-  const result = await getCourses(level, page)
+  // Em paralelo: o catálogo (igual para todos) e as matrículas do jogador (só com sessão).
+  const [result, mine] = await Promise.all([getCourses(level, page), getMyEnrollments()])
+  const enrollments = new Map(
+    mine.kind === "player" ? mine.enrollments.map((item) => [item.course.slug, item]) : [],
+  )
 
   return (
     <>
       <LevelFilter current={level} />
       {result.status === "ok" ? (
-        <CourseCatalog list={result.data} level={level} />
+        <CourseCatalog
+          list={result.data}
+          level={level}
+          renderCourseStatus={(course) => {
+            const enrollment = enrollments.get(course)
+            return enrollment ? <EnrollmentBadge enrollment={enrollment} /> : null
+          }}
+        />
       ) : (
         <AcademyUnavailable retryHref={catalogHref(level, page)} />
       )}

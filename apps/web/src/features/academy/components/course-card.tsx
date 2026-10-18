@@ -10,7 +10,13 @@ import { CourseStats, LevelBadge } from "./course-meta"
  * Curso no catálogo. O cartão inteiro é clicável pelo link do título (um único link por
  * cartão: o leitor de tela não ouve "Ver curso" repetido).
  */
-export function CourseCard({ course }: { course: CourseSummary }) {
+export function CourseCard({
+  course,
+  status,
+}: {
+  course: CourseSummary
+  status?: React.ReactNode
+}) {
   return (
     <article className="group relative flex flex-col overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm transition-colors focus-within:border-primary/60 hover:border-primary/60">
       <div className="relative">
@@ -27,6 +33,7 @@ export function CourseCard({ course }: { course: CourseSummary }) {
           </Link>
         </h2>
         <p className="line-clamp-3 text-sm text-muted-foreground">{course.summary}</p>
+        {status}
         <div className="mt-auto flex items-end justify-between gap-3 pt-2">
           <CourseStats
             moduleCount={course.module_count}

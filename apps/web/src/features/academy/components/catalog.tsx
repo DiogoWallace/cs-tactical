@@ -110,7 +110,16 @@ export function CatalogPagination({
 }
 
 /** Lista de cursos de uma página do catálogo, com os estados vazios. */
-export function CourseCatalog({ list, level }: { list: CourseList; level: CourseLevel | null }) {
+export function CourseCatalog({
+  list,
+  level,
+  renderCourseStatus,
+}: {
+  list: CourseList
+  level: CourseLevel | null
+  /** Marca do jogador em cada curso (Learning, etapa 2.4), montada pela página. */
+  renderCourseStatus?: (course: string) => React.ReactNode
+}) {
   const { data: courses, meta } = list
 
   if (courses.length === 0) {
@@ -143,7 +152,7 @@ export function CourseCatalog({ list, level }: { list: CourseList; level: Course
       <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {courses.map((course) => (
           <li key={course.slug} className="flex">
-            <CourseCard course={course} />
+            <CourseCard course={course} status={renderCourseStatus?.(course.slug)} />
           </li>
         ))}
       </ul>

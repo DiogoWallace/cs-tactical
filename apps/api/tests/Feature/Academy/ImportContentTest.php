@@ -428,10 +428,11 @@ it('does not run while another process holds the content lock', function () {
 });
 
 // Importar é só pelo terminal (matriz de autorização): na 2.1 não havia rota da Academy; desde a
-// 2.2 existem apenas as leituras do catálogo (docs/api/academy-v1.md), nenhuma que escreva.
+// 2.2 existem apenas as leituras do catálogo (docs/api/academy-v1.md), nenhuma que escreva. As
+// rotas do Learning (2.4) também ficam sob /academy, mas são do módulo Learning.
 it('exposes only the read-only catalog routes over HTTP, never the import', function () {
     $academyRoutes = collect(Route::getRoutes()->getRoutes())
-        ->filter(fn ($route) => str_contains($route->uri(), 'academy'))
+        ->filter(fn ($route) => str_starts_with($route->getActionName(), 'App\\Modules\\Academy\\'))
         ->mapWithKeys(fn ($route) => [$route->uri() => $route->methods()])
         ->sortKeys()
         ->all();
