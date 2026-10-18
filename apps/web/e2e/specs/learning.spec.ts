@@ -130,11 +130,16 @@ test("telas do Learning sem violações sérias de acessibilidade, nos dois tema
 
     await page.goto(COURSE)
     await expect(page.locator("html")).toHaveClass(new RegExp(`\\b${theme}\\b`))
-    const enroll = page.getByRole("button", { name: "Matricular-se no curso" })
+    // O painel chega por streaming (Suspense): espera o estado definitivo, matrícula pendente
+    // (primeiro tema) ou progresso (segundo tema, já matriculado), antes de decidir.
+    const panel = progressPanel(page)
+    const enroll = panel.getByRole("button", { name: "Matricular-se no curso" })
+    const progress = panel.getByRole("progressbar")
+    await expect(enroll.or(progress)).toBeVisible()
     if (await enroll.isVisible()) {
       await enroll.click()
     }
-    await expect(progressPanel(page).getByRole("progressbar")).toBeVisible()
+    await expect(progress).toBeVisible()
     await expectNoSeriousA11yViolations(page, `learning-curso-${theme}`)
 
     await page.goto(FIRST_LESSON)

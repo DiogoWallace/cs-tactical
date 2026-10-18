@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test"
 
 import { expectNoSeriousA11yViolations } from "../support/a11y"
+import { text } from "../support/auth"
 
 /**
  * Academy pública (etapa 2.3) contra a API real da stack E2E, com o conteúdo de
@@ -70,7 +71,7 @@ test.describe("Academy: visitante", () => {
 
     // O único curso intermediário é rascunho: filtro vazio, sem revelar o rascunho.
     await filter.getByRole("link", { name: "Intermediário" }).click()
-    await expect(page.getByText("Nenhum curso de nível intermediário")).toBeVisible()
+    await expect(text(page, "Nenhum curso de nível intermediário")).toBeVisible()
     await expectNoSecrets(page)
     await page.getByRole("link", { name: "Ver todos os cursos" }).click()
     await expect(page).toHaveURL("/academy")
@@ -92,6 +93,7 @@ test.describe("Academy: visitante", () => {
     await expect(content.getByRole("link").nth(0)).toContainText("Counter-strafe")
     await expect(content.getByRole("link").nth(0)).toContainText("Quiz")
     await expectNoSecrets(page)
+    // Sem filtro de visibilidade de propósito: o módulo em rascunho não pode estar nem escondido.
     await expect(page.getByText("Compras")).toHaveCount(0)
 
     await page.getByRole("link", { name: "Começar pela primeira aula" }).click()
@@ -103,7 +105,7 @@ test.describe("Academy: visitante", () => {
 
     await expect(page).toHaveTitle("Counter-strafe · Fundamentos E2E · CS Tactical")
     await expect(page.getByRole("heading", { level: 1, name: "Counter-strafe" })).toBeVisible()
-    await expect(page.getByText("Aula 1 de 3")).toBeVisible()
+    await expect(text(page, "Aula 1 de 3")).toBeVisible()
 
     const article = page.getByRole("article")
     await expect(
@@ -130,7 +132,7 @@ test.describe("Academy: visitante", () => {
       .poll(() => image.evaluate((img: HTMLImageElement) => img.naturalWidth))
       .toBeGreaterThan(0)
     await expect(
-      article.getByText("A velocidade cai a zero logo depois da tecla oposta."),
+      text(article, "A velocidade cai a zero logo depois da tecla oposta."),
     ).toBeVisible()
 
     await expect(article.getByRole("note", { name: "Treine offline" })).toContainText("Dica")
@@ -161,7 +163,7 @@ test.describe("Academy: visitante", () => {
       .getByRole("link", { name: /Próxima aula/ })
       .click()
     await expect(page).toHaveURL(`${COURSE}/aulas/posicionamento`)
-    await expect(page.getByText("Aula 3 de 3")).toBeVisible()
+    await expect(text(page, "Aula 3 de 3")).toBeVisible()
     await expect(
       page
         .getByRole("navigation", { name: "Navegação entre aulas" })
@@ -292,7 +294,7 @@ test.describe("Academy: acessibilidade e teclado", () => {
       await expectNoSeriousA11yViolations(page, `academy-catalogo-${theme}`)
 
       await page.goto("/academy?level=intermediate")
-      await expect(page.getByText("Nenhum curso de nível intermediário")).toBeVisible()
+      await expect(text(page, "Nenhum curso de nível intermediário")).toBeVisible()
       await expectNoSeriousA11yViolations(page, `academy-filtro-vazio-${theme}`)
 
       await page.goto(COURSE)
@@ -355,7 +357,7 @@ test.describe("Academy: celular", () => {
     expect(overflow).toBeLessThanOrEqual(0)
     await expect(page.getByRole("complementary", { name: "Conteúdo do curso" })).toBeHidden()
 
-    const toggle = page.getByText("Aulas do curso", { exact: true })
+    const toggle = text(page, "Aulas do curso", { exact: true })
     const list = page.getByRole("navigation", { name: "Aulas do curso" })
     await expect(list).toBeHidden()
     await toggle.tap()
