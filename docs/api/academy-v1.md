@@ -1,7 +1,7 @@
 # API da Academy e do Learning — contratos iniciais (v1)
 
 > Definido na etapa 2.0 (aprovado em 2026-10-17). **Catálogo implementado na etapa 2.2**
-> (`app/Modules/Academy/routes.php`); **Learning na etapa 2.4** (`app/Modules/Learning/routes.php`); quizzes ainda não. Convenções gerais
+> (`app/Modules/Academy/routes.php`); **Learning na etapa 2.4 e quizzes na 2.5** (`app/Modules/Learning/routes.php`). Convenções gerais
 > (formato, erros, códigos) em [convencoes.md](convencoes.md). Regras e autorização em
 > [academy.md](../architecture/academy.md).
 
@@ -17,10 +17,10 @@
 | PUT | `/api/v1/academy/courses/{course}/enrollment` | sim (+CSRF) | `learning-write` | 2.4 ✔ |
 | GET | `/api/v1/academy/courses/{course}/progress` | sim | `api` | 2.4 ✔ |
 | PUT | `/api/v1/academy/courses/{course}/lessons/{lesson}/completion` | sim (+CSRF) | `learning-write` | 2.4 ✔ |
-| POST | `/api/v1/academy/quizzes/{quiz}/attempts` | sim (+CSRF) | `quiz-attempt` | 2.5 |
-| POST | `/api/v1/academy/quiz-attempts/{attempt}/submission` | sim (+CSRF) | `quiz-attempt` | 2.5 |
-| GET | `/api/v1/academy/quiz-attempts/{attempt}` | sim | `api` | 2.5 |
-| GET | `/api/v1/me/quiz-attempts?quiz={key}` | sim | `api` | 2.5 |
+| POST | `/api/v1/academy/quizzes/{quiz}/attempts` | sim (+CSRF) | `quiz-attempt` | 2.5 ✔ |
+| POST | `/api/v1/academy/quiz-attempts/{attempt}/submission` | sim (+CSRF) | `quiz-attempt` | 2.5 ✔ |
+| GET | `/api/v1/academy/quiz-attempts/{attempt}` | sim | `api` | 2.5 ✔ |
+| GET | `/api/v1/me/quiz-attempts?quiz={key}` | sim | `api` | 2.5 ✔ |
 
 `{course}` e `{lesson}` são **slugs**; `{quiz}` é a `key` do quiz; `{attempt}` é UUID. As rotas
 públicas entram na lista explícita de `RouteAuthorizationTest`.
@@ -230,13 +230,13 @@ Cursos arquivados aparecem com `status: "archived"` só como histórico (R13a):
 ```
 
 - `lessons`: todas as aulas **públicas** do curso, na ordem do curso (posição do módulo, depois
-  da aula). `status`: `not_started` ou `completed` (`in_progress` chega com os quizzes, 2.5).
+  da aula). `status`: `not_started`, `in_progress` (quiz iniciado, aula não concluída; R10) ou `completed`.
 - `percent` = concluídas ÷ públicas (R11), com duas casas; aulas arquivadas saem do cálculo.
 - `next_lesson`: primeira aula pública não concluída (R10); `null` com tudo concluído.
 - `completed_at`: gravado ao concluir a última aula pública, nunca apagado (R12);
   `new_lessons_available` = curso concluído que ganhou aulas depois (ADR 0017).
 - `updated_since_completion` compara o `content_hash` atual com o da conclusão (ADR 0017).
-- O resumo do quiz por aula (`quiz`: tentativas, melhor nota) entra na etapa 2.5.
+- `quiz` (2.5): resumo do quiz **ativo** da aula, `{attempts_used, best_score_percent, passed}` (tentativas abertas e enviadas; melhor nota entre as enviadas), ou `null` sem quiz. Sem gabarito.
 
 Não matriculado: `enrolled: false`, números e `next_lesson` nulos, `new_lessons_available: false`
 e lista vazia (200). Curso não público (rascunho ou arquivado): **404**; o histórico de cursos
@@ -250,6 +250,27 @@ não grava nada; só uma conclusão nova atualiza `last_activity_at`. Aula não 
 curso ou inexistente: 404.
 
 ## Quizzes (autenticado)
+
+> Implementado na etapa 2.5 (`app/Modules/Learning`, tentativas são dados do jogador). Regras
+> comuns:
+>
+> - Só o jogador da sessão; tentativa de outro jogador ou inexistente responde **404** (Policy
+>   `QuizAttemptPolicy` como segunda barreira). Nenhum papel lê tentativas alheias.
+> - Correção no servidor contra o **snapshot** da tentativa (perguntas, opções, ordem, gabarito,
+>   explicações e nota mínima congelados no início). O cliente só envia as opções escolhidas;
+>   nota, acerto e aprovação enviados pelo navegador são ignorados.
+> - **Revisão liberada** (R20) = aprovado em alguma tentativa **ou** todas as `max_attempts`
+>   tentativas **enviadas**: uma última tentativa ainda aberta não libera o gabarito.
+>   `attempts_remaining` conta abertas e enviadas (R16).
+> - Um único componente (`QuizAttemptPresenter`) monta todas as respostas sobre tentativas.
+> - Concorrência: iniciar trava curso, módulo, aula e quiz (`FOR SHARE`) e a matrícula
+>   (`FOR UPDATE`); enviar trava a tentativa (`FOR UPDATE`). Dois inícios simultâneos geram uma
+>   tentativa; dois envios geram uma correção e um 409 (testes com processos reais).
+> - Iniciar também matricula (R14), marca a aula `in_progress` se não concluída (R10) e atualiza
+>   `last_activity_at`.
+> - Campos aditivos em relação aos exemplos abaixo: `kind` em cada pergunta do resultado;
+>   `options` (só `id` e `text`) também antes da liberação, para o jogador reconhecer o que marcou;
+>   `started_at`, `submitted_at` e `attempts_remaining` no resumo do histórico.
 
 ### `POST /api/v1/academy/quizzes/{quiz}/attempts`
 
@@ -338,7 +359,8 @@ Funciona também para quiz de aula arquivada (histórico, R13a), com as mesmas r
 
 Lista as tentativas do próprio usuário naquele quiz (resumo: número, data, revisão, nota,
 aprovado, `review_available`), mais recentes primeiro. Detalhes por tentativa no endpoint
-anterior.
+anterior. `quiz` obrigatório e no formato de `key` (senão **422**); quiz desconhecido devolve
+lista vazia (não revela se existe). Inclui quiz aposentado ou de aula arquivada (histórico).
 
 ## Códigos de erro novos
 

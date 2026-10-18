@@ -266,6 +266,36 @@ Riscos remanescentes: o cabeçalho público continua mostrando "Entrar" para que
 ações de Learning nas páginas públicas reconhecem a sessão); o percentual é calculado a cada
 leitura (barato com os índices atuais; revisar se o catálogo crescer muito).
 
+## Etapa 2.5 — Quizzes: tentativa, correção e revisão (implementada)
+
+No módulo `Learning` (tentativas são dados do jogador): tabelas `quiz_attempts` e
+`quiz_attempt_answers`, os quatro endpoints de [academy-v1.md](../api/academy-v1.md#quizzes-autenticado),
+a implementação real de `QuizUsage` e, no frontend, o quiz respondível no lugar do bloco `quiz_ref`.
+
+| Peça | Papel |
+|---|---|
+| `Actions/StartQuizAttempt` | quiz ativo de aula pública (`FOR SHARE` em curso, módulo, aula e quiz), auto-matrícula e trava da matrícula (`FOR UPDATE`); aberta → devolve; aprovado → 409; limite → 409; snapshot com gabarito, explicações e nota mínima; aula `in_progress` (R10) |
+| `Actions/SubmitQuizAttempt` | tentativa própria e aula pública; `FOR UPDATE` na tentativa (envio repetido → 409); respostas validadas contra o snapshot (422); correção tudo ou nada por pergunta (P6), nota com duas casas |
+| `Quizzes/QuizStanding*` e `Quizzes/QuizAttemptPresenter` | situação do jogador (tentativas usadas, aprovação, revisão liberada) e o **único** ponto que descreve tentativas, aplicando R20–R20b |
+| `Support/AttemptsQuizUsage` | "o quiz tem tentativas" para a importação aposentar perguntas e opções em vez de apagar |
+| Frontend | `QuizPanel` (visitante, iniciar, continuar, responder com `fieldset`/`legend`, resultado anunciado, revisão), tentativas iniciais lidas no servidor; `/progress` com o resumo do quiz por aula |
+
+### Etapa 2.5 — ajustes e interpretações
+
+| # | Ponto | Implementado | Motivo |
+|---|---|---|---|
+| Q1 | "Esgotou as tentativas" (R20) | Todas as `max_attempts` tentativas **enviadas**; a última ainda aberta não libera | O gabarito não pode aparecer enquanto ainda puder ser usado (ADR 0018, contexto) |
+| Q2 | Nota mínima | Gravada no snapshot e usada na correção | A tentativa segue a regra do momento em que começou (ADR 0018, item 7) |
+| Q3 | Quiz aposentado | Iniciar exige o quiz ativo; tentativa aberta de quiz aposentado ainda pode ser enviada se a aula for pública | O snapshot preserva tudo (item 8) |
+| Q4 | `/me/quiz-attempts` | `key` desconhecida → lista vazia; sem `quiz` → 422 | Não revelar se o quiz existe |
+| Q5 | Resultado antes da liberação | `options` só com `id` e `text` | O jogador reconhece o que marcou; nada do gabarito |
+| Q6 | `SafeMarkdown` | `as="span"` para Markdown em linha dentro de `<legend>` | HTML válido nas perguntas (enunciados são Markdown em linha) |
+| Q7 | Concorrência | Trava da matrícula (`FOR UPDATE`) serializa as tentativas do jogador no curso; o teste parte de jogador já matriculado | Sem isso, a criação da matrícula serializaria por acaso e o teste não mediria a trava (contraprova registrada) |
+
+Riscos remanescentes: o acerto/erro por pergunta permite eliminar opções em escolha única com
+poucas opções (compromisso aceito na ADR 0018, limitado por `max_attempts`); o limite
+`academy-public` compartilhado na stack E2E continua como pendência separada.
+
 ## Etapas seguintes (resumo)
 
 | Etapa | Entrega |

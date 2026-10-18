@@ -20,6 +20,8 @@ export const ACCOUNTS = {
   csp: { email: "csp@e2e.test", nickname: "e2e_csp" },
   learning: { email: "learning@e2e.test", nickname: "e2e_learning" },
   learningA11y: { email: "learning-a11y@e2e.test", nickname: "e2e_learning_a11y" },
+  quiz: { email: "quiz@e2e.test", nickname: "e2e_quiz" },
+  quizA11y: { email: "quiz-a11y@e2e.test", nickname: "e2e_quiz_a11y" },
 } as const
 
 export type Account = { email: string; nickname: string }

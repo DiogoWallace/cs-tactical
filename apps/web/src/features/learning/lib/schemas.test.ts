@@ -1,7 +1,19 @@
 import { describe, expect, it } from "vitest"
 
-import { enrolled, enrollmentSummary, notEnrolled } from "../test/fixtures"
 import {
+  attemptSummary,
+  enrolled,
+  enrollmentSummary,
+  notEnrolled,
+  openAttempt,
+  Q1_A,
+  Q1_D,
+  resultWithoutReview,
+  resultWithReview,
+} from "../test/fixtures"
+import {
+  attemptListSchema,
+  attemptResponseSchema,
   courseProgressResponseSchema,
   enrollmentListSchema,
   enrollmentResponseSchema,
@@ -81,6 +93,56 @@ describe("enrollment schemas", () => {
   it("rejects courses in states the player can never be enrolled in", () => {
     const draft = enrollmentSummary({ course: { slug: "x", title: "X", status: "draft" as never } })
     expect(enrollmentListSchema.safeParse({ data: [draft] }).success).toBe(false)
+  })
+})
+
+describe("quiz attempt schemas", () => {
+  it("accept the open attempt, the results and the history", () => {
+    expect(attemptResponseSchema.safeParse({ data: openAttempt() }).success).toBe(true)
+    expect(attemptResponseSchema.safeParse({ data: resultWithoutReview() }).success).toBe(true)
+    expect(attemptResponseSchema.safeParse({ data: resultWithReview() }).success).toBe(true)
+    expect(attemptListSchema.safeParse({ data: [attemptSummary()] }).success).toBe(true)
+  })
+
+  it("reject any answer key in an open attempt or in a result before the review", () => {
+    const open = openAttempt()
+    const leakedOpen = {
+      ...open,
+      questions: [
+        {
+          ...open.questions[0]!,
+          options: [
+            { id: Q1_D, text: "D", correct: true },
+            { id: Q1_A, text: "A" },
+          ],
+        },
+      ],
+    }
+    const leakedResult = {
+      ...resultWithoutReview(),
+      questions: resultWithoutReview().questions.map((question) => ({
+        ...question,
+        explanation: "x",
+      })),
+    }
+
+    expect(attemptResponseSchema.safeParse({ data: leakedOpen }).success).toBe(false)
+    expect(attemptResponseSchema.safeParse({ data: leakedResult }).success).toBe(false)
+  })
+
+  it("accepts the quiz summary in /progress lessons", () => {
+    const progress = enrolled([], {
+      lessons: [
+        {
+          slug: "a",
+          status: "in_progress",
+          completed_at: null,
+          updated_since_completion: false,
+          quiz: { attempts_used: 1, best_score_percent: null, passed: false },
+        },
+      ],
+    })
+    expect(courseProgressResponseSchema.safeParse({ data: progress }).success).toBe(true)
   })
 })
 

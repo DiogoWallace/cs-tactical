@@ -12,7 +12,7 @@ const IDENTITY_TABLES = ['users', 'profiles', 'password_reset_tokens'];
 
 // As migrations da Academy e do Learning (Fase 2) vêm depois das do Identity; o rollback por passos precisa
 // desfazê-las primeiro.
-const MIGRATIONS_AFTER_IDENTITY = 7;
+const MIGRATIONS_AFTER_IDENTITY = 9;
 
 it('rolls back and re-applies the identity migrations', function () {
     $this->artisan('migrate:rollback', ['--step' => 4 + MIGRATIONS_AFTER_IDENTITY])->assertSuccessful();

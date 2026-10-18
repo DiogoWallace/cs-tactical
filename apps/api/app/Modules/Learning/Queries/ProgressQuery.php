@@ -5,6 +5,7 @@ namespace App\Modules\Learning\Queries;
 use App\Modules\Academy\Enums\PublicationStatus;
 use App\Modules\Academy\Models\Course;
 use App\Modules\Academy\Models\Lesson;
+use App\Modules\Academy\Models\Quiz;
 use App\Modules\Identity\Models\User;
 use App\Modules\Learning\Enums\LessonProgressStatus;
 use App\Modules\Learning\Models\Enrollment;
@@ -26,7 +27,10 @@ final class ProgressQuery
         return Course::query()->visible()->where('courses.slug', $slug)->first();
     }
 
-    /** Progresso do jogador num curso público: 3 consultas (matrícula, aulas públicas, conclusões). */
+    /**
+     * Progresso do jogador num curso público: 4 consultas (matrícula, aulas públicas, progresso das
+     * aulas e resumo dos quizzes ativos).
+     */
     public function forCourse(User $user, Course $course): CourseProgress
     {
         $enrollment = Enrollment::query()
@@ -40,8 +44,45 @@ final class ProgressQuery
 
         $lessons = $this->publicLessons([$course->id]);
         $completions = $this->completions($user, [$course->id]);
+        $quizzes = $this->quizSummaries($user, $lessons->pluck('id')->all());
 
-        return $this->build($enrollment, $lessons, $completions);
+        return $this->build($enrollment, $lessons, $completions, $quizzes);
+    }
+
+    /**
+     * Resumo do quiz **ativo** de cada aula (contrato de /progress): tentativas usadas (abertas e
+     * enviadas), melhor nota e se já foi aprovado. Sem gabarito, nada que a revisão proteja.
+     *
+     * @param  list<string>  $lessonIds
+     * @return array<string, array{attempts_used: int, best_score_percent: float|null, passed: bool}>
+     */
+    private function quizSummaries(User $user, array $lessonIds): array
+    {
+        if ($lessonIds === []) {
+            return [];
+        }
+
+        $rows = Quiz::query()
+            ->whereNull('quizzes.retired_at')
+            ->whereIn('quizzes.lesson_id', $lessonIds)
+            ->leftJoin('quiz_attempts', function ($join) use ($user) {
+                $join->on('quiz_attempts.quiz_id', '=', 'quizzes.id')->where('quiz_attempts.user_id', $user->getKey());
+            })
+            ->groupBy('quizzes.id', 'quizzes.lesson_id')
+            ->selectRaw('quizzes.lesson_id, count(quiz_attempts.id) as used, max(quiz_attempts.score_percent) as best, coalesce(bool_or(quiz_attempts.passed), false) as passed')
+            ->toBase()
+            ->get();
+
+        $summaries = [];
+        foreach ($rows as $row) {
+            $summaries[(string) $row->lesson_id] = [
+                'attempts_used' => (int) $row->used,
+                'best_score_percent' => $row->best === null ? null : (float) $row->best,
+                'passed' => (bool) $row->passed,
+            ];
+        }
+
+        return $summaries;
     }
 
     /**
@@ -71,7 +112,8 @@ final class ProgressQuery
             if ($enrollment->course->status !== PublicationStatus::Published) {
                 return new EnrollmentSummary(
                     $enrollment,
-                    completedLessons: $completions->where('course_id', $enrollment->course_id)->count(),
+                    completedLessons: $completions->where('course_id', $enrollment->course_id)
+                        ->where('status', LessonProgressStatus::Completed)->count(),
                     totalLessons: null,
                     nextLesson: null,
                 );
@@ -85,20 +127,24 @@ final class ProgressQuery
 
     /**
      * @param  Collection<int, Lesson>  $lessons  aulas públicas (de um ou mais cursos), em ordem
-     * @param  Collection<string, LessonProgress>  $completions  conclusões do jogador, por lesson_id
+     * @param  Collection<string, LessonProgress>  $completions  progresso do jogador por lesson_id (concluídas e em andamento)
+     * @param  array<string, array{attempts_used: int, best_score_percent: float|null, passed: bool}>|null  $quizzes  null = sem resumo de quiz
      */
-    private function build(Enrollment $enrollment, Collection $lessons, Collection $completions): CourseProgress
+    private function build(Enrollment $enrollment, Collection $lessons, Collection $completions, ?array $quizzes = null): CourseProgress
     {
         $items = [];
         $next = null;
         foreach ($lessons->where('course_id', $enrollment->course_id) as $lesson) {
-            $completion = $completions->get($lesson->id);
+            $progress = $completions->get($lesson->id);
+            $completion = $progress?->status === LessonProgressStatus::Completed ? $progress : null;
             $item = new LessonProgressItem(
                 slug: $lesson->slug,
                 title: $lesson->title,
                 completed: $completion !== null,
                 completedAt: $completion?->completed_at,
                 updatedSinceCompletion: $completion !== null && $completion->completed_content_hash !== $lesson->content_hash,
+                inProgress: $progress?->status === LessonProgressStatus::InProgress,
+                quiz: $quizzes[$lesson->id] ?? null,
             );
             $items[] = $item;
             $next ??= $item->completed ? null : $item;
@@ -127,7 +173,8 @@ final class ProgressQuery
     }
 
     /**
-     * Conclusões do jogador nos cursos (inclusive de aulas arquivadas, para o histórico).
+     * Progresso do jogador nas aulas dos cursos: conclusões (inclusive de aulas arquivadas, para o
+     * histórico) e aulas em andamento (quiz iniciado, R10).
      *
      * @param  list<string>  $courseIds
      * @return Collection<string, LessonProgress>
@@ -137,8 +184,7 @@ final class ProgressQuery
         return LessonProgress::query()
             ->where('user_id', $user->getKey())
             ->whereIn('course_id', $courseIds)
-            ->where('status', LessonProgressStatus::Completed->value)
-            ->get(['lesson_id', 'course_id', 'completed_at', 'completed_content_hash'])
+            ->get(['lesson_id', 'course_id', 'status', 'completed_at', 'completed_content_hash'])
             ->keyBy('lesson_id');
     }
 }

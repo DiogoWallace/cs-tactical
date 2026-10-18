@@ -87,8 +87,8 @@ describe('GET /api/v1/academy/courses/{course}/progress', function () {
 
         $sql = LearningFixtures::sql(fn () => $this->getJson('/api/v1/academy/courses/fundamentos/progress')->assertOk());
 
-        // curso público, matrícula, aulas públicas e conclusões.
-        expect($sql['queries'])->toHaveCount(4);
+        // curso público, matrícula, aulas públicas, progresso das aulas e resumo dos quizzes.
+        expect($sql['queries'])->toHaveCount(5);
     })->with([0, 12]);
 });
 

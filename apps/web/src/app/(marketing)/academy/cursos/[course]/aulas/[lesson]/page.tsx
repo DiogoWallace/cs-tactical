@@ -6,7 +6,8 @@ import { getCourse, getLesson } from "@/features/academy/api/catalog"
 import { AcademyUnavailable } from "@/features/academy/components/catalog"
 import { LessonSkeleton, LessonView } from "@/features/academy/components/lesson-view"
 import { lessonPath } from "@/features/academy/lib/paths"
-import { getCourseProgress } from "@/features/learning/api/progress"
+import { getCourseProgress, getQuizAttempts } from "@/features/learning/api/progress"
+import { QuizPanel } from "@/features/learning/components/quiz-panel"
 import { CompleteLessonCard } from "@/features/learning/components/complete-lesson-card"
 import { CourseLearningProvider } from "@/features/learning/components/course-learning-provider"
 import { LessonStatusMark } from "@/features/learning/components/lesson-status-mark"
@@ -55,6 +56,11 @@ async function LessonContent({ params }: { params: Props["params"] }) {
   if (lessonResult.status === "unavailable" || courseResult.status === "unavailable") {
     return <AcademyUnavailable retryHref={lessonPath(course, lesson)} />
   }
+
+  // Tentativas do jogador no quiz da aula (só com sessão; nunca o gabarito, que vem só da API).
+  const quizBlock = lessonResult.data.content.blocks.find((block) => block.type === "quiz_ref")
+  const attempts = quizBlock ? await getQuizAttempts(quizBlock.data.quiz) : null
+
   return (
     <CourseLearningProvider course={courseResult.data.slug} initial={learning}>
       <LessonView
@@ -62,6 +68,13 @@ async function LessonContent({ params }: { params: Props["params"] }) {
         lesson={lessonResult.data}
         completion={<CompleteLessonCard lesson={lessonResult.data.slug} />}
         renderLessonStatus={(item) => <LessonStatusMark lesson={item} />}
+        renderQuiz={(quiz) => (
+          <QuizPanel
+            quiz={quiz}
+            lesson={lessonResult.data.slug}
+            initial={attempts ?? { kind: "anonymous" }}
+          />
+        )}
       />
     </CourseLearningProvider>
   )

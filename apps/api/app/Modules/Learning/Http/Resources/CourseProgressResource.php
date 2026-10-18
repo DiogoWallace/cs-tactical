@@ -9,7 +9,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * Progresso do jogador num curso (GET .../progress e PUT .../completion). Lista fechada: nenhum
- * id, nenhum dado de outro jogador, nada de quiz além do que a 2.5 trouxer.
+ * id, nenhum dado de outro jogador; do quiz, só o resumo (tentativas, melhor nota, aprovado).
  *
  * Sem matrícula: `enrolled: false`, números nulos e `lessons` vazia (contrato).
  *
@@ -48,9 +48,11 @@ class CourseProgressResource extends JsonResource
             'next_lesson' => self::lessonLink($progress->nextLesson),
             'lessons' => array_map(fn (LessonProgressItem $item) => [
                 'slug' => $item->slug,
-                'status' => $item->completed ? 'completed' : 'not_started',
+                'status' => $item->status(),
                 'completed_at' => $item->completedAt?->toIso8601ZuluString(),
                 'updated_since_completion' => $item->updatedSinceCompletion,
+                // Resumo do quiz ativo da aula (2.5); null se a aula não tem quiz.
+                'quiz' => $item->quiz,
             ], $progress->lessons),
         ];
     }

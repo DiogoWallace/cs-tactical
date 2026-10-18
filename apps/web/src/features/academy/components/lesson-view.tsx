@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 
 import { ACADEMY_PATH, coursePath, lessonPath } from "../lib/paths"
-import type { Course, Lesson } from "../lib/schemas"
+import type { Course, Lesson, QuizRefBlock } from "../lib/schemas"
 import { LessonBlocks } from "./blocks/lesson-blocks"
 import { formatDuration } from "./course-meta"
 
@@ -33,12 +33,15 @@ export function LessonView({
   lesson,
   completion,
   renderLessonStatus,
+  renderQuiz,
 }: {
   course: Course
   lesson: Lesson
   /** Conclusão da aula (Learning, etapa 2.4), montada pela página: a Academy não depende do Learning. */
   completion?: React.ReactNode
   renderLessonStatus?: (lesson: string) => React.ReactNode
+  /** Quiz respondível (Learning, etapa 2.5) no lugar do bloco `quiz_ref`. */
+  renderQuiz?: (quiz: QuizRefBlock["data"]) => React.ReactNode
 }) {
   const { number, total } = lessonPosition(course, lesson.slug)
 
@@ -108,7 +111,7 @@ export function LessonView({
 
         <article className="max-w-3xl">
           {lesson.content.blocks.length > 0 ? (
-            <LessonBlocks blocks={lesson.content.blocks} />
+            <LessonBlocks blocks={lesson.content.blocks} renderQuiz={renderQuiz} />
           ) : (
             <p className="text-muted-foreground">
               O conteúdo desta aula ainda não está disponível.

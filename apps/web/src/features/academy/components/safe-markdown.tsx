@@ -69,6 +69,12 @@ const inlineComponents: Components = {
   ),
 }
 
+/** Em linha dentro de elementos de frase: o parágrafo vira só o conteúdo (sem `<p>`). */
+const phrasingComponents: Components = {
+  ...inlineComponents,
+  p: ({ children }) => <>{children}</>,
+}
+
 const blockComponents: Components = {
   ...inlineComponents,
   h1: ({ children }) => <h2 className="mt-10 text-2xl font-semibold tracking-tight">{children}</h2>,
@@ -104,20 +110,23 @@ const blockComponents: Components = {
   hr: () => <hr className="my-8 border-border" />,
 }
 
-type Props = { text: string; inline?: boolean; className?: string }
+/** `as="span"`: só com `inline`, para caber em elementos de frase (ex.: `<legend>` de pergunta). */
+type Props = { text: string; inline?: boolean; className?: string; as?: "div" | "span" }
 
-export function SafeMarkdown({ text, inline = false, className }: Props) {
+export function SafeMarkdown({ text, inline = false, className, as: Wrapper = "div" }: Props) {
   return (
-    <div className={cn("text-base text-foreground", className)}>
+    <Wrapper className={cn("text-base text-foreground", className)}>
       <Markdown
         skipHtml
         allowedElements={inline ? INLINE_ELEMENTS : BLOCK_ELEMENTS}
         unwrapDisallowed
         urlTransform={safeUrl}
-        components={inline ? inlineComponents : blockComponents}
+        components={
+          inline ? (Wrapper === "span" ? phrasingComponents : inlineComponents) : blockComponents
+        }
       >
         {text}
       </Markdown>
-    </div>
+    </Wrapper>
   )
 }

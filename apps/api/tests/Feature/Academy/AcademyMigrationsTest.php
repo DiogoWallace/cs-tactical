@@ -36,8 +36,8 @@ function violates(string $constraint, Closure $write): void
     throw new RuntimeException("A escrita deveria violar {$constraint}.");
 }
 
-// As do Learning (etapa 2.4) vêm depois e referenciam o catálogo: são desfeitas primeiro.
-const MIGRATIONS_AFTER_ACADEMY = 2;
+// As do Learning (2.4 e 2.5) vêm depois e referenciam o catálogo: são desfeitas primeiro.
+const MIGRATIONS_AFTER_ACADEMY = 4;
 
 it('rolls back and re-applies the academy migrations', function () {
     $this->artisan('migrate:rollback', ['--step' => 5 + MIGRATIONS_AFTER_ACADEMY])->assertSuccessful();
