@@ -86,6 +86,14 @@ jobs:
       - name: Pest
         run: vendor/bin/pest
 
+      # tests/Concurrency fica fora dos testsuites do phpunit.xml (grupo `concurrency`). Cada teste
+      # cria e apaga o próprio banco descartável neste mesmo PostgreSQL e dispara processos PHP
+      # independentes; roda depois do Pest, sem compartilhar banco com ele. Sem retry: uma falha
+      # aqui é uma corrida real. docs/development/testes-de-concorrencia.md
+      - name: Pest (concorrência)
+        run: vendor/bin/pest tests/Concurrency --group=concurrency --fail-on-empty-test-suite
+        timeout-minutes: 5
+
   web:
     name: Web (Next.js)
     runs-on: ubuntu-24.04

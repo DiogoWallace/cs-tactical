@@ -47,7 +47,7 @@
         ],
         "test:concurrency": [
             "@php artisan config:clear --ansi",
-            "pest tests/Concurrency --group=concurrency"
+            "pest tests/Concurrency --group=concurrency --fail-on-empty-test-suite"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",

@@ -76,7 +76,7 @@ make test && make lint
 | `make test`, `make test-api`, `make test-web` | Testes |
 | `make e2e`, `make e2e-report`, `make e2e-down` | Testes E2E (Playwright) numa stack isolada e descartável; ver [docs/development/e2e.md](docs/development/e2e.md) |
 | `make coverage` | Cobertura de testes da API (pcov) e do frontend (v8); ver [docs/development/cobertura.md](docs/development/cobertura.md) |
-| `make test-concurrency` | Teste de concorrência do último admin (PostgreSQL real, banco descartável) |
+| `make test-concurrency` | Testes de concorrência com processos reais (último admin, matrícula e conclusão simultâneas); também rodam na CI. Ver [docs/development/testes-de-concorrencia.md](docs/development/testes-de-concorrencia.md) |
 | `make lint`, `make fmt` | Verificação e formatação de código |
 | `make artisan c="..."`, `make composer c="..."` | Artisan e Composer no container da API |
 | `make pnpm c="..."` | pnpm no container do frontend |
