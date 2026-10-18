@@ -50,6 +50,10 @@ class PrepareE2eDatabaseCommand extends Command
         'learning-a11y@e2e.test' => ['nickname' => 'e2e_learning_a11y', 'verified' => true],
         'quiz@e2e.test' => ['nickname' => 'e2e_quiz', 'verified' => true],
         'quiz-a11y@e2e.test' => ['nickname' => 'e2e_quiz_a11y', 'verified' => true],
+        'navigation@e2e.test' => ['nickname' => 'e2e_navigation', 'verified' => true],
+        'navigation-mobile@e2e.test' => ['nickname' => 'e2e_nav_mobile', 'verified' => true],
+        'navigation-a11y@e2e.test' => ['nickname' => 'e2e_navigation_a11y', 'verified' => true],
+        'dashboard@e2e.test' => ['nickname' => 'e2e_dashboard', 'verified' => true],
     ];
 
     protected $signature = 'e2e:prepare';

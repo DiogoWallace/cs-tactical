@@ -296,6 +296,48 @@ Riscos remanescentes: o acerto/erro por pergunta permite eliminar opções em es
 poucas opções (compromisso aceito na ADR 0018, limitado por `max_attempts`); o limite
 `academy-public` compartilhado na stack E2E continua como pendência separada.
 
+## Etapa 2.6 — Painel e integração da Academy (implementada)
+
+Só frontend: nenhum endpoint, migration ou regra de negócio nova. O painel e o cabeçalho usam os
+contratos que já existiam (`GET /api/v1/me` e `GET /api/v1/me/enrollments`).
+
+| Peça | Papel |
+|---|---|
+| `features/identity/api/get-session-state.ts` | sessão vista pelas páginas públicas: `visitor` (sem cookie, sem chamar a API, ou `401`), `user` (`/me` válido), `unknown` (cookie com a API sem resposta) |
+| `features/identity/components/session-header.tsx` | cabeçalho do layout `(marketing)`, atrás de `<Suspense>`: visitante → `SiteHeader`; logado → `AppHeaderBar` (extraído do `AppHeader`, o mesmo da área logada) |
+| `components/site-header.tsx` | `SiteHeader` com o modo `sessionUnknown` e o `SiteHeaderSkeleton` neutro (só a marca) |
+| `features/learning/components/academy-dashboard-card.tsx` | cartão da Academy no painel, no lugar de "Academy · Em breve" |
+| `app/(app)/painel/page.tsx` | matrículas pedidas junto com o usuário (sem cascata); cartão no próprio `<Suspense>` |
+| `app/(marketing)/page.tsx` | ação principal conforme a sessão ("Ir para o painel" ou "Criar conta"); selo "Fase 2 · Academy" |
+
+### Etapa 2.6 — decisões
+
+| # | Ponto | Implementado | Motivo |
+|---|---|---|---|
+| D1 | Cabeçalho das páginas públicas | Escolhido no servidor por sessão, no mesmo layout; nenhuma página duplicada | `/academy` continua pública e cacheável no shell; quem está logado não vê "Entrar"/"Criar conta" (risco registrado na 2.4) |
+| D2 | "Continuar estudando" | Primeira matrícula de curso público com `next_lesson`, na ordem de `/me/enrollments` (`last_activity_at` desc, empate pelo id) | Critério determinístico com dados reais. `last_activity_at` muda com matrícula, conclusão de aula ou envio de quiz: o cartão diz "última atividade registrada", nunca "último acesso" (abrir uma aula não grava nada) |
+| D3 | Números do cartão | Cursos matriculados (todas as matrículas, inclusive arquivadas), cursos concluídos (`completed_at`), aulas concluídas (soma de `completed_lessons`) | Só contagens que a API já devolve; nenhuma métrica inventada |
+| D4 | Estados do cartão | Carregando (esqueleto com `role=status`), sem matrícula, em andamento, tudo em dia, API indisponível (`alert` + tentar de novo), sessão expirada (`alert` + entrar de novo, voltando ao painel) | Requisitos da etapa; o resto do painel não depende das matrículas |
+| D5 | Sessão desconhecida | Cookie presente e `/me` com erro: sem Entrar/Criar conta, link para o painel, nenhum dado da conta | Não afirmar que é visitante sem saber; o painel trata a sessão (redireciona em `401`, mostra erro se a API estiver fora) |
+| D6 | Fallback do cabeçalho | `SiteHeaderSkeleton` só com a marca | Evita o "flash" de navegação errada para quem está logado; o custo é um esqueleto curto no shell estático |
+| D7 | Layout do painel | Cartão da Academy em duas colunas e duas linhas a partir de `md`; Conta e Teams ao lado; uma coluna no celular | Prioriza o ponto de entrada útil sem redesenhar o painel |
+
+Impacto em streaming e cache: o layout público passou a ter um trecho dinâmico (o cabeçalho), como
+as páginas da Academy já tinham (matrícula e progresso). O shell estático (PPR) não leva dados da
+sessão; `serverFetch` usa `no-store`; `cache()` junta as leituras de `/me` e `/me/enrollments` da
+mesma requisição. No catálogo com sessão, o servidor faz `/me` além das leituras que já fazia.
+
+Testes: Vitest do cartão (critério, totais e os seis estados) e do cabeçalho (visitante, logado,
+desconhecido e esqueleto); E2E `navigation` (visitante, painel → Academy → curso → aula → Meu
+progresso → painel, sair numa página pública, painel sem matrícula, em andamento e concluído, menu
+do celular, axe nos dois temas) e `login` atualizado (o cartão "Academy · Em breve" saiu de
+propósito; Teams continua só informativo). Quatro contas novas no `e2e:prepare`.
+
+Riscos remanescentes: o cartão depende de `last_activity_at`, que não registra visitas a aulas (o
+"continuar" segue a última atividade gravada); páginas públicas com sessão fazem uma leitura de
+`/me` a mais por requisição (limite `api`, por usuário); o limite `academy-public` compartilhado
+na stack E2E continua como pendência separada.
+
 ## Etapas seguintes (resumo)
 
 | Etapa | Entrega |
@@ -304,6 +346,6 @@ poucas opções (compromisso aceito na ADR 0018, limitado por `max_attempts`); o
 | 2.3 | Telas do catálogo e da aula, blocos (Zod + componentes), Markdown seguro, CSP por rota para vídeo, axe nos dois temas |
 | 2.4 | `Learning`: matrícula, conclusão, progresso, "Meu progresso" com histórico de arquivados; Policies e matriz |
 | 2.5 | Quizzes: tentativa, snapshot, envio, correção, liberação do gabarito (R20), histórico, limites |
-| 2.6 | Painel: cartão da Academy com "continuar de onde parou" |
+| 2.6 | Painel: cartão da Academy com "continuar de onde parou"; cabeçalho das páginas públicas conforme a sessão (implementada) |
 | 2.7 | Revisão transversal de segurança, acessibilidade e desempenho |
 | 2.8 | Auditoria e fechamento da Fase 2 |

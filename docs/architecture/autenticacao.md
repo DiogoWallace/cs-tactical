@@ -127,7 +127,7 @@ Implementado na etapa 1.3. Grupos de rotas em `apps/web/src/app`:
 
 | Grupo | Rotas | Acesso |
 |---|---|---|
-| `(marketing)` | `/`, `/status` | público |
+| `(marketing)` | `/`, `/status`, `/academy/...` | público; o cabeçalho muda com a sessão (abaixo) |
 | `(auth)` | `/login`, `/cadastro` | público; quem já tem sessão válida vai ao painel |
 | `(app)` | `/painel` | autenticado |
 
@@ -138,6 +138,26 @@ Camadas de proteção da área `(app)`:
 3. **A autorização de cada dado é sempre da API.**
 
 Nas páginas de login e cadastro, `RedirectIfAuthenticated` consulta `/me` (não o cookie) e redireciona ao painel quem tem sessão válida. Usar o cookie criaria um laço login ↔ painel com uma sessão expirada, porque o Laravel mantém um cookie de sessão também para visitantes.
+
+**Cabeçalho das páginas públicas (etapa 2.6).** O conteúdo de `(marketing)` é o mesmo para todos;
+só o cabeçalho (e a ação principal do início) depende da sessão. `SessionHeader`
+(`features/identity/components/session-header.tsx`) fica atrás de `<Suspense>` no layout e usa
+`getSessionState()` (`features/identity/api/get-session-state.ts`):
+
+| Situação | Como é decidida | Cabeçalho |
+|---|---|---|
+| visitante | sem o cookie de sessão (a API nem é chamada) ou `/me` → `401` | `SiteHeader`: Academy, Entrar, Criar conta |
+| logado | `/me` → `200` | `AppHeaderBar`, o mesmo da área logada: Painel, Academy, Meu progresso, Conta, apelido, Sair |
+| desconhecida | há cookie, mas `/me` falhou (rede, `5xx`, `429`) | `SiteHeader` sem Entrar e Criar conta, com um link para o painel; nenhum dado da conta |
+
+- O fallback do `<Suspense>` (`SiteHeaderSkeleton`) tem só a marca e um espaço reservado: nenhum
+  link de visitante aparece antes da resposta, então quem está logado não vê "Entrar" piscar.
+- Com Cache Components/PPR, o shell estático só leva esse esqueleto; o cabeçalho real vem no
+  streaming da mesma resposta. `serverFetch` usa `no-store`, e `cache()` do React junta, na mesma
+  requisição, a leitura do cabeçalho com as das páginas (`/me` uma vez só).
+- Nenhuma página foi duplicada nem saiu de `(marketing)`: `/academy` continua pública, fora do
+  `matcher` do `proxy.ts`. Sair numa página pública usa o mesmo `LogoutButton` (navegação completa
+  para o login).
 
 O `next` passa sempre por `safeInternalPath` (`afterLoginPath` no login): URLs externas, `//host`, `/\host` e caracteres de controle levam ao painel.
 

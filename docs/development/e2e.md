@@ -55,19 +55,20 @@ Nenhum `sleep` ou `waitForTimeout`. A sincronização usa as esperas automática
 | Projeto | Dispositivo | Testes | Onde roda |
 | --- | --- | --- | --- |
 | `chromium-desktop` | Desktop Chrome | todos, menos `@mobile` | local e CI (obrigatório) |
-| `chromium-mobile` | Pixel 7 | só `@mobile` (menu do celular, aula e catálogo da Academy) | local |
+| `chromium-mobile` | Pixel 7 | só `@mobile` (menu do celular, inclusive nas páginas públicas com sessão; aula e catálogo da Academy) | local |
 
 ## O que é coberto
 
 | Spec | Fluxos |
 | --- | --- |
 | `registration` | cadastro → painel com aviso de e-mail não verificado → e-mail de confirmação |
-| `login` | senha errada (mensagem genérica); painel com Academy e Teams só informativos; logado no `/login` e `/cadastro` vai ao painel; "manter conectado" cria cookie de 30 dias, sem ele não cria |
+| `login` | senha errada (mensagem genérica); painel com o cartão da Academy e Teams só informativo; logado no `/login` e `/cadastro` vai ao painel; "manter conectado" cria cookie de 30 dias, sem ele não cria |
 | `session` | rota protegida sem cookie e com cookie inválido → login com `next`; volta ao destino com a query; 404 da área logada; sair: voltar no navegador não reabre a área logada e o cookie antigo não vale mais |
 | `redirects` | `next` inseguro (`//evil.example`, `https://evil.example`, `/\evil.example`, `javascript:`, tab e quebra de linha) nunca sai da aplicação; `next` interno é respeitado com a query |
 | `email-verification` | aviso + reenvio; link adulterado recusado; link sem sessão → login → volta e confirma |
 | `password-reset` | mesma resposta com e sem conta; token no fragmento e fragmento removido da URL; redefinição; link não reutilizável; senha antiga recusada e nova aceita |
 | `account` | perfil atualiza o apelido no cabeçalho; troca de e-mail com link no novo endereço e aviso no antigo; troca de senha mantém a sessão atual e encerra as outras |
+| `navigation` | etapa 2.6: visitante na Academy com Entrar e Criar conta; jogador do painel à Academy, curso, aula, Meu progresso e de volta ao painel sem o cabeçalho de visitante, sair numa página pública devolve o cabeçalho de visitante; painel sem matrícula, com curso em andamento ("Continuar estudando") e com curso concluído; axe no painel e na Academy logada nos dois temas; `@mobile`: menu da área logada nas páginas públicas e nenhuma rolagem horizontal |
 | `mobile-nav` (`@mobile`) | menu lateral: abre, Esc fecha e devolve o foco, navega, marca a página atual, sai |
 | `accessibility` | axe (WCAG 2.1 A/AA) nos temas escuro e claro: home, `/status`, login, cadastro, esqueci-senha, redefinir-senha (formulário e link inválido), painel, conta, 404, verificar-email e confirmar-email (estados de erro); falha em violações sérias ou críticas (todas vão anexadas ao relatório). Navegação por teclado no login e foco visível |
 | `security-headers` | headers de segurança das páginas (build de produção) e das respostas da API pelo proxy ([seguranca-http.md](../architecture/seguranca-http.md)) |
