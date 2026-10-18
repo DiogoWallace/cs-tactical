@@ -108,7 +108,7 @@ coverage: ## Cobertura de testes da API (pcov) e do frontend (v8), sem percentua
 	$(WEB) pnpm test:coverage
 
 .PHONY: test-concurrency
-test-concurrency: ## Teste de concorrência do último admin (PostgreSQL real, banco descartável)
+test-concurrency: ## Testes de concorrência (último admin, matrícula e conclusão simultâneas; PostgreSQL real, banco descartável)
 	$(API) composer test:concurrency
 
 .PHONY: e2e
