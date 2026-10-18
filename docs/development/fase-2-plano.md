@@ -347,5 +347,5 @@ na stack E2E continua como pendência separada.
 | 2.4 | `Learning`: matrícula, conclusão, progresso, "Meu progresso" com histórico de arquivados; Policies e matriz |
 | 2.5 | Quizzes: tentativa, snapshot, envio, correção, liberação do gabarito (R20), histórico, limites |
 | 2.6 | Painel: cartão da Academy com "continuar de onde parou"; cabeçalho das páginas públicas conforme a sessão (implementada) |
-| 2.7 | Revisão transversal de segurança, acessibilidade e desempenho |
+| 2.7 | Revisão transversal de segurança, acessibilidade e desempenho (plano aprovado em [fase-2-etapa-2.7-plano.md](fase-2-etapa-2.7-plano.md); execução por subetapa, 2.7a → 2.7d, cada uma com autorização própria) |
 | 2.8 | Auditoria e fechamento da Fase 2 |
