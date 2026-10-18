@@ -22,6 +22,10 @@ export const ACCOUNTS = {
   learningA11y: { email: "learning-a11y@e2e.test", nickname: "e2e_learning_a11y" },
   quiz: { email: "quiz@e2e.test", nickname: "e2e_quiz" },
   quizA11y: { email: "quiz-a11y@e2e.test", nickname: "e2e_quiz_a11y" },
+  navigation: { email: "navigation@e2e.test", nickname: "e2e_navigation" },
+  navigationMobile: { email: "navigation-mobile@e2e.test", nickname: "e2e_nav_mobile" },
+  navigationA11y: { email: "navigation-a11y@e2e.test", nickname: "e2e_navigation_a11y" },
+  dashboard: { email: "dashboard@e2e.test", nickname: "e2e_dashboard" },
 } as const
 
 export type Account = { email: string; nickname: string }

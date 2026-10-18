@@ -4,6 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { HOME_PATH } from "@/lib/routes"
 
 import { getCurrentUser } from "../api/get-current-user"
+import type { CurrentUser } from "../types"
 import { AppNav } from "./app-nav"
 
 function Brand() {
@@ -18,6 +19,15 @@ function Brand() {
 export async function AppHeader() {
   const user = await getCurrentUser()
 
+  return <AppHeaderBar user={user} />
+}
+
+/**
+ * O cabeçalho de quem está logado, com o usuário já lido. Também aparece nas páginas públicas
+ * (Academy, início) quando há sessão válida (SessionHeader), para a navegação não mudar ao sair
+ * da área logada.
+ */
+export function AppHeaderBar({ user }: { user: CurrentUser }) {
   return (
     <header className="border-b">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">

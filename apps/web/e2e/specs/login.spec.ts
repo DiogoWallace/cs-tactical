@@ -13,20 +13,28 @@ test.describe("login", () => {
     await expect(page).toHaveURL("/login")
   })
 
-  test("entra, mostra o painel e os módulos futuros só como informação", async ({ page }) => {
+  test("entra, mostra o painel com a Academy e o módulo futuro só como informação", async ({
+    page,
+  }) => {
     await login(page, ACCOUNTS.login)
 
     const account = text(page, ACCOUNTS.login.email).first()
     await expect(account).toBeVisible()
     await expect(text(page, "Verificado", { exact: true })).toBeVisible()
 
-    for (const area of ["academy", "teams"]) {
-      const card = page.getByTestId(`upcoming-${area}`)
-      await expect(card).toContainText("Em breve")
-      // Só informativos: nenhum link ou botão para áreas que ainda não existem.
-      await expect(card.getByRole("link")).toHaveCount(0)
-      await expect(card.getByRole("button")).toHaveCount(0)
-    }
+    // A Academy já existe (etapa 2.6): cartão real, com o convite para explorar os cursos.
+    const academy = page.getByRole("region", { name: "Academy" })
+    await expect(academy.getByRole("link", { name: "Explorar cursos" })).toHaveAttribute(
+      "href",
+      "/academy",
+    )
+    await expect(page.getByTestId("upcoming-academy")).toHaveCount(0)
+
+    // Teams ainda não existe: só informativo, nenhum link ou botão.
+    const teams = page.getByTestId("upcoming-teams")
+    await expect(teams).toContainText("Em breve")
+    await expect(teams.getByRole("link")).toHaveCount(0)
+    await expect(teams.getByRole("button")).toHaveCount(0)
 
     await page.getByRole("link", { name: "Editar perfil, e-mail e senha" }).click()
     await expect(page).toHaveURL("/painel/conta")

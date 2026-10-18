@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { Suspense } from "react"
-import { GraduationCapIcon, UserRoundCogIcon, UsersRoundIcon } from "lucide-react"
+import { UserRoundCogIcon, UsersRoundIcon } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -9,6 +9,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton"
 import { getCurrentUser } from "@/features/identity/api/get-current-user"
 import { ResendVerificationButton } from "@/features/identity/components/resend-verification-button"
+import { getMyEnrollments, type EnrollmentsLoad } from "@/features/learning/api/progress"
+import {
+  AcademyDashboardCard,
+  AcademyDashboardCardSkeleton,
+} from "@/features/learning/components/academy-dashboard-card"
 import { ACCOUNT_PATH } from "@/lib/routes"
 
 export const metadata: Metadata = {
@@ -24,6 +29,9 @@ export default function DashboardPage() {
 }
 
 async function Dashboard() {
+  // As matrículas começam junto com o usuário (sem cascata); o cartão espera por elas no próprio
+  // <Suspense>, e o resto do painel não depende delas.
+  const enrollments = getMyEnrollments()
   const user = await getCurrentUser()
   const nickname = user.profile?.nickname ?? user.name
 
@@ -54,6 +62,13 @@ async function Dashboard() {
           Áreas da plataforma
         </h2>
         <div className="grid gap-4 md:grid-cols-3">
+          <Suspense fallback={<AcademyDashboardCardSkeleton />}>
+            <AcademyCard
+              enrollments={enrollments}
+              timeZone={user.profile?.timezone ?? "America/Sao_Paulo"}
+            />
+          </Suspense>
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -76,12 +91,7 @@ async function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Só informativos: Academy (Fase 2) e Teams (Fase 3) ainda não existem. */}
-          <UpcomingModule
-            icon={<GraduationCapIcon className="size-5 text-primary" aria-hidden />}
-            title="Academy"
-            description="Aulas, lineups e quizzes para evoluir no seu ritmo."
-          />
+          {/* Só informativo: Teams (Fase 3) ainda não existe. */}
           <UpcomingModule
             icon={<UsersRoundIcon className="size-5 text-primary" aria-hidden />}
             title="Teams"
@@ -91,6 +101,16 @@ async function Dashboard() {
       </section>
     </div>
   )
+}
+
+async function AcademyCard({
+  enrollments,
+  timeZone,
+}: {
+  enrollments: Promise<EnrollmentsLoad>
+  timeZone: string
+}) {
+  return <AcademyDashboardCard load={await enrollments} timeZone={timeZone} />
 }
 
 function UpcomingModule({
@@ -123,7 +143,7 @@ function DashboardSkeleton() {
     <div className="flex flex-col gap-8" aria-hidden>
       <Skeleton className="h-10 w-64" />
       <div className="grid gap-4 md:grid-cols-3">
-        <Skeleton className="h-40" />
+        <Skeleton className="h-84 md:col-span-2 md:row-span-2" />
         <Skeleton className="h-40" />
         <Skeleton className="h-40" />
       </div>
