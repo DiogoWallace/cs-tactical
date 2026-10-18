@@ -1,6 +1,8 @@
 <?php
 
 use App\Modules\Identity\Models\User;
+use App\Modules\Learning\Actions\EnrollInCourse;
+use App\Modules\Learning\Actions\StartQuizAttempt;
 use Illuminate\Database\Connection;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -40,10 +42,13 @@ function learningWaitUntil(callable $condition, string $what): void
  * Prepara o banco descartável com um jogador e o curso público de LearningFixtures, roda o código
  * PHP em dois processos ao mesmo tempo e devolve [processos, conexão do banco]. Limpa tudo no fim.
  *
- * @param  Closure(string $userId): string  $code  código para o `tinker --execute`
+ * Com `$withQuiz`, a aula "peek" ganha o quiz `quiz-tecla` (LearningFixtures::quiz); com
+ * `$openAttempt`, o jogador já tem uma tentativa aberta nele (para a disputa de envio).
+ *
+ * @param  Closure(string $userId, ?string $attemptId, array<int, mixed> $answers): string  $code  código para o `tinker --execute`
  * @param  Closure(list<Process>, Connection): void  $assert
  */
-function learningRace(Closure $code, Closure $assert): void
+function learningRace(Closure $code, Closure $assert, bool $withQuiz = false, bool $openAttempt = false): void
 {
     $database = 'cs_tactical_concurrency_'.Str::lower(Str::random(8));
     $base = config('database.connections.pgsql');
@@ -60,8 +65,21 @@ function learningRace(Closure $code, Closure $assert): void
         Artisan::call('migrate', ['--database' => 'concurrency', '--force' => true]);
 
         DB::setDefaultConnection('concurrency');
-        [$course] = LearningFixtures::course();
+        [$course, , $lessons] = LearningFixtures::course();
         $user = User::factory()->create();
+        $attemptId = null;
+        $answers = [];
+        if ($withQuiz) {
+            // Já matriculado: sem isso, a criação da matrícula (espera no índice único) serializaria
+            // os processos por acaso e o teste não mediria a trava da própria tentativa.
+            app(EnrollInCourse::class)->handle($user, 'fundamentos');
+            [, $ids] = LearningFixtures::quiz($lessons['peek']);
+            $answers = LearningFixtures::answers($ids, LearningFixtures::rightAnswers());
+            if ($openAttempt) {
+                [$attempt] = app(StartQuizAttempt::class)->handle($user, 'quiz-tecla') ?? throw new RuntimeException('quiz não iniciado');
+                $attemptId = $attempt->id;
+            }
+        }
         DB::setDefaultConnection('pgsql');
 
         $lock = DB::connection('concurrency_lock');
@@ -70,7 +88,7 @@ function learningRace(Closure $code, Closure $assert): void
 
         foreach ([1, 2] as $_) {
             $process = new Process(
-                [PHP_BINARY, base_path('artisan'), 'tinker', '--execute', $code($user->id)],
+                [PHP_BINARY, base_path('artisan'), 'tinker', '--execute', $code($user->id, $attemptId, $answers)],
                 base_path(),
                 ['APP_ENV' => 'testing', 'DB_CONNECTION' => 'pgsql', 'DB_DATABASE' => $database, 'LOG_CHANNEL' => 'null'],
                 null,
@@ -104,6 +122,43 @@ function learningRace(Closure $code, Closure $assert): void
         DB::statement("DROP DATABASE IF EXISTS \"{$database}\" WITH (FORCE)");
     }
 }
+
+it('creates a single quiz attempt when the same player starts it twice at the same time', function () {
+    learningRace(
+        fn (string $userId) => "\$r = app(App\\Modules\\Learning\\Actions\\StartQuizAttempt::class)->handle(App\\Modules\\Identity\\Models\\User::findOrFail('{$userId}'), 'quiz-tecla'); echo \$r[1] ? 'CREATED' : 'EXISTING';",
+        function (array $processes, $db) {
+            foreach ($processes as $process) {
+                expect($process->isSuccessful())->toBeTrue($process->getErrorOutput());
+            }
+            $outputs = array_map(fn (Process $process) => trim($process->getOutput()), $processes);
+            sort($outputs);
+
+            expect($outputs)->toBe(['CREATED', 'EXISTING'])
+                ->and($db->table('quiz_attempts')->count())->toBe(1)
+                ->and($db->table('quiz_attempts')->value('attempt_number'))->toBe(1);
+        },
+        withQuiz: true,
+    );
+})->group('concurrency');
+
+it('grades a quiz attempt once when it is submitted twice at the same time', function () {
+    learningRace(
+        fn (string $userId, ?string $attemptId, array $answers) => "try { app(App\\Modules\\Learning\\Actions\\SubmitQuizAttempt::class)->handle(App\\Modules\\Identity\\Models\\User::findOrFail('{$userId}'), '{$attemptId}', json_decode('".json_encode($answers)."', true)); echo 'GRADED'; } catch (App\\Modules\\Learning\\Exceptions\\QuizAttemptConflict \$e) { echo \$e->errorCode; }",
+        function (array $processes, $db) {
+            foreach ($processes as $process) {
+                expect($process->isSuccessful())->toBeTrue($process->getErrorOutput());
+            }
+            $outputs = array_map(fn (Process $process) => trim($process->getOutput()), $processes);
+            sort($outputs);
+
+            expect($outputs)->toBe(['GRADED', 'quiz_attempt_already_submitted'])
+                ->and($db->table('quiz_attempts')->where('status', 'submitted')->count())->toBe(1)
+                ->and($db->table('quiz_attempt_answers')->count())->toBe(2);
+        },
+        withQuiz: true,
+        openAttempt: true,
+    );
+})->group('concurrency');
 
 it('creates a single enrollment when the same player enrolls twice at the same time', function () {
     learningRace(

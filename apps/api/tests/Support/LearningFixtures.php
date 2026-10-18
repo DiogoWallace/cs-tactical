@@ -4,9 +4,13 @@ namespace Tests\Support;
 
 use App\Modules\Academy\Content\CanonicalJson;
 use App\Modules\Academy\Enums\PublicationStatus;
+use App\Modules\Academy\Enums\QuestionKind;
 use App\Modules\Academy\Models\Course;
 use App\Modules\Academy\Models\CourseModule;
 use App\Modules\Academy\Models\Lesson;
+use App\Modules\Academy\Models\Quiz;
+use App\Modules\Academy\Models\QuizOption;
+use App\Modules\Academy\Models\QuizQuestion;
 use App\Modules\Identity\Models\User;
 use Closure;
 use Illuminate\Database\QueryException;
@@ -60,6 +64,105 @@ final class LearningFixtures
             'content' => $content,
             'content_hash' => CanonicalJson::hash($content),
         ]);
+    }
+
+    /**
+     * Quiz ativo na aula, com duas perguntas: "tecla" (escolha única: `a` errada, `d` certa, com
+     * explicação) e "quando" (múltipla: `peek` e `duelo` certas, `rotacao` errada). Devolve o quiz
+     * e os ids por chave (`tecla`, `tecla.a`, `tecla.d`, `quando`, `quando.peek`...).
+     *
+     * @return array{Quiz, array<string, string>}
+     */
+    public static function quiz(Lesson $lesson, int $maxAttempts = 3, int $passPercent = 70, string $key = 'quiz-tecla'): array
+    {
+        $quiz = Quiz::factory()->create([
+            'lesson_id' => $lesson->id, 'key' => $key, 'title' => 'Teste rápido',
+            'max_attempts' => $maxAttempts, 'pass_percent' => $passPercent,
+        ]);
+        $ids = [];
+        $definition = [
+            'tecla' => [QuestionKind::SingleChoice, 'Qual tecla para mais rápido?', 'EXPLICACAO-SECRETA', ['a' => false, 'd' => true]],
+            'quando' => [QuestionKind::MultipleChoice, 'Quando usar?', null, ['peek' => true, 'duelo' => true, 'rotacao' => false]],
+        ];
+        $position = 1;
+        foreach ($definition as $questionKey => [$kind, $prompt, $explanation, $options]) {
+            $question = QuizQuestion::factory()->create([
+                'quiz_id' => $quiz->id, 'key' => $questionKey, 'kind' => $kind,
+                'prompt' => $prompt, 'explanation' => $explanation, 'position' => $position++,
+            ]);
+            $ids[$questionKey] = $question->id;
+            $optionPosition = 1;
+            foreach ($options as $optionKey => $correct) {
+                $option = QuizOption::factory()->create([
+                    'question_id' => $question->id, 'key' => $optionKey, 'text' => strtoupper($optionKey),
+                    'is_correct' => $correct, 'position' => $optionPosition++,
+                ]);
+                $ids["{$questionKey}.{$optionKey}"] = $option->id;
+            }
+        }
+
+        return [$quiz, $ids];
+    }
+
+    /**
+     * Respostas no formato da API a partir das chaves.
+     *
+     * @param  array<string, string>  $ids  de quiz()
+     * @param  array<string, list<string>>  $choices  ex.: ['tecla' => ['d'], 'quando' => ['peek', 'duelo']]
+     * @return list<array{question_id: string, option_ids: list<string>}>
+     */
+    public static function answers(array $ids, array $choices): array
+    {
+        $answers = [];
+        foreach ($choices as $question => $options) {
+            $answers[] = [
+                'question_id' => $ids[$question],
+                'option_ids' => array_map(fn (string $option) => $ids["{$question}.{$option}"], $options),
+            ];
+        }
+
+        return $answers;
+    }
+
+    /** @return array<string, list<string>> */
+    public static function rightAnswers(): array
+    {
+        return ['tecla' => ['d'], 'quando' => ['peek', 'duelo']];
+    }
+
+    /** @return array<string, list<string>> */
+    public static function wrongAnswers(): array
+    {
+        return ['tecla' => ['a'], 'quando' => ['peek']];
+    }
+
+    public static function startAttempt(?User $user, string $quiz = 'quiz-tecla'): TestResponse
+    {
+        self::as($user);
+
+        return test()->postJson("/api/v1/academy/quizzes/{$quiz}/attempts");
+    }
+
+    /** @param  list<array<string, mixed>>  $answers */
+    public static function submitAttempt(?User $user, string $attempt, array $answers): TestResponse
+    {
+        self::as($user);
+
+        return test()->postJson("/api/v1/academy/quiz-attempts/{$attempt}/submission", ['answers' => $answers]);
+    }
+
+    public static function attempt(?User $user, string $attempt): TestResponse
+    {
+        self::as($user);
+
+        return test()->getJson("/api/v1/academy/quiz-attempts/{$attempt}");
+    }
+
+    public static function myAttempts(?User $user, string $quiz = 'quiz-tecla'): TestResponse
+    {
+        self::as($user);
+
+        return test()->getJson("/api/v1/me/quiz-attempts?quiz={$quiz}");
     }
 
     /** Muda o conteúdo da aula como a importação faria (novo hash). */

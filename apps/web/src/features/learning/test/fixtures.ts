@@ -1,4 +1,11 @@
-import type { CourseProgress, EnrolledProgress, EnrollmentSummary } from "../lib/schemas"
+import type {
+  AttemptResult,
+  AttemptSummary,
+  CourseProgress,
+  EnrolledProgress,
+  EnrollmentSummary,
+  OpenAttempt,
+} from "../lib/schemas"
 
 /** Respostas da API do Learning (docs/api/academy-v1.md) para os testes do Vitest. */
 
@@ -43,9 +50,149 @@ export function enrolled(
       status: completed.includes(slug) ? "completed" : "not_started",
       completed_at: completed.includes(slug) ? "2026-11-02T14:00:00Z" : null,
       updated_since_completion: false,
+      // counter-strafe tem quiz (fixture do curso da Academy: has_quiz).
+      quiz:
+        slug === "counter-strafe"
+          ? { attempts_used: 0, best_score_percent: null, passed: false }
+          : null,
     })),
     ...overrides,
   }
+}
+
+export const ATTEMPT_ID = "019a2c00-0000-7000-8000-000000000001"
+export const Q1 = "019a2b00-0000-7000-8000-0000000000a1"
+export const Q1_A = "019a2b00-0000-7000-8000-0000000000a2"
+export const Q1_D = "019a2b00-0000-7000-8000-0000000000a3"
+export const Q2 = "019a2b00-0000-7000-8000-0000000000b1"
+export const Q2_PEEK = "019a2b00-0000-7000-8000-0000000000b2"
+export const Q2_ROT = "019a2b00-0000-7000-8000-0000000000b3"
+
+/** Tentativa aberta: perguntas sem gabarito (formato do início, ADR 0018). */
+export function openAttempt(overrides: Partial<OpenAttempt> = {}): OpenAttempt {
+  return {
+    id: ATTEMPT_ID,
+    attempt_number: 1,
+    max_attempts: 3,
+    status: "in_progress",
+    questions: [
+      {
+        id: Q1,
+        kind: "single_choice",
+        prompt: "Indo para a esquerda (**A**), qual tecla para mais rápido?",
+        options: [
+          { id: Q1_A, text: "A" },
+          { id: Q1_D, text: "D" },
+        ],
+      },
+      {
+        id: Q2,
+        kind: "multiple_choice",
+        prompt: "Quando usar?",
+        options: [
+          { id: Q2_PEEK, text: "No peek" },
+          { id: Q2_ROT, text: "Na rotação" },
+        ],
+      },
+    ],
+    ...overrides,
+  }
+}
+
+/** Resultado antes da liberação do gabarito: acerto/erro por pergunta, sem `correct` nem explicação. */
+export function resultWithoutReview(overrides: Partial<AttemptResult> = {}): AttemptResult {
+  return {
+    id: ATTEMPT_ID,
+    attempt_number: 1,
+    quiz_revision: 1,
+    started_at: "2026-11-02T14:00:00Z",
+    submitted_at: "2026-11-02T14:05:00Z",
+    status: "submitted",
+    score_percent: 50,
+    passed: false,
+    question_count: 2,
+    correct_count: 1,
+    attempts_remaining: 2,
+    review_available: false,
+    questions: [
+      {
+        id: Q1,
+        kind: "single_choice",
+        prompt: "Indo para a esquerda (**A**), qual tecla para mais rápido?",
+        selected_option_ids: [Q1_D],
+        is_correct: true,
+        options: [
+          { id: Q1_A, text: "A" },
+          { id: Q1_D, text: "D" },
+        ],
+      },
+      {
+        id: Q2,
+        kind: "multiple_choice",
+        prompt: "Quando usar?",
+        selected_option_ids: [Q2_ROT],
+        is_correct: false,
+        options: [
+          { id: Q2_PEEK, text: "No peek" },
+          { id: Q2_ROT, text: "Na rotação" },
+        ],
+      },
+    ],
+    ...overrides,
+  } as AttemptResult
+}
+
+/** Resultado aprovado, com a revisão liberada: gabarito e explicações do snapshot. */
+export function resultWithReview(): AttemptResult {
+  return {
+    ...resultWithoutReview(),
+    score_percent: 100,
+    passed: true,
+    correct_count: 2,
+    review_available: true,
+    questions: [
+      {
+        id: Q1,
+        kind: "single_choice",
+        prompt: "Indo para a esquerda (**A**), qual tecla para mais rápido?",
+        selected_option_ids: [Q1_D],
+        is_correct: true,
+        options: [
+          { id: Q1_A, text: "A", correct: false },
+          { id: Q1_D, text: "D", correct: true },
+        ],
+        explanation: "A tecla oposta zera a velocidade.",
+      },
+      {
+        id: Q2,
+        kind: "multiple_choice",
+        prompt: "Quando usar?",
+        selected_option_ids: [Q2_PEEK],
+        is_correct: true,
+        options: [
+          { id: Q2_PEEK, text: "No peek", correct: true },
+          { id: Q2_ROT, text: "Na rotação", correct: false },
+        ],
+        explanation: null,
+      },
+    ],
+  }
+}
+
+export function attemptSummary(overrides: Partial<AttemptSummary> = {}): AttemptSummary {
+  return {
+    id: ATTEMPT_ID,
+    attempt_number: 1,
+    quiz_revision: 1,
+    started_at: "2026-11-02T14:00:00Z",
+    submitted_at: "2026-11-02T14:05:00Z",
+    status: "submitted",
+    score_percent: 50,
+    passed: false,
+    attempts_remaining: 2,
+    review_available: false,
+    ...overrides,
+  } as AttemptSummary
 }
 
 export function enrollmentSummary(overrides: Partial<EnrollmentSummary> = {}): EnrollmentSummary {

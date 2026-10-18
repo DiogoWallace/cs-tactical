@@ -19,15 +19,124 @@ const isoDate = z.iso.datetime()
 
 const lessonLink = z.strictObject({ slug, title: z.string().min(1).max(160) })
 
+const percent = z.number().min(0).max(100)
+
+/** Resumo do quiz ativo da aula em /progress (etapa 2.5): sem gabarito. */
+export const lessonQuizSummarySchema = z.strictObject({
+  attempts_used: z.int().min(0),
+  best_score_percent: percent.nullable(),
+  passed: z.boolean(),
+})
+
 export const lessonProgressSchema = z.strictObject({
   slug,
-  // `in_progress` chega com os quizzes (etapa 2.5).
+  // `in_progress`: quiz iniciado e aula ainda não concluída (R10).
   status: z.enum(["not_started", "in_progress", "completed"]),
   completed_at: isoDate.nullable(),
   updated_since_completion: z.boolean(),
+  quiz: lessonQuizSummarySchema.nullable(),
 })
 
-const percent = z.number().min(0).max(100)
+/*
+ * Quizzes (etapa 2.5, ADR 0018). O formato vem do único componente da API que aplica a liberação
+ * do gabarito (R20–R20b): `correct` e `explanation` só existem com `review_available: true`.
+ */
+const uuid = z.uuid()
+
+const answerOption = z.strictObject({ id: uuid, text: z.string().min(1).max(500) })
+
+export const openAttemptSchema = z.strictObject({
+  id: uuid,
+  attempt_number: z.int().min(1),
+  max_attempts: z.int().min(1).max(20),
+  status: z.literal("in_progress"),
+  questions: z
+    .array(
+      z.strictObject({
+        id: uuid,
+        kind: z.enum(["single_choice", "multiple_choice"]),
+        prompt: z.string().min(1).max(1000),
+        options: z.array(answerOption).min(2).max(8),
+      }),
+    )
+    .min(1)
+    .max(30),
+})
+
+const attemptSummaryFields = {
+  id: uuid,
+  attempt_number: z.int().min(1),
+  quiz_revision: z.int().min(1),
+  started_at: isoDate,
+  attempts_remaining: z.int().min(0),
+}
+
+export const attemptSummarySchema = z.discriminatedUnion("status", [
+  z.strictObject({
+    ...attemptSummaryFields,
+    status: z.literal("in_progress"),
+    submitted_at: z.null(),
+    score_percent: z.null(),
+    passed: z.null(),
+    review_available: z.literal(false),
+  }),
+  z.strictObject({
+    ...attemptSummaryFields,
+    status: z.literal("submitted"),
+    submitted_at: isoDate,
+    score_percent: percent,
+    passed: z.boolean(),
+    review_available: z.boolean(),
+  }),
+])
+
+const resultQuestionBase = {
+  id: uuid,
+  kind: z.enum(["single_choice", "multiple_choice"]),
+  prompt: z.string().min(1).max(1000),
+  selected_option_ids: z.array(uuid),
+  is_correct: z.boolean(),
+}
+
+const resultFields = {
+  ...attemptSummaryFields,
+  status: z.literal("submitted"),
+  submitted_at: isoDate,
+  score_percent: percent,
+  passed: z.boolean(),
+  question_count: z.int().min(1),
+  correct_count: z.int().min(0),
+}
+
+export const attemptResultSchema = z.discriminatedUnion("review_available", [
+  z.strictObject({
+    ...resultFields,
+    review_available: z.literal(false),
+    questions: z.array(z.strictObject({ ...resultQuestionBase, options: z.array(answerOption) })),
+  }),
+  z.strictObject({
+    ...resultFields,
+    review_available: z.literal(true),
+    questions: z.array(
+      z.strictObject({
+        ...resultQuestionBase,
+        options: z.array(answerOption.extend({ correct: z.boolean() })),
+        explanation: z.string().max(2000).nullable(),
+      }),
+    ),
+  }),
+])
+
+export const attemptResponseSchema = z.strictObject({
+  data: z.union([openAttemptSchema, attemptResultSchema]),
+})
+
+export const attemptListSchema = z.strictObject({ data: z.array(attemptSummarySchema) })
+
+export type OpenAttempt = z.infer<typeof openAttemptSchema>
+export type AttemptResult = z.infer<typeof attemptResultSchema>
+export type AttemptSummary = z.infer<typeof attemptSummarySchema>
+export type AttemptDetail = OpenAttempt | AttemptResult
 
 /** Matriculado: números presentes. Não matriculado: nulos e lista vazia. */
 export const courseProgressSchema = z.discriminatedUnion("enrolled", [

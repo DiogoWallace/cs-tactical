@@ -148,8 +148,8 @@ ativas; `single_choice` com exatamente 1 correta; `multiple_choice` com pelo men
 
 > `enrollments` e `lesson_progress` criadas na etapa 2.4
 > (`database/migrations/2026_10_17_2000*` e `2001*`); `quiz_attempts` e `quiz_attempt_answers`
-> chegam na 2.5. Na 2.4, `lesson_progress` só recebe `completed` (concluir a aula);
-> `in_progress` fica reservado para o início de tentativa de quiz (R10).
+> na 2.5 (`2026_10_18_1000*` e `1001*`). `lesson_progress` recebe `completed` ao concluir a aula
+> e `in_progress` ao iniciar o quiz dela, se ainda não concluída (R10).
 
 ### `enrollments`
 
@@ -201,7 +201,15 @@ isso não existe à parte. Checks: `status = 'completed'` ⇔ `completed_at` e
 | `score_percent` | numeric(5,2) | nulo até a correção; check 0..100 |
 | `passed` | boolean | nulo até a correção |
 
-Único parcial `(user_id, quiz_id) WHERE status = 'in_progress'` (uma tentativa aberta por vez).
+Único parcial `(user_id, quiz_id) WHERE status = 'in_progress'` (uma tentativa aberta por vez),
+chamado `quiz_attempts_one_open_unique`. Índice `(quiz_id)` (usado pela importação para saber se o
+quiz tem tentativas). Checks: `snapshot->'questions'` é array; enviada ⇔ `submitted_at`,
+contagens, nota e `passed` preenchidos; nota 0..100 com `question_count ≥ 1` e
+`correct_count ≤ question_count`; `submitted_at ≥ started_at`.
+
+Formato do `snapshot` (2.5): `{pass_percent, questions: [{id, kind, prompt, explanation,
+options: [{id, text, correct}]}]}`, com os ids das linhas de `quiz_questions` e `quiz_options`
+(que não são apagadas enquanto houver tentativa) e a nota mínima do momento do início.
 
 A **revisão liberada** (aprovado em alguma tentativa ou tentativas esgotadas) não é coluna: é
 calculada a partir das tentativas do jogador naquele quiz, para não haver estado divergente.

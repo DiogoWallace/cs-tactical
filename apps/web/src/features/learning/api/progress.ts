@@ -10,8 +10,10 @@ import { SESSION_COOKIE } from "@/lib/session"
 import { isSlug } from "@/features/academy/lib/paths"
 
 import {
+  attemptListSchema,
   courseProgressResponseSchema,
   enrollmentListSchema,
+  type AttemptSummary,
   type EnrollmentSummary,
   type LearningState,
 } from "../lib/schemas"
@@ -62,6 +64,21 @@ export const getCourseProgress = cache(async (course: string): Promise<LearningL
   )
   if (result === "anonymous" || result === "unavailable") return { kind: result }
   return { kind: "player", progress: result.data }
+})
+
+export type QuizAttemptsLoad =
+  { kind: "anonymous" } | { kind: "unavailable" } | { kind: "player"; attempts: AttemptSummary[] }
+
+/** Tentativas do jogador num quiz (estado inicial do quiz da aula). */
+export const getQuizAttempts = cache(async (quiz: string): Promise<QuizAttemptsLoad> => {
+  if (!isSlug(quiz) || !(await hasSession())) return { kind: "anonymous" }
+
+  const result = await load(
+    `/api/v1/me/quiz-attempts?${new URLSearchParams({ quiz })}`,
+    attemptListSchema,
+  )
+  if (result === "anonymous" || result === "unavailable") return { kind: result }
+  return { kind: "player", attempts: result.data }
 })
 
 export type EnrollmentsLoad =

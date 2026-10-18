@@ -4,6 +4,8 @@ use App\Modules\Learning\Http\Controllers\CourseProgressController;
 use App\Modules\Learning\Http\Controllers\EnrollmentController;
 use App\Modules\Learning\Http\Controllers\LessonCompletionController;
 use App\Modules\Learning\Http\Controllers\MyEnrollmentsController;
+use App\Modules\Learning\Http\Controllers\MyQuizAttemptsController;
+use App\Modules\Learning\Http\Controllers\QuizAttemptController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -32,4 +34,27 @@ Route::middleware('auth:sanctum')->group(function () use ($slug) {
             ->middleware('throttle:learning-write')
             ->name('lessons.completion.update');
     });
+
+    /*
+    | Quizzes (etapa 2.5, ADR 0018). `{quiz}` é a key; `{attempt}` é UUID. Iniciar e enviar:
+    | `quiz-attempt` (10/min, também dificulta adivinhar o gabarito); leituras: `api`.
+    */
+    Route::post('/academy/quizzes/{quiz}/attempts', [QuizAttemptController::class, 'store'])
+        ->where('quiz', $slug)
+        ->middleware('throttle:quiz-attempt')
+        ->name('learning.quiz-attempts.store');
+
+    Route::post('/academy/quiz-attempts/{attempt}/submission', [QuizAttemptController::class, 'submit'])
+        ->whereUuid('attempt')
+        ->middleware('throttle:quiz-attempt')
+        ->name('learning.quiz-attempts.submit');
+
+    Route::get('/academy/quiz-attempts/{attempt}', [QuizAttemptController::class, 'show'])
+        ->whereUuid('attempt')
+        ->middleware('throttle:api')
+        ->name('learning.quiz-attempts.show');
+
+    Route::get('/me/quiz-attempts', MyQuizAttemptsController::class)
+        ->middleware('throttle:api')
+        ->name('me.quiz-attempts.index');
 });

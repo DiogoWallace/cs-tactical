@@ -28,6 +28,26 @@ final class PublicContentLocks
             ->first();
     }
 
+    /**
+     * A aula (pelo id) com curso e módulo públicos, travados na mesma ordem. Para os quizzes, que
+     * chegam pela `key` do quiz ou pela tentativa, não pelos slugs.
+     */
+    public function lessonById(string $lessonId): ?Lesson
+    {
+        $slugs = Lesson::query()
+            ->join('courses', 'courses.id', '=', 'lessons.course_id')
+            ->whereKey($lessonId)
+            ->first(['lessons.slug as lesson_slug', 'courses.slug as course_slug']);
+        if ($slugs === null) {
+            return null;
+        }
+
+        $course = $this->course((string) $slugs->getAttribute('course_slug'));
+        $lesson = $course === null ? null : $this->lesson($course, (string) $slugs->getAttribute('lesson_slug'));
+
+        return $lesson?->id === $lessonId ? $lesson : null;
+    }
+
     public function lesson(Course $course, string $slug): ?Lesson
     {
         $published = PublicationStatus::Published->value;
