@@ -117,6 +117,47 @@ test.describe("Learning: jogador", () => {
   })
 })
 
+/**
+ * Histórico de curso arquivado (R13a, ADR 0017 item 5; etapa 2.7a). A conta `history` concluiu as
+ * duas aulas de "historico-e2e" enquanto ele era público (e2e:prepare --seed-history); depois o
+ * scripts/e2e.sh reimportou o curso como arquivado. Nada aqui grava dados.
+ */
+test("curso arquivado continua no histórico do jogador, sem link nem acesso ao conteúdo", async ({
+  page,
+}) => {
+  const ARCHIVED = "/academy/cursos/historico-e2e"
+  await login(page, ACCOUNTS.history)
+
+  // Painel: a matrícula e as conclusões contam, mas não há o que continuar num curso arquivado.
+  const card = page.getByRole("region", { name: "Academy", exact: true })
+  await expect(
+    card.getByText("Você está em dia: nenhuma aula pendente nos seus cursos."),
+  ).toBeVisible()
+  await expect(card.getByRole("term")).toHaveText([
+    "Curso matriculado",
+    "Curso concluído",
+    "Aulas concluídas",
+  ])
+  await expect(card.getByRole("definition")).toHaveText(["1", "1", "2"])
+  await expect(card.getByRole("link", { name: "Continuar estudando" })).toHaveCount(0)
+
+  // Meu progresso: só no histórico, com as conclusões, sem link para o conteúdo.
+  await page.goto("/painel/academy")
+  const history = page.getByRole("region", { name: "Histórico", exact: true })
+  await expect(history.getByText("Histórico E2E", { exact: true })).toBeVisible()
+  await expect(history.getByText(/2 aulas concluídas · curso concluído em/)).toBeVisible()
+  await expect(history.getByText("Arquivado", { exact: true })).toBeVisible()
+  await expect(history.getByRole("link")).toHaveCount(0)
+  await expect(page.getByRole("region", { name: "Meus cursos" })).toHaveCount(0)
+
+  // O conteúdo arquivado não é lido por ninguém sem a capacidade editorial (P1): 404.
+  await page.goto(ARCHIVED)
+  await expect(page.getByRole("heading", { name: "Conteúdo não encontrado" })).toBeVisible()
+  await page.goto("/academy")
+  await expect(page.getByRole("link", { name: "Fundamentos E2E" })).toBeVisible()
+  await expect(page.getByRole("link", { name: "Histórico E2E" })).toHaveCount(0)
+})
+
 const THEMES = ["dark", "light"] as const
 
 test("telas do Learning sem violações sérias de acessibilidade, nos dois temas", async ({

@@ -49,6 +49,10 @@ compose up -d --wait postgres redis mailpit api worker web
 echo "2/4 Recriando o banco E2E e importando o conteúdo de teste da Academy"
 compose exec -T api php artisan e2e:prepare
 compose exec -T api php artisan academy:import /var/www/e2e-content/academy
+# Histórico de curso arquivado (etapa 2.7a): a conta de histórico conclui o curso enquanto ele é
+# público, e a cópia em _arquivado (ignorada pela importação acima) o arquiva.
+compose exec -T api php artisan e2e:prepare --seed-history
+compose exec -T api php artisan academy:import /var/www/e2e-content/academy/_arquivado
 
 echo "3/4 Rodando o Playwright"
 rm -rf apps/web/e2e/.results apps/web/e2e/.report

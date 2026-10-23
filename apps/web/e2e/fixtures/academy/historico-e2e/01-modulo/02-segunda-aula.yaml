@@ -1,0 +1,12 @@
+key: historico-segunda-aula
+slug: segunda-aula
+title: Segunda aula do histórico
+status: published
+position: 2
+estimated_minutes: 3
+content:
+  version: 1
+  blocks:
+    - type: markdown
+      text: |
+        Última aula do curso: concluí-la grava o curso como concluído.

@@ -45,18 +45,18 @@ Regras:
 
 ### Módulos e quando nascem
 
-| Módulo | Abrange | Fase |
-|---|---|---|
-| `System` | health check e infraestrutura | 0 |
-| `Identity` | autenticação, usuários, perfis | 1 |
-| `Academy` | catálogo: cursos, módulos de curso, aulas, quizzes | 2 |
-| `Learning` | progresso individual, matrículas, tentativas | 2 |
-| `Teams` | equipes, membros, convites, papéis | 3 |
-| `Strategies` | estratégias e playbooks | 3 |
-| `Maps` | mapas e lineups de utilitárias | 2 ou 3 |
-| `Notifications` | e-mails e notificações | 3 |
-| `Training` | sessões e atribuições de treino | 4 |
-| `Matches`, `Billing` | análise de partidas, cobrança | pós-MVP |
+| Módulo | Abrange | Fase | Situação |
+|---|---|---|---|
+| `System` | health check, infraestrutura, preparo da stack E2E | 0 | implementado |
+| `Identity` | autenticação, usuários, perfis, papéis de plataforma | 1 | implementado |
+| `Academy` | catálogo: cursos, módulos de curso, aulas, quizzes, mídia, importador | 2 | implementado (etapas 2.1–2.3) |
+| `Learning` | matrículas, progresso por aula, tentativas de quiz | 2 | implementado (etapas 2.4–2.5); depende da `Academy`, nunca o contrário ([ADR 0015](../decisions/0015-academy-e-learning-publicacao-e-visibilidade.md)) |
+| `Teams` | equipes, membros, convites, papéis | 3 | não iniciado |
+| `Strategies` | estratégias e playbooks | 3 | não iniciado |
+| `Maps` | mapas e lineups de utilitárias | 3 (fora da Fase 2, decisão da etapa 2.0) | não iniciado |
+| `Notifications` | e-mails e notificações | 3 | não iniciado |
+| `Training` | sessões e atribuições de treino | 4 | não iniciado; a prática em servidores CS2 é a iniciativa "CS Tactical Training", só em planejamento ([ADR 0021](../decisions/0021-arquitetura-do-cs-tactical-training.md), Proposta) |
+| `Matches`, `Billing` | análise de partidas, cobrança | pós-MVP | não iniciado |
 
 ## Frontend
 
@@ -65,12 +65,17 @@ apps/web/src/
 ├── app/            # rotas (App Router): grupos (marketing), (auth) e (app); proxy.ts fica em src/
 ├── components/
 │   └── ui/         # componentes shadcn/ui, sem regra de negócio
-├── features/       # um diretório por área (academy, teams...), criado quando a área existir
+├── features/       # um diretório por área, criado quando a área existe: system, identity, academy, learning
 ├── lib/
 │   ├── api/        # apiClient (navegador), serverFetch (servidor), tipos
-│   └── env.ts      # variáveis de ambiente validadas com Zod
-└── styles/
+│   ├── env.ts      # variáveis de ambiente validadas com Zod
+│   └── security-headers.ts  # headers e CSP das páginas (ADR 0014)
+├── proxy.ts        # proteção das rotas logadas e caminho atual para os Server Components
+└── test/           # configuração do Vitest
 ```
+
+- A `academy` não importa a `learning`: as telas do catálogo recebem os componentes do jogador por
+  slots (mesma regra de dependência do backend).
 
 - Server Components por padrão; `'use client'` apenas em componentes interativos.
 - Nenhum `fetch` solto em componentes: todo acesso à API passa por `lib/api`.
