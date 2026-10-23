@@ -66,7 +66,7 @@ Produção:         cliente ──► borda (TLS; substitui X-Forwarded-For pelo
                                └── demais rotas ───────► web (Next)
 ```
 
-- O Next.js **não** acrescenta o IP da conexão ao `X-Forwarded-For`: o rewrite de `/api/*` repassa o cabeçalho do cliente sem alteração.
+- O Next.js **não** acrescenta nem substitui um `X-Forwarded-For` recebido: o rewrite de `/api/*` e as leituras das páginas (`serverFetch`) repassam o cabeçalho do cliente sem alteração. Quando o cliente **não** envia o cabeçalho, os dois caminhos diferem: nas leituras das páginas o Next preenche o IP da conexão (que o `serverFetch` repassa); no rewrite, o cabeçalho chega ausente e a API usa o IP do `web`. Medido na etapa 2.7b (2026-10-23, [plano da 2.7](../development/fase-2-etapa-2.7-plano.md#7-relatório-da-investigação-2026-10-23)); com a borda de produção, que sempre define o cabeçalho, os dois caminhos levam o IP real.
 - O Laravel (`config/trustedproxy.php`, `bootstrap/app.php`) lê `X-Forwarded-For` e `X-Forwarded-Proto` **apenas** quando a conexão vem do container `web`. Vindo de qualquer outro endereço, inclusive do gateway do Docker (porta 8000 do host), os cabeçalhos são ignorados.
 - O IP do cliente é a entrada mais à direita que não é um proxy confiável.
 - `X-Forwarded-Host` nunca é confiável.

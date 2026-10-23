@@ -175,6 +175,35 @@ nada antes da aprovação específica. Documentação: este plano e `seguranca-h
 
 Achado que exija mudar ADR (ex.: política de 404 vs 403) para e vai para decisão.
 
+### Execução da 2.7b (2026-10-23)
+
+Branch `feat/phase-2-7b-security` sobre a `main` em `2d12c48`. Ferramentas versionadas (R6), só
+para a stack E2E descartável: `scripts/security-probe.sh` (+ `.mjs`) e
+`scripts/academy-public-repro.sh` (+ `.mjs`); ambas rodam dentro do container `web` da stack E2E
+e recusam rodar sem ela. Contas `probe-a/b/c@e2e.test` só para a sondagem.
+
+| # | Evidência | Situação |
+|---|---|---|
+| S1 | `route:list`: 26 rotas; as 10 sem sessão são exatamente a lista pública do `RouteAuthorizationTest`; toda escrita tem `throttle:`. Matriz de [academy.md](../architecture/academy.md#matriz-de-autorização) com teste por linha nos papéis (`EnrollmentTest`, `ProgressTest`, `LessonCompletionTest`, `QuizAttemptTest`: sem sessão, não público × `user`/`editor`/`admin`, dados de outro jogador) | **aprovado** |
+| S2 | Sondagem: tentativa de outro jogador em `GET` e envio → 404; listas de B sem dados de A; UUID inexistente, não-UUID e `..%2F` → 404; conclusão em aula de outro curso e slug manipulado → 404; tentativa aberta sem `correct`/`explanation` | **aprovado** |
+| S3 | Sondagem com CSRF real (`APP_ENV=e2e`): as três escritas do Learning sem token → 419 e com token de outra sessão → 419; sem sessão → 401 nas quatro leituras; cookie adulterado → 401; depois do logout o cookie antigo → 401 | **aprovado** |
+| S4 | Shell estático do build de produção (`.next/server/app/*.html` de `/`, `/academy`, `/painel`, `/painel/academy`, `/login`): nenhum e-mail, apelido, "Sair" ou "Ir para o painel" (o "Meu progresso" de `/painel/academy` é o título fixo). Respostas autenticadas da API: `Cache-Control: no-cache, private`; mídia: `no-store, private` | **achado A1** (abaixo) |
+| S5 | Limites: configuração (máximo, janela, chave) testada para `academy-public`/`academy-media` e 429 por HTTP para catálogo, `learning-write` e `quiz-attempt`. Faltava provar que a rota da mídia usa o próprio limitador: **teste novo** em `MediaApiTest` | **aprovado** (teste acrescentado) |
+| S6 | `csp.spec` estendido à Academy com sessão (catálogo, curso, aula com quiz aberto, Meu progresso, painel com o cartão): CSP aplicada **sem violação**. Report-Only: `script-src-elem` 119 e `style-src-elem` 11 no fluxo inteiro (9 a 22 por página, os scripts inline do Next), e **1 `style-src-attr`** na aula com imagem | aprovado; **achado A2** |
+| S7 | `composer audit` (com e sem dev) e `pnpm audit` (produção e completo): nenhuma vulnerabilidade | **aprovado** |
+| S8 | Sondagem: nota/aprovação do cliente ignoradas; segundo envio → 409; seis envios malformados (tipo errado, vazio, repetido, opção de outra pergunta, não-UUID, 1.000 respostas) → 422 e a tentativa continua aberta; corpo não-JSON → 422; esgotar → 409 e revisão liberada; **nenhum 5xx em 49 requisições** | **aprovado** |
+| S9 | Reprodução controlada e cadeia de confiança (seção do limite, abaixo) | **investigação concluída**; solução pendente (R1) |
+
+Resultado da sondagem: **41/41** verificações; E2E com a CSP estendida: **58/58**.
+
+Achados (escala da auditoria da Fase 1):
+
+| ID | Severidade | Achado | Recomendação (não aplicada; depende de aprovação) |
+|---|---|---|---|
+| A1 | Baixa | Respostas autenticadas da API saem com `Cache-Control: no-cache, private` (padrão do Laravel), não `no-store`. `private` impede caches compartilhados, mas o navegador pode gravar o JSON (progresso, tentativas) em disco | `no-store` nas respostas autenticadas (middleware da API ou `security.conf` do Nginx), com teste; mudar configuração de segurança exige aprovação |
+| A2 | Informativa | O bloco `image` usa `style` inline (`aspect-ratio`, `max-width`) com números validados pelo importador: viola só a CSP-meta (Report-Only, `style-src-attr`); sem risco de injeção | Trocar por atributos `width`/`height` ou classes ao tratar a CSP com nonce/hash; nada a fazer agora |
+| A3 | Informativa (documentação) | A cadeia de `X-Forwarded-For` nas leituras feitas pelas páginas não estava descrita: o Next preenche o IP da conexão quando o cliente não envia e repassa o do cliente quando envia | Documentado em [autenticacao.md](../architecture/autenticacao.md#ip-real-do-cliente); sem risco novo para produção com P1/P2 cumpridos |
+
 ---
 
 ## Limite `academy-public` na stack E2E
@@ -189,12 +218,18 @@ ADR 0009): no E2E, só o container `web` (`172.31.251.10`).
 
 ### 2. Por que os testes compartilham o mesmo identificador
 
-As páginas da Academy leem a API **no servidor do Next** (`serverFetch`). O `serverFetch` repassa
-o `X-Forwarded-For` que recebeu; na stack E2E não há borda, e o Playwright não envia esse
-cabeçalho. Resultado: toda leitura chega à API vinda do `web`, sem `X-Forwarded-For`, e
-`$request->ip()` é o IP do próprio `web`. **Todos os testes, de todos os workers, gastam o mesmo
-contador de 120/min.** Em produção não acontece: a borda substitui o `X-Forwarded-For` pelo IP
-real e o Next o repassa (P1).
+> **Corrigido pela investigação de 2026-10-23** (ver [Execução da 2.7b](#execução-da-27b-2026-10-23)).
+> A hipótese original ("toda leitura chega sem `X-Forwarded-For` e a chave é o IP do `web`") estava
+> incompleta: há **duas** chaves compartilhadas, uma por caminho.
+
+| Caminho | O que a API recebe | `$request->ip()` (chave do limite) |
+|---|---|---|
+| Página → Server Component → `serverFetch` | o Next **preenche** `X-Forwarded-For` com o IP da conexão do cliente quando ele não envia; o `serverFetch` repassa | o IP da conexão ao Next: `127.0.0.1` para todos os navegadores do Playwright (mesma rede do `web`) |
+| Navegador → `/api` pelo rewrite do Next | `X-Forwarded-For` do cliente, **sem alteração**; ausente se o cliente não envia | IP do `web` (`172.31.251.10`), igual para todos |
+
+Nos dois caminhos, **todos os testes, de todos os workers, gastam o mesmo contador de 120/min**
+(um para as páginas, outro para as chamadas do navegador). Em produção não acontece: a borda
+substitui o `X-Forwarded-For` pelo IP real, e o Next o repassa sem alterar nos dois caminhos (P1).
 
 ### 3. Cenários que provocam 429
 
@@ -204,7 +239,7 @@ aprovados, log de acesso da API):
 | Métrica | Valor |
 |---|---|
 | Requisições às três rotas do `academy-public` | **106** (catálogo 23, curso 50, aula 33); 97 × 200 e 9 × 404 (testes de conteúdo indisponível) |
-| IP visto pela API | **um só**: `172.31.251.10` (o container `web`) em todas |
+| Conexão vista pela API | **uma só**: `172.31.251.10` (o container `web`) em todas; a chave do limite é outra (tabela acima) |
 | Distribuição por minuto | 42, 39 e 25 |
 | Pico em qualquer janela de 60 s | **56** (47% do limite de 120) |
 | Respostas 429 | **0** |
@@ -266,6 +301,56 @@ Relatório (seção deste plano ou documento próprio) com a reprodução, o map
 confiança, a tabela comparativa preenchida e uma recomendação. A implementação, se aprovada,
 vira item próprio da 2.7b com testes e contraprova. Até lá, a mitigação é operacional: rodar a
 Academy uma vez por stack nova, sem `--repeat-each`.
+
+### 7. Relatório da investigação (2026-10-23)
+
+**Reprodução controlada** (`scripts/academy-public-repro.sh`, stack E2E nova, só leitura como
+visitante): 130 aberturas de `/academy` em 24 s → as **120 primeiras** mostram o catálogo e a
+**121ª em diante** (10) mostram "A Academy está temporariamente indisponível"; o log da API
+registra 120 × 200 e 10 × 429, todos com a conexão do `web` e `X-Forwarded-For: 127.0.0.1`.
+Logo depois, uma chamada do "navegador" a `/api/v1/academy/courses` pelo rewrite respondeu
+**200**: ela usa outra chave (o IP do `web`, sem `X-Forwarded-For`). Determinístico: o 429 aparece
+exatamente na leitura 121 de uma mesma chave dentro do minuto.
+
+**Cadeia de confiança** (experimento com e sem `X-Forwarded-For` enviado pelo cliente, log da
+API):
+
+| Caminho | Cliente sem XFF | Cliente com `203.0.113.5` | Cliente com `203.0.113.5, 198.51.100.7` |
+|---|---|---|---|
+| Página (`serverFetch`) | `127.0.0.1` (preenchido pelo Next) | `203.0.113.5` | `203.0.113.5, 198.51.100.7` |
+| Rewrite `/api` | ausente | `203.0.113.5` | `203.0.113.5, 198.51.100.7` |
+
+O Next nunca acrescenta nem substitui um `X-Forwarded-For` recebido; só preenche o IP da conexão
+nas leituras das páginas quando ele falta. A API aceita o cabeçalho porque a conexão vem do
+`web` (`TRUSTED_PROXIES`). Sem borda (desenvolvimento e E2E), o cliente escolhe a chave nos dois
+caminhos: é o F1, já bloqueio de produção (P1/P2). Com a borda de referência, que substitui o
+cabeçalho pelo IP da conexão, os dois caminhos levam o IP real.
+
+**Comparação atualizada** (critérios: não enfraquece produção; não depende de IP escolhido pelo
+cliente; testa o limite real; custo; fidelidade):
+
+| Alternativa | Produção | IP do cliente | Limite real | Custo | Fidelidade | Leitura |
+|---|---|---|---|---|---|---|
+| A (XFF pelo Playwright) | intacta | **depende** | sim | baixo | baixa | não aprovada (regra do passo 4) |
+| B (limite por ambiente) | risco de configuração | não | **não** | baixo | baixa | descartar |
+| C (desligar no E2E) | desvio no código | não | **não** | baixo | nenhuma | descartar |
+| D (limpar Redis) | intacta | não | parcial | médio | baixa | frágil com workers em paralelo |
+| E (menos leituras / serializar) | intacta | não | sim | baixo | alta | paliativo; folga hoje de ~2× (pico 56/120) |
+| F (borda no E2E) sozinha | intacta | não | sim | médio | alta | não isola: todos os navegadores saem do mesmo container |
+| **H** (borda no E2E + um container de navegador por worker) | intacta | **não** (a borda usa o IP da conexão) | sim | **alto** (infra de teste: borda, rede, N runners) | **a maior** (igual à produção) | única que isola sem confiar em cabeçalho do cliente |
+| G (identidade autenticada Next → API) | muda código e arquitetura | não | sim | alto | média | só com ADR; não justificada hoje |
+
+**Recomendação (para decisão, R1):**
+
+1. **Agora**: manter a mitigação operacional (E) e acrescentar um **alarme**, sem mudar
+   comportamento: ao fim do `make e2e`, contar no log da API o pico de leituras por chave em 60 s
+   e falhar (ou avisar) acima de um limiar (ex.: 90 de 120). Nenhum controle muda; o risco passa a
+   ser medido em toda execução, local e na CI.
+2. **Quando o alarme disparar** (a suíte da Academy crescer): implementar **H**, a única
+   alternativa que isola os testes sem confiar em IP escolhido pelo cliente e ainda exercita a
+   borda de referência (útil também para P1). Exige aprovação específica e mudança na
+   infraestrutura de teste.
+3. Não implementar A, B, C nem G.
 
 ---
 
