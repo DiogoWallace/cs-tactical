@@ -58,6 +58,10 @@ class PrepareE2eDatabaseCommand extends Command
         'navigation-a11y@e2e.test' => ['nickname' => 'e2e_navigation_a11y', 'verified' => true],
         'dashboard@e2e.test' => ['nickname' => 'e2e_dashboard', 'verified' => true],
         'history@e2e.test' => ['nickname' => 'e2e_history', 'verified' => true],
+        // Sondagem de segurança (scripts/security-probe.sh), fora do Playwright.
+        'probe-a@e2e.test' => ['nickname' => 'e2e_probe_a', 'verified' => true],
+        'probe-b@e2e.test' => ['nickname' => 'e2e_probe_b', 'verified' => true],
+        'probe-c@e2e.test' => ['nickname' => 'e2e_probe_c', 'verified' => true],
     ];
 
     /**

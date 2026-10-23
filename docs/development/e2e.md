@@ -97,6 +97,33 @@ make e2e a="e2e/specs/login.spec.ts"
 make e2e a="--grep 'troca de senha'"
 ```
 
+## Sondagem de segurança e reprodução do limite (etapa 2.7b)
+
+Ferramentas que usam a stack E2E já no ar e só falam com ela (rodam dentro do container `web`):
+
+```bash
+E2E_KEEP=1 make e2e
+```
+
+```bash
+./scripts/security-probe.sh
+```
+
+```bash
+./scripts/academy-public-repro.sh
+```
+
+```bash
+make e2e-down
+```
+
+- `security-probe.sh`: autenticação, CSRF, IDOR, cabeçalhos de cache e integridade do Learning,
+  com as contas `probe-a/b/c@e2e.test` (fora do Playwright). Imprime uma linha por verificação e
+  termina com erro se alguma falhar.
+- `academy-public-repro.sh`: esgota o limite `academy-public` lendo o catálogo como visitante e
+  mostra, pelo log da API, qual chave cada caminho usa. Espere 60 s antes de rodar outra coisa na
+  mesma stack.
+
 ## Depurar
 
 - **Relatório HTML** da última execução, com screenshots, vídeos e traces das falhas:
