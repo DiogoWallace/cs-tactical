@@ -3,6 +3,7 @@
 namespace App\Modules\System\Console;
 
 use App\Modules\Identity\Models\User;
+use App\Modules\Learning\Actions\CompleteLesson;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -10,6 +11,8 @@ use Illuminate\Support\Facades\DB;
  * php artisan e2e:prepare
  *
  * Recria o banco da stack E2E e cria as contas usadas pelo Playwright (docs/development/e2e.md).
+ * Com `--seed-history`, depois da importação das fixtures, só grava o histórico do curso que o
+ * `scripts/e2e.sh` arquiva em seguida (nada é recriado).
  *
  * Proteções contra apagar outro banco (todas precisam passar):
  * - o comando só é registrado com APP_ENV=e2e (SystemServiceProvider);
@@ -54,18 +57,36 @@ class PrepareE2eDatabaseCommand extends Command
         'navigation-mobile@e2e.test' => ['nickname' => 'e2e_nav_mobile', 'verified' => true],
         'navigation-a11y@e2e.test' => ['nickname' => 'e2e_navigation_a11y', 'verified' => true],
         'dashboard@e2e.test' => ['nickname' => 'e2e_dashboard', 'verified' => true],
+        'history@e2e.test' => ['nickname' => 'e2e_history', 'verified' => true],
     ];
 
-    protected $signature = 'e2e:prepare';
+    /**
+     * Histórico de curso arquivado (etapa 2.7a, R4): a conta conclui as aulas do curso de fixture
+     * enquanto ele é público; depois o `scripts/e2e.sh` reimporta o curso como arquivado
+     * (`apps/web/e2e/fixtures/academy/_arquivado`).
+     */
+    public const HISTORY_ACCOUNT = 'history@e2e.test';
+
+    public const HISTORY_COURSE = 'historico-e2e';
+
+    /** @var list<string> */
+    public const HISTORY_LESSONS = ['primeira-aula', 'segunda-aula'];
+
+    protected $signature = 'e2e:prepare
+        {--seed-history : Só grava o histórico do curso de fixture que será arquivado (depois da importação)}';
 
     protected $description = 'Recria o banco E2E (cs_tactical_e2e) e cria as contas de teste';
 
-    public function handle(): int
+    public function handle(CompleteLesson $completeLesson): int
     {
         if (($problem = $this->unsafeReason()) !== null) {
             $this->error("Recusado: {$problem}. Nada foi alterado.");
 
             return self::FAILURE;
+        }
+
+        if ($this->option('seed-history')) {
+            return $this->seedHistory($completeLesson);
         }
 
         $this->call('migrate:fresh', ['--force' => true]);
@@ -87,6 +108,29 @@ class PrepareE2eDatabaseCommand extends Command
         }
 
         $this->info(count(self::ACCOUNTS).' contas E2E criadas em '.self::DATABASE.'.');
+
+        return self::SUCCESS;
+    }
+
+    /** Pela Action pública do Learning (auto-matrícula, R8), com o curso ainda publicado. */
+    private function seedHistory(CompleteLesson $completeLesson): int
+    {
+        $user = User::whereEmailIs(self::HISTORY_ACCOUNT)->first();
+        if ($user === null) {
+            $this->error('Conta '.self::HISTORY_ACCOUNT.' não encontrada: rode e2e:prepare antes.');
+
+            return self::FAILURE;
+        }
+
+        foreach (self::HISTORY_LESSONS as $lesson) {
+            if ($completeLesson->handle($user, self::HISTORY_COURSE, $lesson) === null) {
+                $this->error('Aula '.self::HISTORY_COURSE."/{$lesson} não é pública: importe as fixtures antes.");
+
+                return self::FAILURE;
+            }
+        }
+
+        $this->info('Histórico E2E gravado: '.count(self::HISTORY_LESSONS).' aulas de '.self::HISTORY_COURSE.'.');
 
         return self::SUCCESS;
     }

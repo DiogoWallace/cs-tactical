@@ -1,0 +1,12 @@
+key: historico-primeira-aula
+slug: primeira-aula
+title: Primeira aula do histórico
+status: published
+position: 1
+estimated_minutes: 3
+content:
+  version: 1
+  blocks:
+    - type: markdown
+      text: |
+        Aula concluída pela conta de histórico antes do arquivamento.

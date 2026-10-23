@@ -52,7 +52,7 @@ no nível certo (unitário, integração ou E2E).
 
    | # | Onde | Divergência | Correção prevista |
    |---|---|---|---|
-   | DV1 | `docs/development/e2e.md` | "Total: 46 testes"; faltam as linhas de `learning` e `quiz` | Total real (medido na hora: hoje 57 = 54 desktop + 3 mobile) e linhas dos dois specs |
+   | DV1 | `docs/development/e2e.md` | "Total: 46 testes"; faltam as linhas de `learning` e `quiz` | Total real (medido na hora: hoje 57 = 53 desktop + 4 mobile, pelo `playwright test --list`) e linhas dos dois specs |
    | DV2 | `docs/architecture/academy.md` (R10), `fase-2-plano.md` (L5, D2), comentário de `academy-dashboard-card.tsx` | `last_activity_at` muda na matrícula, na conclusão de aula, **no início e no envio** de tentativa; os textos citam só parte | Texto único e completo nos três lugares (o comentário é a única mudança em código, sem efeito de comportamento) |
    | DV3 | `docs/architecture/academy.md` (limites) | `learning-write` "matrícula, abrir/concluir aula": "abrir" não existe (revisão I1) | "matrícula e conclusão de aula" |
    | DV4 | `docs/architecture/academy.md` (segurança e acessibilidade por funcionalidade) | Sem a linha do painel/navegação (2.6) | Linha da 2.6 |
@@ -62,7 +62,7 @@ no nível certo (unitário, integração ou E2E).
    | Cenário | Hoje | Nível previsto | Motivo |
    |---|---|---|---|
    | Histórico de curso arquivado em "Meu progresso" | Pest (API) e Vitest (componente) | **E2E** | Atravessa importação (`--archive-missing`), API e tela; é a garantia P1/R13a vista pelo jogador |
-   | Gabarito liberado depois de esgotar as tentativas | Pest (matriz R20) | **E2E** | O E2E atual cobre reprovar → aprovar; esgotar é o outro caminho de liberação (Q1) e envolve o `QuizPanel` |
+   | Gabarito liberado depois de esgotar as tentativas | Pest (matriz R20) e **E2E** (achado na execução: o teste de acessibilidade do quiz já esgota as tentativas) | **E2E** reforçado | Esgotar é o outro caminho de liberação (Q1) e envolve o `QuizPanel`; ver [Execução](#execução-2026-10-23) |
    | Cartão do painel com API indisponível | Vitest | **Vitest** (cobertura principal, R5) | E2E só se a auditoria demonstrar uma integração não coberta pelos testes existentes; a leitura no servidor não é interceptável pelo Playwright |
    | Sessão desconhecida no cabeçalho público | Vitest | **Vitest** (mantido) | Exige o `/me` falhando com cookie válido; reproduzir no E2E exigiria derrubar a API no meio do teste e afetaria specs paralelos |
    | Sessão expirada no cartão (`anonymous`) | Vitest | **Vitest** (mantido) | O painel redireciona ao login antes (`getCurrentUser`); o estado só aparece numa corrida curta |
@@ -110,6 +110,17 @@ Diff dos documentos; saída do E2E com os novos testes; registro da contraprova.
 Fixture arquivada pode interferir em outros specs que contam cursos do catálogo (o
 `academy.spec` confere a lista): o curso arquivado não aparece no catálogo, mas a importação dele
 precisa acontecer antes do arquivamento. Interromper se exigir mudar asserções existentes.
+
+### Execução (2026-10-23)
+
+| Item | Resultado |
+|---|---|
+| DV1–DV4 | Corrigidos em `e2e.md`, `academy.md` (R10, limites, linha da 2.6), `fase-2-plano.md` (L5, D2) e no comentário de `academy-dashboard-card.tsx`. A contagem real de E2E era 57 = **53 desktop + 4 mobile** (este plano dizia 54 + 3; corrigido) |
+| Gabarito depois de esgotar | **Já tinha E2E**: o teste de acessibilidade do quiz esgota as 2 tentativas da fixture e conferia a explicação. A auditoria de 2026-10-18 errou ao apontar a lacuna. Em vez de duplicar, o teste foi reforçado: gabarito marcado, "0 tentativas restantes", nenhuma tentativa nova, e o mesmo estado depois de recarregar (vindo do servidor) |
+| Histórico de curso arquivado | Novo E2E em `learning.spec.ts` com a fixture `historico-e2e` (R4): publicada na importação, concluída pela conta `history@e2e.test` via `e2e:prepare --seed-history` (Action `CompleteLesson`, sem tocar models da Academy) e arquivada por uma segunda importação de `_arquivado/`, tudo antes do Playwright no `scripts/e2e.sh` |
+| Total E2E | 58 = 54 desktop + 4 mobile; **58 de 58** na stack nova (2,3 min) |
+| Contraprovas | Sem a reimportação de `_arquivado` (curso continua publicado), o teste do histórico falha; com `reviewAvailable()` só por aprovação (sem o esgotamento de R20), o teste do quiz falha por não achar a explicação. Arquivos restaurados sem diff |
+| Regressão | Pest 739 (738 + 1 do `--seed-history`), concorrência 5, Vitest 298, Pint, Larastan, ESLint, Prettier, TypeScript e build verdes |
 
 ---
 

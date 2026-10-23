@@ -26,8 +26,9 @@ import { ProgressSummary } from "./progress-summary"
  *
  * Critério determinístico, só com dados da API: a primeira matrícula de curso público com próxima
  * aula, na ordem de `/me/enrollments` (`last_activity_at` mais recente primeiro, empate pelo id).
- * `last_activity_at` muda só com matrícula, conclusão de aula ou envio de quiz: é a última atividade
- * registrada, não o último acesso (abrir uma aula não grava nada).
+ * `last_activity_at` muda só com a matrícula, uma conclusão nova de aula, uma tentativa de quiz nova
+ * e o envio dela (R10, docs/architecture/academy.md): é a última atividade registrada, não o último
+ * acesso (abrir uma aula não grava nada).
  */
 export function pickCourseToContinue(enrollments: EnrollmentSummary[]): EnrollmentSummary | null {
   return (

@@ -1,6 +1,8 @@
 # Modelo conceitual de dados
 
-> Proposta. **Nenhuma tabela de domínio é criada antes da fase que a utiliza.** Esta página é atualizada sempre que uma migration nova entra.
+> **Implementado**: Identidade (Fase 1), Academy e Learning (Fase 2, etapas 2.1, 2.4 e 2.5).
+> **Proposta**: as seções das Fases 3 e 4. **Nenhuma tabela de domínio é criada antes da fase que a
+> utiliza.** Esta página é atualizada sempre que uma migration nova entra.
 
 ## Princípios
 
@@ -27,20 +29,23 @@ Models em `app/Modules/Identity/Models`; migrations `2026_10_16_1000xx_*`.
   - Avatar e links externos ficam para quando forem implementados (arquivos no storage, ver princípios).
 - **password_reset_tokens**: tabela técnica do broker do Laravel (`email` como chave, hash do token, `created_at`).
 
-## Academy — catálogo global (Fase 2)
+## Academy — catálogo global (Fase 2) — implementado na etapa 2.1
 
-> Modelo detalhado (colunas, índices, constraints, exclusões): [academy-learning.md](academy-learning.md), definido na etapa 2.0.
+> Modelo detalhado (colunas, índices, constraints, exclusões): [academy-learning.md](academy-learning.md), definido na etapa 2.0. Models em `app/Modules/Academy/Models`; migrations `2026_10_17_1000xx_*`.
 
 - **courses** 1:N **course_modules** 1:N **lessons**, cada nível com `key` imutável, `slug`, `position` e `status` (`draft`, `published`, `archived`; [ADR 0015](../decisions/0015-academy-e-learning-publicacao-e-visibilidade.md)).
 - `courses.level`: `beginner`, `intermediate`, `advanced`. Trilhas começam como filtro por nível; uma tabela `tracks` só entra se a trilha precisar de mais que isso.
 - **lessons.content**: JSONB com lista de blocos tipados + `content_version` ([ADR 0008](../decisions/0008-conteudo-estruturado-da-academy.md)).
 - **quizzes** (de uma aula) 1:N **quiz_questions** 1:N **quiz_options**.
+- **academy_media**: imagens por hash do conteúdo (capas e blocos `image`), arquivos no disco `academy` ([ADR 0019](../decisions/0019-midia-externa-markdown-seguro-e-arquivos.md)).
 
-## Learning — dados do jogador (Fase 2)
+## Learning — dados do jogador (Fase 2) — implementado nas etapas 2.4 e 2.5
 
-- **enrollments**: user × course, único por par.
-- **lesson_progress**: user × lesson, `status`, `completed_at`, único por par.
-- **quiz_attempts** 1:N **quiz_attempt_answers**; cada tentativa guarda um snapshot do quiz ([ADR 0018](../decisions/0018-quizzes-tentativas-e-historico.md)).
+Models em `app/Modules/Learning/Models`; migrations `2026_10_17_2000xx_*` (2.4) e `2026_10_18_1000xx_*` (2.5).
+
+- **enrollments**: user × course, único por par; `last_activity_at` ordena o "continuar estudando".
+- **lesson_progress**: user × lesson, `status` (`in_progress`, `completed`), `completed_at`, hash do conteúdo na conclusão, único por par.
+- **quiz_attempts** 1:N **quiz_attempt_answers**; cada tentativa guarda um snapshot do quiz ([ADR 0018](../decisions/0018-quizzes-tentativas-e-historico.md)); uma tentativa aberta por jogador e quiz (único parcial).
 
 O progresso é **do jogador** e sobrevive a mudanças no conteúdo ([ADR 0017](../decisions/0017-progresso-diante-de-mudancas-no-conteudo.md)). Nenhuma equipe lê essas tabelas diretamente; o acesso passa pelas atribuições (abaixo).
 

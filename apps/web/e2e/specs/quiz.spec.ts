@@ -96,6 +96,20 @@ test("quiz sem violações sérias de acessibilidade, respondendo e no resultado
     await expectNoSeriousA11yViolations(page, `quiz-resultado-${theme}`)
   }
 
-  // As duas tentativas acabaram: a revisão com o gabarito foi liberada (R20).
-  await expect(text(quiz(page), EXPLANATION)).toBeVisible()
+  // As duas tentativas acabaram: a revisão com o gabarito foi liberada (R20, Q1), sem tentativa nova.
+  const panel = quiz(page)
+  await expect(text(panel, EXPLANATION)).toBeVisible()
+  await expect(panel.getByText("Correta", { exact: true })).toHaveCount(2)
+  await expect(text(panel, "0 tentativas restantes", { exact: false })).toBeVisible()
+  await expect(panel.getByRole("button", { name: "Tentar de novo" })).toHaveCount(0)
+
+  // Recarregar: o esgotamento vem do servidor; só a revisão continua disponível (R16).
+  await page.reload()
+  await expect(
+    text(quiz(page), "Suas tentativas acabaram. A revisão com o gabarito está liberada."),
+  ).toBeVisible()
+  await expect(quiz(page).getByRole("button", { name: "Ver revisão" })).toBeVisible()
+  await expect(
+    quiz(page).getByRole("button", { name: /Iniciar|Tentar de novo|Continuar/ }),
+  ).toHaveCount(0)
 })
