@@ -1,6 +1,6 @@
 # 0022 — Análise de partidas a partir de demos enviadas pelo jogador
 
-- Status: Proposta (escopo aprovado em 2026-10-23, decisão F1 do [estudo T0.1](../training/fontes-de-telemetria.md); aceite depende da PoC M1 do [plano do MVP](../training/mvp-analise-de-demos.md))
+- Status: Proposta (escopo aprovado em 2026-10-23, decisão F1 do [estudo T0.1](../training/fontes-de-telemetria.md); PoC M1 concluída e runtime decidido; aceite depende das demais decisões em aberto do [plano do MVP](../training/mvp-analise-de-demos.md))
 - Data: 2026-10-23
 
 ## Contexto
@@ -49,7 +49,10 @@ sem isolamento.
    parser com limites de CPU, memória e tempo, e devolve **só agregados do SteamID pedido**. A API
    valida a resposta por schema e grava o resultado; o serviço não grava nada. O runtime (TypeScript
    com `@laihoe/demoparser2` ou Python com `demoparser2`, o mesmo núcleo em Rust) é escolhido na PoC
-   M1, que repete o E2 nos dois.
+   M1, que repete o E2 nos dois. **M1 (2026-10-23)**: resultados iguais em três partidas reais;
+   TypeScript com menos memória e imagem menor. **Decidido: TypeScript** (Node 24 com
+   `@laihoe/demoparser2`), aprovado pelo responsável em 2026-10-23; o contrato de saída é o
+   `cst-demo-analysis/v1` ([resultado](../training/mvp-analise-de-demos.md#resultado-da-m1-2026-10-23)).
 5. **O que é guardado**: só as **métricas derivadas do próprio jogador** e metadados da partida
    (mapa, data do arquivo, build, hash SHA-256 da demo para recusar repetidos). **A demo é apagada
    logo depois da análise** (no máximo 24 h se a análise falhar). Nomes, SteamIDs e dados de outros
@@ -91,5 +94,5 @@ sem isolamento.
 - Política de privacidade precisa citar o vínculo Steam e o processamento de demos antes de
   qualquer uso real (já exigido para a T3).
 - Métricas do MVP aparecem como **estimativas** e **não verificadas**, com a explicação na tela.
-- A ADR passa a Aceita depois da PoC M1 (runtime escolhido, E2 reproduzido) e das decisões em aberto
-  do [plano](../training/mvp-analise-de-demos.md#decisões-em-aberto).
+- A PoC M1 já escolheu o runtime e reproduziu o E2; a ADR passa a Aceita depois das demais decisões
+  em aberto do [plano](../training/mvp-analise-de-demos.md#decisões-em-aberto) (D-M2 a D-M7).
