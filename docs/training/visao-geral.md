@@ -31,6 +31,7 @@ nunca de valores informados pelo jogador.
 | [telemetria.md](telemetria.md) | Contrato plugin ↔ API: transporte, autenticação, eventos, idempotência, falhas |
 | [fontes-de-telemetria.md](fontes-de-telemetria.md) | Estudo T0.1: plugin no servidor × Game State Integration × demos; o que cada fonte mede, confiança, custo, experimentos E1–E3 |
 | [mvp-analise-de-demos.md](mvp-analise-de-demos.md) | Plano do primeiro MVP de telemetria: análise de partidas por demos enviadas pelo jogador (etapas M0–M6, [ADR 0022](../decisions/0022-analise-de-partidas-por-demos.md)) |
+| [mvp-m2-vinculo-steam.md](mvp-m2-vinculo-steam.md) | Plano de implementação da M2: vínculo da conta Steam por OpenID 2.0 (validação, banco, API, telas, testes de segurança) |
 | [metricas.md](metricas.md) | Catálogo de métricas: origem, cálculo, limites, validade, evolução e recomendações |
 | [modelagem.md](modelagem.md) | Proposta de modelo relacional, retenção e volume |
 | [mapas-e-exercicios.md](mapas-e-exercicios.md) | Training Engine, definição versionada de exercícios, contrato de entidades do mapa |
