@@ -20,7 +20,7 @@ do frontend (alguns minutos).
 | Comando | `php artisan e2e:prepare` só é registrado com `APP_ENV=e2e`, e se recusa a rodar se o ambiente não for `e2e` ou se a conexão não for PostgreSQL no banco `cs_tactical_e2e` (confere a configuração e o `current_database()` do servidor). Testado em `tests/Feature/System/PrepareE2eDatabaseCommandTest.php`. |
 | Portas | Nenhuma porta conflita com a stack de desenvolvimento. Só o Mailpit é publicado (`127.0.0.1:8026`, para depuração). |
 | Frontend | O container `web` copia o código para dentro dele e roda `next build && next start`: não escreve em `apps/web` (onde o `next dev` continua rodando). |
-| Academy | Conteúdo próprio dos testes (`apps/web/e2e/fixtures/academy`, montado só leitura), importado pelo `scripts/e2e.sh` com `academy:import`. As imagens vão para um `tmpfs` em `storage/app/academy`: nada é gravado na pasta da API, compartilhada com a stack de desenvolvimento. Mudar o conteúdo real (`content/academy`) não afeta os testes. |
+| Academy | Conteúdo próprio dos testes (`apps/web/e2e/fixtures/academy`, montado só leitura), importado pelo `scripts/e2e.sh` com `academy:import`; o curso `historico-e2e` é concluído por uma conta (`e2e:prepare --seed-history`) e arquivado por uma segunda importação, antes dos testes ([README das fixtures](../../apps/web/e2e/fixtures/academy/README.md)). As imagens vão para um `tmpfs` em `storage/app/academy`: nada é gravado na pasta da API, compartilhada com a stack de desenvolvimento. Mudar o conteúdo real (`content/academy`) não afeta os testes. |
 
 As duas stacks podem ficar no ar ao mesmo tempo.
 
@@ -74,8 +74,12 @@ Nenhum `sleep` ou `waitForTimeout`. A sincronização usa as esperas automática
 | `security-headers` | headers de segurança das páginas (build de produção) e das respostas da API pelo proxy ([seguranca-http.md](../architecture/seguranca-http.md)) |
 | `csp` | nenhuma violação da CSP aplicada nos fluxos principais; violações da CSP Report-Only anexadas ao relatório |
 | `academy` | catálogo com cursos publicados, capa pela rota de mídia e filtro por nível (inclusive vazio); curso com módulos e aulas públicos em ordem; aula com Markdown, imagem, callout e quiz (sem gabarito no HTML) e navegação anterior/próxima entre módulos; vídeo só depois do clique, pelo `youtube-nocookie.com` (interceptado: sem internet); 404 com `noindex` para rascunho, ancestral em rascunho, aula de outro curso e slug inválido; CSP com o player só nas aulas e sem violações; axe nos dois temas; teclado; `@mobile`: lista de aulas recolhível e nenhuma rolagem horizontal |
+| `learning` | etapa 2.4: visitante lê curso e aula com convite para entrar no lugar das ações; jogador se matricula, conclui uma aula (progresso anunciado), sai, entra de novo e encontra o progresso e o "continuar" em Meu progresso; curso arquivado (2.7a): continua no histórico de Meu progresso com as conclusões e sem link, conta no painel sem "continuar", URL antiga responde 404 e o catálogo não o lista; axe nas telas do Learning nos dois temas |
+| `quiz` | etapa 2.5: reprova sem ver o gabarito (só acerto/erro por pergunta), aprova na segunda tentativa e só então vê a revisão com explicações; axe no quiz respondendo e no resultado, nos dois temas, terminando com as tentativas esgotadas: gabarito e explicação liberados, nenhuma tentativa nova, também depois de recarregar (2.7a) |
 
-Total: 46 testes (43 desktop, 3 mobile).
+Total: 58 testes em 16 arquivos: 54 no `chromium-desktop` (os que rodam na CI) e 4 no
+`chromium-mobile` (`academy` 2, `mobile-nav` 1, `navigation` 1). Conferir com
+`docker compose exec web pnpm exec playwright test --list`.
 
 ## Executar só uma parte
 
@@ -92,6 +96,33 @@ make e2e a="e2e/specs/login.spec.ts"
 ```bash
 make e2e a="--grep 'troca de senha'"
 ```
+
+## Sondagem de segurança e reprodução do limite (etapa 2.7b)
+
+Ferramentas que usam a stack E2E já no ar e só falam com ela (rodam dentro do container `web`):
+
+```bash
+E2E_KEEP=1 make e2e
+```
+
+```bash
+./scripts/security-probe.sh
+```
+
+```bash
+./scripts/academy-public-repro.sh
+```
+
+```bash
+make e2e-down
+```
+
+- `security-probe.sh`: autenticação, CSRF, IDOR, cabeçalhos de cache e integridade do Learning,
+  com as contas `probe-a/b/c@e2e.test` (fora do Playwright). Imprime uma linha por verificação e
+  termina com erro se alguma falhar.
+- `academy-public-repro.sh`: esgota o limite `academy-public` lendo o catálogo como visitante e
+  mostra, pelo log da API, qual chave cada caminho usa. Espere 60 s antes de rodar outra coisa na
+  mesma stack.
 
 ## Depurar
 

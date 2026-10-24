@@ -256,7 +256,7 @@ e, no frontend, `apps/web/src/features/learning`.
 | L2 | `lessons[].quiz` em `/progress` | Fora da resposta até a 2.5 | Sem tentativas não há o que resumir; `null` sugeriria aula sem quiz |
 | L3 | `/progress` | Campos aditivos `enrolled_at`, `completed_lessons`, `total_lessons`, `new_lessons_available`, `next_lesson`; `lessons` com todas as aulas públicas e `status` `not_started`/`completed` | O frontend precisa distinguir progresso, total, curso concluído com aulas novas e onde continuar sem recalcular regras |
 | L4 | `/me/enrollments` de curso arquivado | `total_lessons` e `percent` nulos; `completed_lessons` = conclusões gravadas | Conteúdo arquivado não tem aulas públicas; o histórico continua do jogador (R13a) |
-| L5 | `last_activity_at` | Só muda com uma conclusão nova (ou na matrícula) | Repetir uma escrita não grava nada; "continuar" usa a atividade real |
+| L5 | `last_activity_at` | Só muda com uma conclusão nova (ou na matrícula). A partir da 2.5, também com uma tentativa de quiz nova e com o envio dela (regra completa em R10, [academy.md](../architecture/academy.md#matrícula-e-progresso)) | Repetir uma escrita não grava nada; "continuar" usa a atividade real |
 | L6 | FK de `lesson_progress.lesson_id` | Só a composta `(lesson_id, course_id)` | Ela já garante a aula e o curso da aula; a simples seria redundante |
 | L7 | Zod no navegador | `z.config({ jitless: true })` | O teste de `new Function` do Zod violaria a CSP sem `unsafe-eval` |
 | L8 | Painel | Cartão "Academy · Em breve" mantido; "Meu progresso" no menu da área logada | O cartão é escopo da 2.6 |
@@ -315,7 +315,7 @@ contratos que já existiam (`GET /api/v1/me` e `GET /api/v1/me/enrollments`).
 | # | Ponto | Implementado | Motivo |
 |---|---|---|---|
 | D1 | Cabeçalho das páginas públicas | Escolhido no servidor por sessão, no mesmo layout; nenhuma página duplicada | `/academy` continua pública e cacheável no shell; quem está logado não vê "Entrar"/"Criar conta" (risco registrado na 2.4) |
-| D2 | "Continuar estudando" | Primeira matrícula de curso público com `next_lesson`, na ordem de `/me/enrollments` (`last_activity_at` desc, empate pelo id) | Critério determinístico com dados reais. `last_activity_at` muda com matrícula, conclusão de aula ou envio de quiz: o cartão diz "última atividade registrada", nunca "último acesso" (abrir uma aula não grava nada) |
+| D2 | "Continuar estudando" | Primeira matrícula de curso público com `next_lesson`, na ordem de `/me/enrollments` (`last_activity_at` desc, empate pelo id) | Critério determinístico com dados reais. `last_activity_at` muda com a matrícula, uma conclusão nova de aula, uma tentativa de quiz nova e o envio dela (R10): o cartão diz "última atividade registrada", nunca "último acesso" (abrir uma aula não grava nada) |
 | D3 | Números do cartão | Cursos matriculados (todas as matrículas, inclusive arquivadas), cursos concluídos (`completed_at`), aulas concluídas (soma de `completed_lessons`) | Só contagens que a API já devolve; nenhuma métrica inventada |
 | D4 | Estados do cartão | Carregando (esqueleto com `role=status`), sem matrícula, em andamento, tudo em dia, API indisponível (`alert` + tentar de novo), sessão expirada (`alert` + entrar de novo, voltando ao painel) | Requisitos da etapa; o resto do painel não depende das matrículas |
 | D5 | Sessão desconhecida | Cookie presente e `/me` com erro: sem Entrar/Criar conta, link para o painel, nenhum dado da conta | Não afirmar que é visitante sem saber; o painel trata a sessão (redireciona em `401`, mostra erro se a API estiver fora) |
@@ -347,5 +347,5 @@ na stack E2E continua como pendência separada.
 | 2.4 | `Learning`: matrícula, conclusão, progresso, "Meu progresso" com histórico de arquivados; Policies e matriz |
 | 2.5 | Quizzes: tentativa, snapshot, envio, correção, liberação do gabarito (R20), histórico, limites |
 | 2.6 | Painel: cartão da Academy com "continuar de onde parou"; cabeçalho das páginas públicas conforme a sessão (implementada) |
-| 2.7 | Revisão transversal de segurança, acessibilidade e desempenho |
+| 2.7 | Revisão transversal de segurança, acessibilidade e desempenho (plano aprovado em [fase-2-etapa-2.7-plano.md](fase-2-etapa-2.7-plano.md); execução por subetapa, 2.7a → 2.7d, cada uma com autorização própria) |
 | 2.8 | Auditoria e fechamento da Fase 2 |

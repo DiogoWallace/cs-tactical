@@ -28,7 +28,7 @@
 | R7 | Matricular-se exige login e um curso **público**. Matricular de novo é idempotente (devolve a matrícula existente). |
 | R8 | Concluir uma aula exige login e uma aula **pública**; se o jogador não está matriculado no curso, a matrícula é criada na mesma transação (auto-matrícula). |
 | R9 | Concluir de novo é idempotente (mantém a primeira data). Desfazer conclusão não existe na Fase 2. |
-| R10 | Ler uma aula **não grava nada** (a leitura é pública e cacheável). Progresso só muda por ação explícita: concluir a aula (`completed`) ou iniciar o quiz dela (`in_progress`, se ainda não concluída). Ambas atualizam `enrollments.last_activity_at`. "Continuar de onde parou" = primeira aula pública não concluída do curso com atividade mais recente. |
+| R10 | Ler uma aula **não grava nada** (a leitura é pública e cacheável). Progresso só muda por ação explícita: concluir a aula (`completed`) ou iniciar o quiz dela (`in_progress`, se ainda não concluída). `enrollments.last_activity_at` nasce na matrícula e muda com uma conclusão **nova** de aula, uma tentativa de quiz **nova** (devolver a tentativa já aberta não conta, R15) e o envio de uma tentativa; repetir uma ação idempotente não muda nada. "Continuar de onde parou" = primeira aula pública não concluída do curso com atividade mais recente. |
 | R11 | Percentual do curso = aulas públicas concluídas ÷ aulas públicas (ADR 0017). |
 | R12 | `enrollments.completed_at` é gravado ao concluir a última aula pública e não é apagado depois, nem se aulas forem publicadas ou arquivadas. |
 | R13 | O jogador só vê o próprio progresso. Nenhum papel de plataforma (inclusive `admin`) lê progresso de outros na Fase 2. |
@@ -83,7 +83,7 @@ de outro jogador responde **404** (não revela que existe). Cada linha da matriz
 | `academy-public` | 120/min | IP real (ADR 0009) | leitura do catálogo e das aulas |
 | `academy-media` | 600/min | IP real (ADR 0009) | imagens do catálogo e das aulas (etapa 2.2: uma página carrega várias de uma vez) |
 | `api` (existente) | 120/min | usuário | leituras autenticadas de progresso e tentativas |
-| `learning-write` | 30/min | usuário | matrícula, abrir/concluir aula |
+| `learning-write` | 30/min | usuário | matrícula e conclusão de aula (ler uma aula não grava nada, R10) |
 | `quiz-attempt` | 10/min | usuário | iniciar tentativa e enviar respostas |
 
 Limites de escrita protegem contra automação; o de quiz também dificulta adivinhar o gabarito
@@ -91,7 +91,8 @@ Limites de escrita protegem contra automação; o de quiz também dificulta adiv
 
 ## Segurança e acessibilidade por funcionalidade
 
-Entram **junto** com cada funcionalidade (etapas 2.1 a 2.6), não só na auditoria 2.8:
+Entram **junto** com cada funcionalidade (etapas 2.1 a 2.6), não só na revisão transversal (2.7)
+e na auditoria (2.8):
 
 | Funcionalidade | Segurança | Acessibilidade |
 |---|---|---|
@@ -100,3 +101,4 @@ Entram **junto** com cada funcionalidade (etapas 2.1 a 2.6), não só na auditor
 | Aula (2.3) | Markdown sanitizado; CSP por rota para vídeo; links externos com `noopener` | `iframe` com `title`; imagens com `alt`; foco e navegação por teclado |
 | Progresso (2.4) | Policies de posse; idempotência; limites | anúncio do progresso (`aria-live`), botões com nome acessível |
 | Quizzes (2.5) | gabarito só no servidor; snapshot; limites; 404 para tentativa alheia | `fieldset`/`legend`, grupos de rádio/checkbox, resultado anunciado |
+| Painel e navegação (2.6) | sessão resolvida no servidor; shell estático (PPR) sem dados da conta; sessão desconhecida sem dados nem "Entrar"; leituras `no-store` | marcos e nomes de navegação únicos, `progress` com `aria-valuetext`, estados com `role="status"`/`role="alert"`, menu do celular com foco preso; axe nos dois temas |
