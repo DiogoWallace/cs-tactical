@@ -82,7 +82,7 @@ Nenhum `sleep` ou `waitForTimeout`. A sincronização usa as esperas automática
 | --- | --- |
 | `registration` | cadastro → painel com aviso de e-mail não verificado → e-mail de confirmação |
 | `login` | senha errada (mensagem genérica); painel com o cartão da Academy e Teams só informativo; logado no `/login` e `/cadastro` vai ao painel; "manter conectado" cria cookie de 30 dias, sem ele não cria |
-| `session` | rota protegida sem cookie e com cookie inválido → login com `next`; volta ao destino com a query; 404 da área logada; sair: voltar no navegador não reabre a área logada e o cookie antigo não vale mais |
+| `session` | rota protegida sem cookie e com cookie inválido → login com `next`; volta ao destino com a query; 404 da área logada; sair: voltar no navegador não reabre a área logada e o cookie antigo não vale mais; sessão expirada com "manter conectado" é renovada pelo proxy, direto no painel e pelo login com `next`, sem laço |
 | `redirects` | `next` inseguro (`//evil.example`, `https://evil.example`, `/\evil.example`, `javascript:`, tab e quebra de linha) nunca sai da aplicação; `next` interno é respeitado com a query |
 | `email-verification` | aviso + reenvio; link adulterado recusado; link sem sessão → login → volta e confirma |
 | `password-reset` | mesma resposta com e sem conta; token no fragmento e fragmento removido da URL; redefinição; link não reutilizável; senha antiga recusada e nova aceita |
@@ -96,7 +96,7 @@ Nenhum `sleep` ou `waitForTimeout`. A sincronização usa as esperas automática
 | `learning` | etapa 2.4: visitante lê curso e aula com convite para entrar no lugar das ações; jogador se matricula, conclui uma aula (progresso anunciado), sai, entra de novo e encontra o progresso e o "continuar" em Meu progresso; curso arquivado (2.7a): continua no histórico de Meu progresso com as conclusões e sem link, conta no painel sem "continuar", URL antiga responde 404 e o catálogo não o lista; axe nas telas do Learning nos dois temas |
 | `quiz` | etapa 2.5: reprova sem ver o gabarito (só acerto/erro por pergunta), aprova na segunda tentativa e só então vê a revisão com explicações; axe no quiz respondendo e no resultado, nos dois temas, terminando com as tentativas esgotadas: gabarito e explicação liberados, nenhuma tentativa nova, também depois de recarregar (2.7a) |
 
-Total: 58 testes em 16 arquivos: 54 no `chromium-desktop` (os que rodam na CI) e 4 no
+Total: 59 testes em 16 arquivos: 55 no `chromium-desktop` (os que rodam na CI) e 4 no
 `chromium-mobile` (`academy` 2, `mobile-nav` 1, `navigation` 1). Conferir com
 `docker compose exec web pnpm exec playwright test --list`.
 

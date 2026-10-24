@@ -8,6 +8,9 @@ import { loginUrl } from "@/lib/routes"
 import { PATHNAME_HEADER } from "@/lib/session"
 
 import { ApiError, ApiUnavailableError, parseBody } from "./errors"
+import { buildServerHeaders } from "./server-headers"
+
+export { buildServerHeaders }
 
 /**
  * Chamadas à API feitas no servidor (Server Components). Ver docs/architecture/autenticacao.md.
@@ -58,19 +61,4 @@ export async function serverFetch<T>(
   }
   if (!response.ok) throw new ApiError(response.status, body)
   return body as T
-}
-
-export function buildServerHeaders(
-  cookieHeader: string,
-  appUrl: string,
-  forwardedFor?: string | null,
-): Headers {
-  const headers = new Headers({
-    Accept: "application/json",
-    Origin: new URL(appUrl).origin,
-    Referer: `${new URL(appUrl).origin}/`,
-  })
-  if (cookieHeader) headers.set("Cookie", cookieHeader)
-  if (forwardedFor) headers.set("X-Forwarded-For", forwardedFor)
-  return headers
 }

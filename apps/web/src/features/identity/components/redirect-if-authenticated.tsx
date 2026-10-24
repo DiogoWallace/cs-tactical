@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation"
 
-import { ApiUnavailableError } from "@/lib/api/errors"
+import { ApiError, ApiUnavailableError } from "@/lib/api/errors"
 import { afterLoginPath } from "@/lib/routes"
 
 import { findCurrentUser } from "../api/get-current-user"
@@ -20,8 +20,10 @@ export async function RedirectIfAuthenticated({ searchParams }: Props) {
   try {
     authenticated = (await findCurrentUser()) !== null
   } catch (error) {
-    // API fora do ar: mostra o formulário; o envio exibirá o erro de conexão.
-    if (!(error instanceof ApiUnavailableError)) throw error
+    // API fora do ar ou limite de requisições atingido (429): mostra o formulário em vez de uma
+    // página de erro; o envio exibirá o erro de conexão ou de limite.
+    const rateLimited = error instanceof ApiError && error.status === 429
+    if (!(error instanceof ApiUnavailableError) && !rateLimited) throw error
   }
 
   if (!authenticated) return null
