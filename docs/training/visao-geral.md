@@ -29,6 +29,7 @@ nunca de valores informados pelo jogador.
 | [viabilidade-cs2.md](viabilidade-cs2.md) | O que o servidor CS2, o CounterStrikeSharp, o `cs_script` e a Steam permitem de fato, com fontes e classificação |
 | [arquitetura.md](arquitetura.md) | Componentes, fluxos, identidade e sessões, falhas, integração com a Academy |
 | [telemetria.md](telemetria.md) | Contrato plugin ↔ API: transporte, autenticação, eventos, idempotência, falhas |
+| [fontes-de-telemetria.md](fontes-de-telemetria.md) | Estudo T0.1: plugin no servidor × Game State Integration × demos; o que cada fonte mede, confiança, custo, experimentos E1–E3 |
 | [metricas.md](metricas.md) | Catálogo de métricas: origem, cálculo, limites, validade, evolução e recomendações |
 | [modelagem.md](modelagem.md) | Proposta de modelo relacional, retenção e volume |
 | [mapas-e-exercicios.md](mapas-e-exercicios.md) | Training Engine, definição versionada de exercícios, contrato de entidades do mapa |
