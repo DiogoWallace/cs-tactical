@@ -1,0 +1,10 @@
+# Só para o scripts/perf.sh (etapa 2.7d): a API da stack descartável com OPcache ligado.
+#
+# A imagem `development` (compose.yaml) desliga o OPcache para o código recarregar a cada edição;
+# medido assim, cada requisição HTTP gasta ~130 ms recompilando o framework e o número diz pouco
+# sobre a aplicação. Com OPcache (o esperado em produção), o tempo HTTP mede o código. A validação
+# de timestamp segue desligada pela imagem: a stack é nova a cada medição.
+services:
+  api:
+    environment:
+      PHP_OPCACHE_ENABLE: "1"

@@ -103,6 +103,7 @@ make test && make lint
 | `make test`, `make test-api`, `make test-web` | Testes |
 | `make e2e`, `make e2e-report`, `make e2e-down` | Testes E2E (Playwright) numa stack isolada e descartável; ver [docs/development/e2e.md](docs/development/e2e.md) |
 | `make coverage` | Cobertura de testes da API (pcov) e do frontend (v8); ver [docs/development/cobertura.md](docs/development/cobertura.md) |
+| `make perf` | Linha de base de desempenho numa stack descartável (cenário pequeno e ampliado, 2.000 aulas); ver [docs/development/desempenho.md](docs/development/desempenho.md) |
 | `make test-concurrency` | Testes de concorrência com processos reais (último admin, matrícula e conclusão simultâneas); também rodam na CI. Ver [docs/development/testes-de-concorrencia.md](docs/development/testes-de-concorrencia.md) |
 | `make lint`, `make fmt` | Verificação e formatação de código |
 | `make artisan c="..."`, `make composer c="..."` | Artisan e Composer no container da API |
@@ -145,6 +146,7 @@ compose.yaml        Serviços: web, api, worker, postgres, redis, mailpit
 - [Testes E2E (Playwright): executar, depurar e reproduzir](docs/development/e2e.md)
 - [Testes de concorrência](docs/development/testes-de-concorrencia.md)
 - [Cobertura de testes](docs/development/cobertura.md)
+- [Desempenho: linha de base e limites de regressão](docs/development/desempenho.md)
 - [Dependências: atualizações e alertas de segurança](docs/development/dependencias.md)
 - [Relatório da Fase 0](docs/development/fase-0-relatorio.md)
 - [Relatório da Fase 1](docs/development/fase-1-relatorio.md) e [auditoria de fechamento](docs/development/fase-1-auditoria.md)

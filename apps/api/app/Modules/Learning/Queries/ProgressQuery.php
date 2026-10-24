@@ -105,28 +105,31 @@ final class ProgressQuery
         }
 
         $courseIds = $enrollments->pluck('course_id')->all();
-        $lessons = $this->publicLessons($courseIds);
+        // Agrupadas uma vez: filtrar a coleção inteira a cada matrícula custava matrículas × aulas
+        // (162 ms com 21 matrículas e 803 aulas na medição da etapa 2.7d).
+        $lessonsByCourse = $this->publicLessons($courseIds)->groupBy('course_id');
         $completions = $this->completions($user, $courseIds);
+        $completionsByCourse = $completions->groupBy('course_id');
 
-        return $enrollments->map(function (Enrollment $enrollment) use ($lessons, $completions): EnrollmentSummary {
+        return $enrollments->map(function (Enrollment $enrollment) use ($lessonsByCourse, $completions, $completionsByCourse): EnrollmentSummary {
             if ($enrollment->course->status !== PublicationStatus::Published) {
                 return new EnrollmentSummary(
                     $enrollment,
-                    completedLessons: $completions->where('course_id', $enrollment->course_id)
+                    completedLessons: $completionsByCourse->get($enrollment->course_id, collect())
                         ->where('status', LessonProgressStatus::Completed)->count(),
                     totalLessons: null,
                     nextLesson: null,
                 );
             }
 
-            $progress = $this->build($enrollment, $lessons, $completions);
+            $progress = $this->build($enrollment, $lessonsByCourse->get($enrollment->course_id, collect()), $completions);
 
             return new EnrollmentSummary($enrollment, $progress->completedLessons, $progress->totalLessons, $progress->nextLesson);
         })->values()->all();
     }
 
     /**
-     * @param  Collection<int, Lesson>  $lessons  aulas públicas (de um ou mais cursos), em ordem
+     * @param  Collection<int, Lesson>  $lessons  aulas públicas do curso da matrícula, em ordem
      * @param  Collection<string, LessonProgress>  $completions  progresso do jogador por lesson_id (concluídas e em andamento)
      * @param  array<string, array{attempts_used: int, best_score_percent: float|null, passed: bool}>|null  $quizzes  null = sem resumo de quiz
      */
@@ -134,7 +137,7 @@ final class ProgressQuery
     {
         $items = [];
         $next = null;
-        foreach ($lessons->where('course_id', $enrollment->course_id) as $lesson) {
+        foreach ($lessons as $lesson) {
             $progress = $completions->get($lesson->id);
             $completion = $progress?->status === LessonProgressStatus::Completed ? $progress : null;
             $item = new LessonProgressItem(
