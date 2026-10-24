@@ -401,6 +401,32 @@ navegador. A ausência de execução automatizada com NVDA não bloqueia a CI po
 problemas encontrados, sim, precisam ser avaliados e tratados. Interromper se uma correção exigir
 mudar o design system.
 
+### Execução da 2.7c (2026-10-24, parte automatizada)
+
+Branch `feat/phase-2-7c-a11y` sobre a `main` em `7b62640`. Auditoria com um spec temporário (não
+versionado) na stack E2E: 7 páginas como visitante e 7 com sessão, temas escuro e claro, larguras
+1280 px e **320 px** (56 combinações), mais uma rodada com `prefers-reduced-motion: reduce`.
+
+| # | Método | Resultado | Situação |
+|---|---|---|---|
+| X1/X2 | Até 40 paradas de Tab por página, conferindo o indicador de foco (contorno ou sombra) e se o foco cai no `body` | Nenhum foco perdido no meio da página (o `body` só aparece ao fim do documento, comportamento do navegador). Os links dos cartões de curso não têm contorno próprio: o foco aparece como **sublinhado do título e borda do cartão** (`focus-visible:underline`, `focus-within:border-primary/60`), já conferido pelo E2E de teclado da 2.3 | aprovado; melhoria opcional **O1** (indicador mais forte no cartão) |
+| X3 | Leitor de tela (NVDA, R7) | **Pendente**: verificação manual pelo responsável, com navegador, versões, cenários e resultados registrados | pendente |
+| X4 | axe com WCAG 2.0/2.1/2.2 A e AA (inclui contraste e `target-size` 2.5.8) | **Zero violações** nas 56 combinações | aprovado |
+| X5 | Rolagem horizontal em 320 px; alvos de toque (`target-size`) | Nenhuma rolagem horizontal; nenhuma violação de tamanho de alvo | aprovado |
+| X6 | Animações com movimento reduzido | Páginas carregadas sem animação; mas o `Skeleton` (estado "carregando") pulsava mesmo com `reduce`: **defeito D1**, corrigido | **corrigido** |
+| X7 | Estados de carregamento, erro e vazio | Cobertos pelos testes existentes (axe no `/status` carregando, estados do cartão do painel no Vitest, catálogo vazio no E2E) | aprovado |
+
+**D1 (corrigido).** `components/ui/skeleton.tsx` usava `animate-pulse` sem
+`motion-reduce:animate-none` (o Tailwind 4 não desliga a animação sozinho). Teste novo em
+`accessibility.spec.ts`, no estado "carregando" de `/status`, nas duas preferências: com `reduce`,
+nenhum esqueleto animado; com `no-preference`, há animação (prova que a medida funciona). Antes da
+correção o caso `reduce` falhou (3 esqueletos animados); depois, passou. E2E completo: **60/60**.
+
+Observação de estabilidade: numa execução com a máquina sobrecarregada (load ~8–14), o teste do
+`/status` carregando e o de acessibilidade do Learning falharam por tempo; rodados de novo, com e
+sem os testes novos, passaram (14/14 e 12/12), e a suíte inteira deu 60/60. É o risco K7 (tempo
+local), sem relação com a mudança.
+
 ---
 
 ## 2.7d — Desempenho

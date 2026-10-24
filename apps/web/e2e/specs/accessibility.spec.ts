@@ -113,6 +113,43 @@ for (const theme of THEMES) {
   })
 }
 
+// Etapa 2.7c (X6): os esqueletos pulsam (animate-pulse) só sem a preferência de movimento reduzido.
+// O mesmo estado "carregando" de /status, nas duas preferências: a medida com movimento normal
+// prova que a verificação enxerga a animação.
+for (const reducedMotion of ["no-preference", "reduce"] as const) {
+  test(`esqueleto de carregamento com movimento ${reducedMotion}`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion })
+    const gate = await holdNavigationPayload(page, "/status")
+    const skeleton = page.getByRole("status", { name: "Carregando status" })
+    try {
+      await page.goto("/")
+      const link = page.getByRole("link", { name: "Status da plataforma" })
+      await link.hover()
+      await expect
+        .poll(gate.shellPrefetched, { message: "prefetch do shell de /status" })
+        .toBe(true)
+      await link.click()
+      await expect(skeleton).toBeVisible()
+      const running = await page.evaluate(
+        () =>
+          document
+            .getAnimations()
+            .filter(
+              (a) =>
+                a.playState === "running" &&
+                ((a.effect as KeyframeEffect | null)?.target as Element | null)?.matches(
+                  '[data-slot="skeleton"]',
+                ),
+            ).length,
+      )
+      if (reducedMotion === "reduce") expect(running, "esqueletos animados").toBe(0)
+      else expect(running, "esqueletos animados").toBeGreaterThan(0)
+    } finally {
+      gate.release()
+    }
+  })
+}
+
 /**
  * Retém a requisição do payload RSC de uma navegação de cliente para `path` (não os prefetches)
  * até `release()`. `held()` diz se alguma requisição chegou a ser retida; `shellPrefetched()`,
