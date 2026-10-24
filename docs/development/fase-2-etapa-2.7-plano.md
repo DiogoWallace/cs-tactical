@@ -472,6 +472,27 @@ descartável.
 Medição em máquina compartilhada varia (visto em 2026-10-18: load average 6–10 duplicou o tempo
 local dos E2E); registrar a carga e repetir. Interromper se uma correção exigir migration.
 
+### Execução da 2.7d (2026-10-24)
+
+Linha de base, método e comandos em [desempenho.md](desempenho.md) (`make perf`, ~16 min, stack
+descartável; nada gerado fora dela).
+
+| Critério de aceite | Resultado |
+|---|---|
+| Linha de base com ambiente, dados e comandos | registrada em `desempenho.md`; uma execução antes e duas depois da correção |
+| Contagem de consultas constante entre pequeno e ampliado | **sim, em todos os endpoints**, iguais às já testadas; o ampliado tem a mesma forma da fixture (capa e imagens), porque curso e aula fazem uma consulta de mídia só quando há imagem |
+| Correção com medição antes/depois | **D1** `/me/enrollments`: 162 → 72–83 ms em processo, 173 → 93–106 ms HTTP p50 no ampliado; mesmas 4 consultas; teste novo com contraprova |
+| Critérios finais de regressão | **aprovados em 2026-10-24** (seção final de `desempenho.md`): consultas exatas; HTTP p50 no ampliado + 30%; E2E 30 s por teste |
+| Nenhum dado fora do ambiente descartável | sim: os scripts recusam banco que não seja `cs_tactical_e2e` com `APP_ENV=e2e` |
+
+- **Método**: a API foi medida com OPcache ligado só na stack de medição
+  (`scripts/perf/compose.opcache.yaml`). Sem ele, a imagem de desenvolvimento gasta ~100 ms a mais
+  por requisição, recompilando o framework; recomendação para a imagem de produção.
+- **Hipóteses registradas, sem correção**: H1 (custo linear restante do `/me/enrollments`, hidratação
+  Eloquent), H2 (uma inserção por resposta no envio de tentativa), H3 (subconsultas do catálogo).
+- **K5** (desempenho com catálogo maior): medido; o único crescimento relevante era o D1, corrigido.
+  **K7** (E2E perto de 30 s): na CI, máximo de 11,3 s e p95 de 9,1 s.
+
 ---
 
 ## Matriz de riscos e prioridades

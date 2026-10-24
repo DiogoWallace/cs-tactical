@@ -15,4 +15,7 @@ Thumbs.db
 # Logs
 *.log
 
+# Resultados de medição de desempenho (scripts/perf.sh)
+/.perf/
+
 # Dependências e artefatos de build das aplicações ficam nos .gitignore de cada app
