@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test"
 
 import { expectNoSeriousA11yViolations } from "../support/a11y"
 import { ACCOUNTS } from "../support/accounts"
-import { login } from "../support/auth"
+import { login, testId } from "../support/auth"
 
 /**
  * Painel e navegação entre a área logada e a Academy (etapa 2.6), contra a API real da stack E2E.
@@ -103,7 +103,7 @@ test.describe("navegação: jogador", () => {
     const card = academyCard(page)
     await expect(card.getByText("Você ainda não está em nenhum curso")).toBeVisible()
     await expect(card.getByRole("link", { name: "Continuar estudando" })).toHaveCount(0)
-    await expect(page.getByTestId("upcoming-teams")).toContainText("Em breve")
+    await expect(testId(page, "upcoming-teams")).toContainText("Em breve")
 
     // Painel → Academy: o catálogo público, com a navegação da sessão.
     await card.getByRole("link", { name: "Explorar cursos" }).click()

@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test"
 
 import { expectNoSeriousA11yViolations } from "../support/a11y"
 import { ACCOUNTS } from "../support/accounts"
-import { field, login } from "../support/auth"
+import { field, login, testId } from "../support/auth"
 
 /** O tema padrão é o escuro (theme-provider.tsx); o claro é escolhido pelo usuário. */
 const THEMES = ["dark", "light"] as const
@@ -52,7 +52,7 @@ for (const theme of THEMES) {
     test("área logada e páginas de confirmação", async ({ page }) => {
       // Conta não verificada: o painel inclui o aviso de confirmação.
       await login(page, ACCOUNTS.a11y)
-      await expect(page.getByTestId("upcoming-teams")).toBeVisible()
+      await expect(testId(page, "upcoming-teams")).toBeVisible()
       await expectNoSeriousA11yViolations(page, `painel-${theme}`)
 
       await page.goto("/painel/conta")

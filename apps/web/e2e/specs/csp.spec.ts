@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test"
 
 import { ACCOUNTS } from "../support/accounts"
-import { login } from "../support/auth"
+import { login, testId } from "../support/auth"
 
 /**
  * CSP nos fluxos reais (docs/architecture/seguranca-http.md).
@@ -66,7 +66,7 @@ test("CSP aplicada não bloqueia nada nos fluxos principais", async ({ page }) =
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible()
   await visit("curso (logado)")
   await page.goto("/academy/cursos/fundamentos-e2e/aulas/counter-strafe")
-  const quiz = page.getByTestId("quiz-panel")
+  const quiz = testId(page, "quiz-panel")
   await quiz.getByRole("button", { name: "Iniciar quiz" }).click()
   await expect(quiz.getByRole("button", { name: "Enviar respostas" })).toBeVisible()
   await visit("aula com quiz (logado)")

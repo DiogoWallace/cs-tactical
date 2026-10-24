@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test"
 
 import { ACCOUNTS } from "../support/accounts"
-import { login, submitLogin, text } from "../support/auth"
+import { login, submitLogin, testId, text } from "../support/auth"
 
 const DAY_IN_SECONDS = 24 * 60 * 60
 
@@ -31,7 +31,7 @@ test.describe("login", () => {
     await expect(page.getByTestId("upcoming-academy")).toHaveCount(0)
 
     // Teams ainda não existe: só informativo, nenhum link ou botão.
-    const teams = page.getByTestId("upcoming-teams")
+    const teams = testId(page, "upcoming-teams")
     await expect(teams).toContainText("Em breve")
     await expect(teams.getByRole("link")).toHaveCount(0)
     await expect(teams.getByRole("button")).toHaveCount(0)

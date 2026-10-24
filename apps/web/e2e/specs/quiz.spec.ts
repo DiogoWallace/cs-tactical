@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test"
 
 import { ACCOUNTS } from "../support/accounts"
 import { expectNoSeriousA11yViolations } from "../support/a11y"
-import { login, text } from "../support/auth"
+import { login, testId, text } from "../support/auth"
 
 /**
  * Quizzes (etapa 2.5) contra a API real da stack E2E. O quiz da aula "counter-strafe" de
@@ -20,7 +20,7 @@ async function stubYoutube(page: Page) {
 }
 
 function quiz(page: Page) {
-  return page.getByTestId("quiz-panel")
+  return testId(page, "quiz-panel")
 }
 
 /** Responde à tentativa aberta: `right` marca o gabarito; senão, as erradas. */

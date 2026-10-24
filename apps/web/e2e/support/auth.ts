@@ -20,6 +20,16 @@ export function text(scope: Page | Locator, value: string, options?: { exact?: b
   return scope.getByText(value, options).filter({ visible: true })
 }
 
+/**
+ * Elemento por `data-testid`, só entre os visíveis, pelo mesmo motivo de `field()`: ao contrário de
+ * `getByRole`, `getByTestId` também acha a cópia escondida da página, e o modo estrito do Playwright
+ * recusa o seletor quando ela existe (CI da `main` em `ec118fe`). Para conferir que algo **não**
+ * existe, continue usando `getByTestId` direto: a ausência precisa valer também para a cópia.
+ */
+export function testId(scope: Page | Locator, id: string): Locator {
+  return scope.getByTestId(id).filter({ visible: true })
+}
+
 type LoginOptions = { password?: string; remember?: boolean; next?: string }
 
 /** Preenche e envia o login. Não espera o destino: cada teste confere para onde foi. */
