@@ -1,5 +1,5 @@
 # Imagem da API Laravel (Nginx + PHP-FPM). Ver docs/decisions/0004-runtime-php-em-container.md
-FROM serversideup/php:8.4-fpm-nginx AS base
+FROM serversideup/php:8.5-fpm-nginx AS base
 
 USER root
 
