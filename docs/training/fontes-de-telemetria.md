@@ -150,7 +150,7 @@ jogadores foi impresso. A imagem e a cópia da demo foram apagadas no fim.
 
 | # | Decisão |
 |---|---|
-| F1 | Escopo do primeiro MVP de telemetria: partidas reais por demo (C), exercícios no servidor (A) ou os dois em sequência |
+| F1 | **Decidida em 2026-10-23**: demos enviadas manualmente pelo jogador, com vínculo Steam ([plano do MVP](mvp-analise-de-demos.md), [ADR 0022](../decisions/0022-analise-de-partidas-por-demos.md)). O download automático pela Valve foi descartado por ora: baixar o arquivo exige um cliente Steam logado no Game Coordinator (conta-bot no servidor) |
 | F2 | Fontes de demo aceitas: matchmaking da Valve (códigos do jogador), FACEIT, upload manual |
 | F3 | Retenção e privacidade das demos (dados de todos os jogadores da partida) |
 | F4 | Onde rodar o laboratório do servidor (E3/T1) |

@@ -56,7 +56,8 @@ Regras:
 | `Maps` | mapas e lineups de utilitárias | 3 (fora da Fase 2, decisão da etapa 2.0) | não iniciado |
 | `Notifications` | e-mails e notificações | 3 | não iniciado |
 | `Training` | sessões e atribuições de treino | 4 | não iniciado; a prática em servidores CS2 é a iniciativa "CS Tactical Training", só em planejamento ([ADR 0021](../decisions/0021-arquitetura-do-cs-tactical-training.md), Proposta) |
-| `Matches`, `Billing` | análise de partidas, cobrança | pós-MVP | não iniciado |
+| `Matches` | análise de partidas a partir de demos enviadas pelo jogador | telemetria (MVP) | planejado ([ADR 0022](../decisions/0022-analise-de-partidas-por-demos.md), Proposta; [plano](../training/mvp-analise-de-demos.md)) |
+| `Billing` | cobrança | pós-MVP | não iniciado |
 
 ## Frontend
 
