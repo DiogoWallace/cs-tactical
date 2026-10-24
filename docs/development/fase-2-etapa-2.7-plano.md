@@ -200,7 +200,7 @@ Achados (escala da auditoria da Fase 1):
 
 | ID | Severidade | Achado | Recomendação (não aplicada; depende de aprovação) |
 |---|---|---|---|
-| A1 | Baixa | Respostas autenticadas da API saem com `Cache-Control: no-cache, private` (padrão do Laravel), não `no-store`. `private` impede caches compartilhados, mas o navegador pode gravar o JSON (progresso, tentativas) em disco | `no-store` nas respostas autenticadas (middleware da API ou `security.conf` do Nginx), com teste; mudar configuração de segurança exige aprovação |
+| A1 | Baixa | Respostas autenticadas da API saem com `Cache-Control: no-cache, private` (padrão do Laravel), não `no-store`. `private` impede caches compartilhados, mas o navegador pode gravar o JSON (progresso, tentativas) em disco | **Aplicado (aprovado em 2026-10-24):** middleware global `NoStoreApiResponses` põe `no-store, private` em toda resposta sob `/api/*`, inclusive erros; teste `NoStoreResponsesTest`. Ver [seguranca-http.md](../architecture/seguranca-http.md#api) |
 | A2 | Informativa | O bloco `image` usa `style` inline (`aspect-ratio`, `max-width`) com números validados pelo importador: viola só a CSP-meta (Report-Only, `style-src-attr`); sem risco de injeção | Trocar por atributos `width`/`height` ou classes ao tratar a CSP com nonce/hash; nada a fazer agora |
 | A3 | Informativa (documentação) | A cadeia de `X-Forwarded-For` nas leituras feitas pelas páginas não estava descrita: o Next preenche o IP da conexão quando o cliente não envia e repassa o do cliente quando envia | Documentado em [autenticacao.md](../architecture/autenticacao.md#ip-real-do-cliente); sem risco novo para produção com P1/P2 cumpridos |
 
@@ -258,8 +258,8 @@ Conclusões:
 
 ### 4. Alternativas de isolamento
 
-Situação da decisão R1: **investigação aprovada; solução técnica pendente de decisão.** Nenhuma
-alternativa abaixo está aprovada. A tabela é o ponto de partida da comparação (passo 3 da
+Situação da decisão R1: **investigação aprovada; alarme (recomendação 1, abaixo) aprovado e
+implementado em 2026-10-24.** Nenhuma alternativa de isolamento abaixo está aprovada. A tabela é o ponto de partida da comparação (passo 3 da
 investigação), não uma escolha.
 
 | # | Alternativa | Como | Consequência de segurança | Avaliação preliminar |
@@ -523,7 +523,7 @@ cada subetapa continua exigindo autorização própria.
 
 | # | Decisão | Situação | Detalhe |
 |---|---|---|---|
-| R1 | Isolamento do `academy-public` no E2E | **Investigação aprovada; solução pendente de decisão** | Alternativa A (`X-Forwarded-For` enviado pelo Playwright) não aprovada. Antes de qualquer mudança: reprodução controlada, cadeia de confiança dos proxies, comparação sem enfraquecer a segurança, proibição de confiar em cabeçalho de IP do cliente e aprovação específica ([seção própria](#limite-academy-public-na-stack-e2e)) |
+| R1 | Isolamento do `academy-public` no E2E | **Alarme aprovado e implementado (2026-10-24); isolamento (H) não aprovado** | Recomendação 1 aplicada: `scripts/e2e-academy-peak.sh` mede o pico por chave ao fim de todo `make e2e` e avisa com ≥ 90/120 ou 429, sem mudar nenhum controle ([e2e.md](e2e.md#alarme-do-academy-public)). Alternativa A (`X-Forwarded-For` enviado pelo Playwright) não aprovada. Antes de qualquer mudança: reprodução controlada, cadeia de confiança dos proxies, comparação sem enfraquecer a segurança, proibição de confiar em cabeçalho de IP do cliente e aprovação específica ([seção própria](#limite-academy-public-na-stack-e2e)) |
 | R2 | Organização | Aprovada | Um PR por subetapa, na sequência 2.7a → 2.7b → 2.7c → 2.7d |
 | R3 | Cenário de carga | Aprovada (cenário inicial) | 50 cursos × 5 módulos × 8 aulas = 2.000 aulas, só em ambiente de testes descartável. Margem de 20% é hipótese inicial; critérios finais depois das medições de referência, com a variabilidade do ambiente |
 | R4 | Fixture arquivada | Aprovada | Exclusiva do E2E, dados determinísticos, limpeza segura; cursos reais e banco de desenvolvimento intocados |

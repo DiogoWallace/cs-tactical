@@ -27,6 +27,13 @@ export HOST_UID="${HOST_UID:-$(id -u)}" HOST_GID="${HOST_GID:-$(id -g)}"
 
 cleanup() {
   local status=$?
+  # Pico do limite academy-public nesta execução (decisão R1): só mede e avisa.
+  # O `exec` lê do /dev/null: dentro do pipe, ele consumiria o log antes do script.
+  if [[ "$PLAYWRIGHT_RAN" == "1" ]]; then
+    local trusted
+    trusted="$(compose exec -T api printenv TRUSTED_PROXIES </dev/null 2>/dev/null || true)"
+    compose logs --no-color api 2>/dev/null | ./scripts/e2e-academy-peak.sh "$trusted" || true
+  fi
   if [[ "$status" != "0" ]]; then
     # Logs dos serviços junto dos resultados do Playwright (vão para os artefatos da CI).
     mkdir -p apps/web/e2e/.results
@@ -41,6 +48,7 @@ cleanup() {
   fi
   exit "$status"
 }
+PLAYWRIGHT_RAN=0
 trap cleanup EXIT
 
 echo "1/4 Subindo a stack E2E (o build de produção do frontend leva alguns minutos)"
@@ -56,6 +64,7 @@ compose exec -T api php artisan academy:import /var/www/e2e-content/academy/_arq
 
 echo "3/4 Rodando o Playwright"
 rm -rf apps/web/e2e/.results apps/web/e2e/.report
+PLAYWRIGHT_RAN=1
 compose run --rm --no-deps playwright npx playwright test "$@"
 
 echo "4/4 Testes E2E concluídos"
