@@ -28,6 +28,7 @@ O destino dos rewrites é lido de `API_INTERNAL_URL` quando o Next inicia (`next
 |---|---|---|---|---|
 | `cs_tactical_session` | Laravel | Sim | Não | Identifica a sessão (dados no Redis) |
 | `XSRF-TOKEN` | Laravel | Não | Sim | Valor criptografado do token CSRF, reenviado no header `X-XSRF-TOKEN` |
+| `remember_web_<hash>` | Laravel, só com "Manter conectado por 30 dias" | Sim | Não | Refaz a sessão depois que `cs_tactical_session` expira (`SESSION_LIFETIME`); ver [proteção de rotas](#5-proteção-de-rotas-no-next) |
 
 Atributos: `SameSite=Lax`, `Path=/`, sem `Domain` (cookie *host-only* da origem do frontend), `Secure` em produção.
 
@@ -133,11 +134,13 @@ Implementado na etapa 1.3. Grupos de rotas em `apps/web/src/app`:
 
 Camadas de proteção da área `(app)`:
 
-1. **`src/proxy.ts`** (antigo `middleware.ts`): roda só nos caminhos de `PROTECTED_PATH_PREFIXES` (`lib/routes.ts`; o `matcher` repete a lista, porque precisa ser constante). Sem o cookie `cs_tactical_session`, redireciona com `307` para `/login?next=<caminho>`. Não valida a sessão: o cookie pode existir e estar expirado. Ele também grava o caminho atual no header `x-pathname`, sobrescrevendo qualquer valor enviado pelo cliente.
+1. **`src/proxy.ts`** (antigo `middleware.ts`): roda só nos caminhos de `PROTECTED_PATH_PREFIXES` (`lib/routes.ts`; o `matcher` repete a lista, porque precisa ser constante). Sem o cookie `cs_tactical_session`, redireciona com `307` para `/login?next=<caminho>`, com uma exceção: se houver o cookie `remember_web_*`, antes chama `GET /api/v1/me` uma vez (`lib/session-renewal.ts`) e, se a API autenticar pelo cookie de lembrar e emitir uma sessão nova, deixa a página seguir, repassa ao navegador os `Set-Cookie` da API e já entrega a sessão nova aos Server Components da mesma requisição. Se a API recusar (`401`), não emitir sessão, limitar (`429`) ou não responder, redireciona ao login como antes. Não valida a sessão: o cookie pode existir e estar expirado. Ele também grava o caminho atual no header `x-pathname`, sobrescrevendo qualquer valor enviado pelo cliente.
 2. **Layout e páginas da área logada** leem o usuário com `getCurrentUser()` (`features/identity/api`, `GET /api/v1/me` via `serverFetch`, com `cache()` do React para uma chamada por requisição). Em `401`, o `serverFetch` redireciona para `/login?next=<x-pathname>`. É isso que trata o cookie expirado.
 3. **A autorização de cada dado é sempre da API.**
 
-Nas páginas de login e cadastro, `RedirectIfAuthenticated` consulta `/me` (não o cookie) e redireciona ao painel quem tem sessão válida. Usar o cookie criaria um laço login ↔ painel com uma sessão expirada, porque o Laravel mantém um cookie de sessão também para visitantes.
+Nas páginas de login e cadastro, `RedirectIfAuthenticated` consulta `/me` (não o cookie) e redireciona ao painel quem tem sessão válida. Usar o cookie criaria um laço login ↔ painel com uma sessão expirada, porque o Laravel mantém um cookie de sessão também para visitantes. Se `/me` responder `429`, o formulário aparece normalmente, como quando a API está fora do ar.
+
+**Por que a renovação fica no `proxy.ts` (correção de 2026-10-24).** Só o proxy consegue devolver cookies ao navegador; uma chamada feita por Server Component (`serverFetch`) não consegue. Antes, com a sessão expirada e o cookie de lembrar presente, o proxy mandava `/painel` ao login (sem cookie de sessão), e `RedirectIfAuthenticated` mandava de volta ao painel (`/me` → `200` pelo cookie de lembrar). A sessão nova emitida pela API nunca chegava ao navegador, e o laço só parava no `429` do limite `api`. Coberto por `src/proxy.test.ts` e pelo E2E "sessão expirada com 'manter conectado'" (`e2e/specs/session.spec.ts`).
 
 **Cabeçalho das páginas públicas (etapa 2.6).** O conteúdo de `(marketing)` é o mesmo para todos;
 só o cabeçalho (e a ação principal do início) depende da sessão. `SessionHeader`
@@ -215,6 +218,7 @@ Os contadores ficam no Redis.
 | `Origin` ausente em chamadas servidor→API | `serverFetch` sempre envia `Origin`/`Referer` |
 | IP falsificado via `X-Forwarded-For` para escapar do rate limiting | Só o IP fixo do container `web` é confiável; entrada mais à direita; borda obrigatória em produção (ADR 0009) |
 | Open redirect pelo parâmetro `next` do login | `safeInternalPath` aceita só caminhos internos |
+| Laço login ↔ painel com sessão expirada e cookie "manter conectado" | `proxy.ts` renova a sessão pela API e entrega o cookie novo ao navegador; E2E de regressão |
 | IDOR entre equipes | Rotas aninhadas, scoped bindings, Policies e testes de acesso negado |
 
 ## Plano de validação

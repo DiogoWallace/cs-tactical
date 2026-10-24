@@ -70,4 +70,47 @@ test.describe("sessão e proteção de rotas", () => {
     await expect(otherPage).toHaveURL(`/login?next=${encodeURIComponent("/painel")}`)
     await other.close()
   })
+  test("sessão expirada com 'manter conectado' é renovada, sem laço entre login e painel", async ({
+    page,
+    context,
+  }) => {
+    await login(page, ACCOUNTS.remember, { remember: true })
+
+    // O navegador apaga o cookie de sessão ao fim do SESSION_LIFETIME; o de lembrar (30 dias) fica.
+    async function expireSession() {
+      const kept = (await context.cookies()).filter((cookie) => cookie.name !== SESSION_COOKIE)
+      expect(kept.some((cookie) => cookie.name.startsWith("remember_web_"))).toBe(true)
+      await context.clearCookies()
+      await context.addCookies(kept)
+    }
+    const navigations: string[] = []
+    page.on("request", (request) => {
+      if (request.isNavigationRequest() && request.frame() === page.mainFrame()) {
+        navigations.push(new URL(request.url()).pathname)
+      }
+    })
+    const greeting = page.getByRole("heading", {
+      level: 1,
+      name: `Olá, ${ACCOUNTS.remember.nickname}`,
+    })
+
+    // Direto na área logada: o proxy renova a sessão e a página abre.
+    await expireSession()
+    await page.goto("/painel")
+    await expect(page).toHaveURL("/painel")
+    await expect(greeting).toBeVisible()
+    expect(await sessionCookie(context)).toBeDefined()
+    expect(navigations).toEqual(["/painel"])
+
+    // Pelo login com destino (onde o laço acontecia): um único redirecionamento ao painel.
+    await expireSession()
+    navigations.length = 0
+    await page.goto(`/login?next=${encodeURIComponent("/painel")}`)
+    await expect(page).toHaveURL("/painel")
+    await expect(greeting).toBeVisible()
+    // No laço, o cookie de sessão nunca voltava ao navegador: é a prova sem espera fixa.
+    expect(navigations.filter((path) => path === "/login")).toHaveLength(1)
+    expect(navigations.filter((path) => path === "/painel").length).toBeLessThanOrEqual(1)
+    expect(await sessionCookie(context)).toBeDefined()
+  })
 })

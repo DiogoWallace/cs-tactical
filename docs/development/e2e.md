@@ -36,6 +36,25 @@ Nada é relaxado para os testes: mesmos limites de requisição (login 5/min por
 - **não há retentativas** (`retries: 0`): um banco é criado por execução e os fluxos mudam senha e
   e-mail; repetir um teste mascararia falhas e esbarraria nos limites.
 
+### Alarme do `academy-public`
+
+Na stack E2E, todas as leituras do catálogo da Academy (de todos os testes e workers) gastam o
+mesmo contador de 120/min, porque a chave do limite é o IP e todos os navegadores saem do mesmo
+lugar ([investigação R1](fase-2-etapa-2.7-plano.md#limite-academy-public-na-stack-e2e)). Ao fim de
+toda execução do `scripts/e2e.sh` (local e CI), `scripts/e2e-academy-peak.sh` lê o log de acesso da
+API e imprime o pico de leituras por chave em qualquer janela de 60 s (medição de 2026-10-24, suíte
+completa):
+
+```text
+• academy-public: pico 58/120 em 60 s (chave 127.0.0.1); 114 leituras, 429=0; por chave: 127.0.0.1=58
+```
+
+Com pico ≥ 90 ou qualquer 429 nessas rotas, imprime `• ALERTA ...` e, na CI, um aviso
+(`::warning`) no resumo do job. O alarme **só mede**: não falha a execução nem muda limite, proxy
+ou teste. Se disparar com frequência, a suíte cresceu a ponto de precisar da alternativa H da
+investigação, que exige aprovação específica. Exige `python3` (presente no runner da CI); sem ele,
+avisa que não mediu.
+
 ## Topologia: mesma origem
 
 O container do Playwright usa `network_mode: "service:web"`: compartilha a rede do container do
@@ -63,7 +82,7 @@ Nenhum `sleep` ou `waitForTimeout`. A sincronização usa as esperas automática
 | --- | --- |
 | `registration` | cadastro → painel com aviso de e-mail não verificado → e-mail de confirmação |
 | `login` | senha errada (mensagem genérica); painel com o cartão da Academy e Teams só informativo; logado no `/login` e `/cadastro` vai ao painel; "manter conectado" cria cookie de 30 dias, sem ele não cria |
-| `session` | rota protegida sem cookie e com cookie inválido → login com `next`; volta ao destino com a query; 404 da área logada; sair: voltar no navegador não reabre a área logada e o cookie antigo não vale mais |
+| `session` | rota protegida sem cookie e com cookie inválido → login com `next`; volta ao destino com a query; 404 da área logada; sair: voltar no navegador não reabre a área logada e o cookie antigo não vale mais; sessão expirada com "manter conectado" é renovada pelo proxy, direto no painel e pelo login com `next`, sem laço |
 | `redirects` | `next` inseguro (`//evil.example`, `https://evil.example`, `/\evil.example`, `javascript:`, tab e quebra de linha) nunca sai da aplicação; `next` interno é respeitado com a query |
 | `email-verification` | aviso + reenvio; link adulterado recusado; link sem sessão → login → volta e confirma |
 | `password-reset` | mesma resposta com e sem conta; token no fragmento e fragmento removido da URL; redefinição; link não reutilizável; senha antiga recusada e nova aceita |
@@ -77,7 +96,7 @@ Nenhum `sleep` ou `waitForTimeout`. A sincronização usa as esperas automática
 | `learning` | etapa 2.4: visitante lê curso e aula com convite para entrar no lugar das ações; jogador se matricula, conclui uma aula (progresso anunciado), sai, entra de novo e encontra o progresso e o "continuar" em Meu progresso; curso arquivado (2.7a): continua no histórico de Meu progresso com as conclusões e sem link, conta no painel sem "continuar", URL antiga responde 404 e o catálogo não o lista; axe nas telas do Learning nos dois temas |
 | `quiz` | etapa 2.5: reprova sem ver o gabarito (só acerto/erro por pergunta), aprova na segunda tentativa e só então vê a revisão com explicações; axe no quiz respondendo e no resultado, nos dois temas, terminando com as tentativas esgotadas: gabarito e explicação liberados, nenhuma tentativa nova, também depois de recarregar (2.7a) |
 
-Total: 60 testes em 16 arquivos: 56 no `chromium-desktop` (os que rodam na CI) e 4 no
+Total: 61 testes em 16 arquivos: 57 no `chromium-desktop` (os que rodam na CI) e 4 no
 `chromium-mobile` (`academy` 2, `mobile-nav` 1, `navigation` 1). Conferir com
 `docker compose exec web pnpm exec playwright test --list`.
 

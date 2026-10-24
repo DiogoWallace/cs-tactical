@@ -43,6 +43,13 @@ header). Todas as outras páginas, inclusive catálogo e curso, continuam com `f
 | `X-Content-Type-Options` | `nosniff` |
 | `Referrer-Policy` | `no-referrer` |
 | `Cross-Origin-Resource-Policy` | `same-origin` |
+| `Cache-Control` | `no-store, private` em toda resposta sob `/api/*`, inclusive erros (401, 404, 422, 429) |
+
+O `Cache-Control` não vem do Nginx: é o middleware global `App\Support\Http\NoStoreApiResponses`
+(etapa 2.7b, achado A1), coberto por `tests/Feature/Http/NoStoreResponsesTest.php`. O padrão do
+Laravel, `no-cache, private`, deixaria o navegador gravar o JSON (conta, progresso, tentativas). O
+middleware é global, e não do grupo `api`, porque no grupo o `Authenticate` roda antes dele (ordem
+de prioridade do Laravel) e a 401 sairia sem o header.
 
 ## CSP: por que `'unsafe-inline'` em `script-src`
 

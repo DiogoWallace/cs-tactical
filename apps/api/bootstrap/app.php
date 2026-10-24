@@ -1,6 +1,7 @@
 <?php
 
 use App\Support\Http\ApiErrorResponse;
+use App\Support\Http\NoStoreApiResponses;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -16,6 +17,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // Sanctum em modo SPA: requisições vindas do frontend (SANCTUM_STATEFUL_DOMAINS)
         // recebem sessão, cookies criptografados e verificação CSRF. Ver ADR 0003.
         $middleware->statefulApi();
+
+        // Nenhuma resposta da API fica em cache, nem no navegador (etapa 2.7b, achado A1).
+        // Global para cobrir também 401, 404 de rota inexistente e demais erros.
+        $middleware->append(NoStoreApiResponses::class);
 
         // IP real do cliente (ADR 0009): os endereços confiáveis vêm de config/trustedproxy.php.
         // Só X-Forwarded-For e X-Forwarded-Proto são lidos; Host, Port e Prefix nunca.
