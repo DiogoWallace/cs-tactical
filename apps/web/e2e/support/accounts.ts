@@ -26,6 +26,9 @@ export const ACCOUNTS = {
   navigationMobile: { email: "navigation-mobile@e2e.test", nickname: "e2e_nav_mobile" },
   navigationA11y: { email: "navigation-a11y@e2e.test", nickname: "e2e_navigation_a11y" },
   dashboard: { email: "dashboard@e2e.test", nickname: "e2e_dashboard" },
+  // Concluiu "historico-e2e" antes de o scripts/e2e.sh arquivá-lo (e2e:prepare --seed-history).
+  history: { email: "history@e2e.test", nickname: "e2e_history" },
+  // probe-a, probe-b e probe-c: só para scripts/security-probe.sh (fora do Playwright).
 } as const
 
 export type Account = { email: string; nickname: string }

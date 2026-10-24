@@ -54,6 +54,28 @@ Se algum arquivo aparecer como `root`, rode `make setup`, depois `make build` e 
 | store do pnpm, cache do Corepack | volumes nomeados `pnpm-store`, `corepack-cache` | instalações seguintes ficam mais rápidas |
 | PostgreSQL | volume nomeado `cs-tactical_postgres-data` | sobrevive a `make down`; apagado só com `make destroy` |
 | Redis | volume nomeado `cs-tactical_redis-data` | AOF ligado, filas sobrevivem a reinícios |
+| Imagens da Academy | `apps/api/storage/app/academy` (dentro do bind mount) | ficam no disco do WSL, fora dos volumes do Docker |
+
+### Backup e restauração do banco de desenvolvimento
+
+Os volumes do Docker somem se o Docker Desktop for reinstalado ou limpo. Antes disso (ou antes de
+migrations arriscadas), gere um dump fora do Docker:
+
+```bash
+mkdir -p ~/backups
+docker compose exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc --no-owner' > ~/backups/cs_tactical-$(date +%Y%m%d-%H%M%S).dump
+```
+
+Para restaurar num banco **vazio** (por exemplo, depois de `make up` com volumes novos, antes de
+qualquer `make migrate`):
+
+```bash
+docker compose exec -T postgres sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner --exit-on-error --single-transaction' < ~/backups/<arquivo>.dump
+make artisan c="migrate:status"   # todas como Ran, nenhuma Pending
+```
+
+As sessões ficam no Redis: depois de uma restauração com volumes novos, é preciso entrar de novo.
+O banco de testes (`cs_tactical_test`) não precisa de backup; os testes o recriam.
 
 ## Hot reload
 
@@ -98,6 +120,7 @@ E rode `wsl --shutdown` no PowerShell para aplicar.
 | Sintoma | Causa provável | Solução |
 |---|---|---|
 | `Cannot connect to the Docker daemon` | Docker Desktop fechado ou sem integração WSL | Abra o Docker Desktop e ative a integração para o Ubuntu |
+| `docker: command not found` no Ubuntu com a integração ativada, `/mnt/wsl/docker-desktop/cli-tools` vazio; o Docker Desktop fecha com "rename ... `sailor-ingest.sock` ... `.sock.stale`: Não é possível o acesso ao arquivo" | Sockets travados em `%LOCALAPPDATA%\Docker\run` depois de reinstalar ou limpar o Docker Desktop (o Windows não os apaga) | Feche o Docker Desktop, **renomeie** (não apague) `%LOCALAPPDATA%\Docker\run` e `%LOCALAPPDATA%\docker-secrets-engine` (ex.: sufixo `.old-<data>`) e abra de novo; a integração volta em cerca de 1 minuto. Não use "Reset to factory defaults" |
 | `port is already allocated` | Outro projeto usa a porta | Altere a porta no `.env` e rode `make up` |
 | Arquivos com dono `root` | `HOST_UID` incorreto | `make setup && make build && make up` |
 | Hot reload não funciona | Repositório em `/mnt/c` | Mova para `~/projects` |

@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test"
 
 import { ACCOUNTS } from "../support/accounts"
 import { expectNoSeriousA11yViolations } from "../support/a11y"
-import { login, text } from "../support/auth"
+import { login, testId, text } from "../support/auth"
 
 /**
  * Quizzes (etapa 2.5) contra a API real da stack E2E. O quiz da aula "counter-strafe" de
@@ -20,7 +20,7 @@ async function stubYoutube(page: Page) {
 }
 
 function quiz(page: Page) {
-  return page.getByTestId("quiz-panel")
+  return testId(page, "quiz-panel")
 }
 
 /** Responde à tentativa aberta: `right` marca o gabarito; senão, as erradas. */
@@ -96,6 +96,20 @@ test("quiz sem violações sérias de acessibilidade, respondendo e no resultado
     await expectNoSeriousA11yViolations(page, `quiz-resultado-${theme}`)
   }
 
-  // As duas tentativas acabaram: a revisão com o gabarito foi liberada (R20).
-  await expect(text(quiz(page), EXPLANATION)).toBeVisible()
+  // As duas tentativas acabaram: a revisão com o gabarito foi liberada (R20, Q1), sem tentativa nova.
+  const panel = quiz(page)
+  await expect(text(panel, EXPLANATION)).toBeVisible()
+  await expect(panel.getByText("Correta", { exact: true })).toHaveCount(2)
+  await expect(text(panel, "0 tentativas restantes", { exact: false })).toBeVisible()
+  await expect(panel.getByRole("button", { name: "Tentar de novo" })).toHaveCount(0)
+
+  // Recarregar: o esgotamento vem do servidor; só a revisão continua disponível (R16).
+  await page.reload()
+  await expect(
+    text(quiz(page), "Suas tentativas acabaram. A revisão com o gabarito está liberada."),
+  ).toBeVisible()
+  await expect(quiz(page).getByRole("button", { name: "Ver revisão" })).toBeVisible()
+  await expect(
+    quiz(page).getByRole("button", { name: /Iniciar|Tentar de novo|Continuar/ }),
+  ).toHaveCount(0)
 })

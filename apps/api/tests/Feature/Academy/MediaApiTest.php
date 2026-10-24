@@ -9,6 +9,7 @@ use App\Modules\Academy\Models\Lesson;
 use App\Modules\Academy\Models\Media;
 use App\Modules\Identity\Models\User;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
 use Tests\Support\AcademyContent;
@@ -247,3 +248,12 @@ it('rejects file names outside the format in the router', function (string $file
     'subpasta' => ['26%2F{sha}.png'],
     'byte nulo' => ['{sha}.png%00'],
 ]);
+
+// Etapa 2.7b (S5): a configuração do limite (600/min por IP) é testada em CatalogApiTest; aqui,
+// que a rota da mídia usa esse limitador, e não o do catálogo nem nenhum.
+it('rate limits the media route with its own academy-media limiter', function () {
+    $middleware = Route::getRoutes()->getByName('v1.academy.media.show')?->gatherMiddleware() ?? [];
+
+    expect($middleware)->toContain('throttle:academy-media')
+        ->and($middleware)->not->toContain('throttle:academy-public');
+});
