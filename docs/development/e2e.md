@@ -36,6 +36,25 @@ Nada é relaxado para os testes: mesmos limites de requisição (login 5/min por
 - **não há retentativas** (`retries: 0`): um banco é criado por execução e os fluxos mudam senha e
   e-mail; repetir um teste mascararia falhas e esbarraria nos limites.
 
+### Alarme do `academy-public`
+
+Na stack E2E, todas as leituras do catálogo da Academy (de todos os testes e workers) gastam o
+mesmo contador de 120/min, porque a chave do limite é o IP e todos os navegadores saem do mesmo
+lugar ([investigação R1](fase-2-etapa-2.7-plano.md#limite-academy-public-na-stack-e2e)). Ao fim de
+toda execução do `scripts/e2e.sh` (local e CI), `scripts/e2e-academy-peak.sh` lê o log de acesso da
+API e imprime o pico de leituras por chave em qualquer janela de 60 s (medição de 2026-10-24, suíte
+completa):
+
+```text
+• academy-public: pico 58/120 em 60 s (chave 127.0.0.1); 114 leituras, 429=0; por chave: 127.0.0.1=58
+```
+
+Com pico ≥ 90 ou qualquer 429 nessas rotas, imprime `• ALERTA ...` e, na CI, um aviso
+(`::warning`) no resumo do job. O alarme **só mede**: não falha a execução nem muda limite, proxy
+ou teste. Se disparar com frequência, a suíte cresceu a ponto de precisar da alternativa H da
+investigação, que exige aprovação específica. Exige `python3` (presente no runner da CI); sem ele,
+avisa que não mediu.
+
 ## Topologia: mesma origem
 
 O container do Playwright usa `network_mode: "service:web"`: compartilha a rede do container do
