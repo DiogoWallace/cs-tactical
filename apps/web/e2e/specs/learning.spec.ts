@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test"
 
 import { ACCOUNTS } from "../support/accounts"
 import { expectNoSeriousA11yViolations } from "../support/a11y"
-import { login } from "../support/auth"
+import { login, testId } from "../support/auth"
 
 /**
  * Learning (etapa 2.4) contra a API real da stack E2E, com o curso de e2e/fixtures/academy:
@@ -104,7 +104,7 @@ test.describe("Learning: jogador", () => {
       "aria-valuetext",
       "33,33%, 1 de 3 aulas concluídas",
     )
-    await expect(page.getByTestId("lesson-completed")).toHaveCount(1)
+    await expect(testId(page, "lesson-completed")).toHaveCount(1)
 
     // O catálogo marca o curso em que o jogador está matriculado.
     await page.goto("/academy")
