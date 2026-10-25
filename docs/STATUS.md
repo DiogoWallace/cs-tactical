@@ -5,7 +5,7 @@ Fonte única da situação corrente. Atualizada no mesmo PR que muda uma fase, e
 são históricos e não repetem este estado. Backlog: [issues](https://github.com/DiogoWallace/cs-tactical/issues)
 por milestone.
 
-**Conferido em:** 2026-10-25, `main` em `79230ec` (merge do PR #46).
+**Conferido em:** 2026-10-26, `main` em `181242e` (release `v0.2.0`, PR #89).
 
 ## Fases do produto
 
@@ -33,7 +33,7 @@ por milestone.
 | M0 Plano e ADR 0022 | concluída (ADR ainda Proposta: #55) |
 | M1 PoC do analisador | concluída; TypeScript |
 | M2 Vínculo Steam | concluída |
-| M3 Envio | concluída (PR #46, #51 e #54: reserva de disco com envios simultâneos e falhas de armazenamento); aguardando homologação conjunta de #51 e #54 |
+| M3 Envio | concluída e liberada na [`v0.2.0`](https://github.com/DiogoWallace/cs-tactical/releases/tag/v0.2.0) (PR #46, #86 e #87; homologação no #88, release no #89; #51 e #54 fechadas); aprovada, não implantada |
 | M4 Análise | não iniciada (#55, #56, #57, #58) |
 | M5 Telas | não iniciada (#59, #60, #61) |
 | M6 Auditoria | não iniciada (#62) |
@@ -63,5 +63,4 @@ por milestone.
 
 ## Próximas entregas
 
-1. Homologar a M3 (#51, #54) e fazer a release para a `main`.
-2. M4: decisões da ADR (#55), fixture (#56), analisador (#57), processamento (#58).
+1. M4: decisões da ADR (#55), fixture (#56), analisador (#57), processamento (#58).
