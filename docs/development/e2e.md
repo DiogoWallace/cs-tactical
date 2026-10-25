@@ -82,6 +82,11 @@ Nenhum `sleep` ou `waitForTimeout`. A sincronização usa as esperas automática
 (`e2e/support/mailpit.ts`). A caixa de entrada é "aberta" antes da ação que envia o e-mail, e
 `next()` só aceita mensagens que não existiam naquele momento.
 
+Antes de cada análise do axe, `expectNoSeriousA11yViolations` espera as transições e animações
+CSS finitas terminarem (`document.getAnimations()`; as infinitas, como esqueletos e ícones girando,
+não contam). Os botões têm `transition-all`: medido no meio de uma troca de cor ou de opacidade, o
+contraste saía baixo e o teste falhava às vezes (CI dos PRs #38 e #43).
+
 ## Projetos
 
 | Projeto | Dispositivo | Testes | Onde roda |
@@ -102,7 +107,7 @@ Nenhum `sleep` ou `waitForTimeout`. A sincronização usa as esperas automática
 | `account` | perfil atualiza o apelido no cabeçalho; troca de e-mail com link no novo endereço e aviso no antigo; troca de senha mantém a sessão atual e encerra as outras |
 | `navigation` | etapa 2.6: visitante na Academy com Entrar e Criar conta; jogador do painel à Academy, curso, aula, Meu progresso e de volta ao painel sem o cabeçalho de visitante, sair numa página pública devolve o cabeçalho de visitante; painel sem matrícula, com curso em andamento ("Continuar estudando") e com curso concluído; axe no painel e na Academy logada nos dois temas; `@mobile`: menu da área logada nas páginas públicas e nenhuma rolagem horizontal |
 | `mobile-nav` (`@mobile`) | menu lateral: abre, Esc fecha e devolve o foco, navega, marca a página atual, sai |
-| `accessibility` | axe (WCAG 2.1 A/AA) nos temas escuro e claro: home, `/status`, login, cadastro, esqueci-senha, redefinir-senha (formulário e link inválido), painel, conta, 404, verificar-email e confirmar-email (estados de erro); falha em violações sérias ou críticas (todas vão anexadas ao relatório). Navegação por teclado no login e foco visível. Esqueleto de carregamento sem animação com `prefers-reduced-motion: reduce` (e animado sem a preferência) (2.7c) |
+| `accessibility` | axe (WCAG 2.1 A/AA) nos temas escuro e claro: home, `/status`, login, cadastro, esqueci-senha, redefinir-senha (formulário e link inválido), painel, conta, 404, verificar-email e confirmar-email (estados de erro); falha em violações sérias ou críticas (todas vão anexadas ao relatório). Navegação por teclado no login e foco visível. Esqueleto de carregamento sem animação com `prefers-reduced-motion: reduce` (e animado sem a preferência) (2.7c). O axe só mede depois das transições: numa página montada no teste, o axe direto reprova um botão no meio da transição de cor ou opacidade e o helper aprova depois dela |
 | `security-headers` | headers de segurança das páginas (build de produção) e das respostas da API pelo proxy ([seguranca-http.md](../architecture/seguranca-http.md)) |
 | `csp` | nenhuma violação da CSP aplicada nos fluxos principais; violações da CSP Report-Only anexadas ao relatório |
 | `academy` | catálogo com cursos publicados, capa pela rota de mídia e filtro por nível (inclusive vazio); curso com módulos e aulas públicos em ordem; aula com Markdown, imagem, callout e quiz (sem gabarito no HTML) e navegação anterior/próxima entre módulos; vídeo só depois do clique, pelo `youtube-nocookie.com` (interceptado: sem internet); 404 com `noindex` para rascunho, ancestral em rascunho, aula de outro curso e slug inválido; CSP com o player só nas aulas e sem violações; axe nos dois temas; teclado; `@mobile`: lista de aulas recolhível e nenhuma rolagem horizontal |
@@ -110,7 +115,7 @@ Nenhum `sleep` ou `waitForTimeout`. A sincronização usa as esperas automática
 | `quiz` | etapa 2.5: reprova sem ver o gabarito (só acerto/erro por pergunta), aprova na segunda tentativa e só então vê a revisão com explicações; axe no quiz respondendo e no resultado, nos dois temas, terminando com as tentativas esgotadas: gabarito e explicação liberados, nenhuma tentativa nova, também depois de recarregar (2.7a) |
 | `steam` | etapa M2, com o provedor OpenID falso: vincula pela "Steam", a volta apaga a resposta da barra de endereço e anuncia o resultado com foco no título, o SteamID aparece na conta, desvincular recusa senha errada e aceita a certa; cancelar na Steam não vincula; SteamID de outra conta é recusado sem revelar qual; axe na volta e na conta vinculada nos dois temas |
 
-Total: 64 testes em 17 arquivos: 60 no `chromium-desktop` (os que rodam na CI) e 4 no
+Total: 66 testes em 17 arquivos: 62 no `chromium-desktop` (os que rodam na CI) e 4 no
 `chromium-mobile` (`academy` 2, `mobile-nav` 1, `navigation` 1). Conferir com
 `docker compose exec web pnpm exec playwright test --list`.
 
