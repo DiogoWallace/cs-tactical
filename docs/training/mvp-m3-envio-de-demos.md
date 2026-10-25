@@ -262,4 +262,5 @@ Implementado como planejado, com estes ajustes:
 | Pest, concorrência, Vitest, lint, build e E2E verdes; nenhuma rota sem autenticação ou limite | ver o PR; `MatchUploadConcurrencyTest` (3 casos) |
 | Sondagem pelo proxy da stack E2E | `matches-upload-probe.sh`: 9/9 e o hash no disco igual ao enviado |
 | Nada sobra no disco depois de cancelar, recusar ou expirar | testes de cancelamento, recusa, expiração e `matches:prune-uploads`; sondagem (só o concluído no disco) |
-| Migration no banco de desenvolvimento com o procedimento | **pendente** (autorização própria) |
+| Migration no banco de desenvolvimento com o procedimento | **feita em 2026-10-25** (#51), com autorização: banco `cs_tactical` do Compose local, `--pretend` conferido, backup `~/backups/cs_tactical-pre-match-uploads-m3-20261025-123906.dump` validado por restauração numa base temporária (mesmas contagens), lote 8; estrutura conferida (4 índices, 7 checks, FK em CASCADE) |
+| Cota depois de cancelar um envio concluído | teste de regressão (#51): cinco concluídos, um cancelado, o sexto início continua em 429; contraprova: contando pelo status atual, o teste falha (201) |

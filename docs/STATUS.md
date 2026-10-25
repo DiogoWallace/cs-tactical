@@ -33,7 +33,7 @@ por milestone.
 | M0 Plano e ADR 0022 | concluída (ADR ainda Proposta: #55) |
 | M1 PoC do analisador | concluída; TypeScript |
 | M2 Vínculo Steam | concluída |
-| M3 Envio | concluída na `main` (PR #46); pendentes: teste da cota e migration no banco de desenvolvimento (#51), reserva de disco (#54) |
+| M3 Envio | concluída (PR #46 e #51: teste da cota e migration aplicada no banco de desenvolvimento); pendente: reserva de disco (#54) |
 | M4 Análise | não iniciada (#55, #56, #57, #58) |
 | M5 Telas | não iniciada (#59, #60, #61) |
 | M6 Auditoria | não iniciada (#62) |
@@ -58,7 +58,6 @@ por milestone.
 ## Ações que dependem do responsável
 
 - Verificação com NVDA (#65).
-- Autorizar a migration `match_uploads` no banco de desenvolvimento (#51).
 - Decisões D-M2, D-M4, D-M5 e D-M6 da ADR 0022 (#55).
 - Destino dos PRs antigos do Dependabot (#26, #27, #28).
 
