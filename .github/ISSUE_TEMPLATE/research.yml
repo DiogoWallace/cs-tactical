@@ -1,0 +1,48 @@
+name: Research
+description: Investigação ou decisão técnica antes de implementar.
+title: "[RESEARCH] "
+labels: ["type:research"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Pesquisa não implementa funcionalidade. Resultados só entram quando medidos; estimativas
+        aparecem como estimativas. Política: `docs/governance/issue-policy.md`.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema investigado
+    validations:
+      required: true
+  - type: textarea
+    id: hypotheses
+    attributes:
+      label: Hipóteses
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativas
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidências necessárias
+      description: O que precisa ser medido, lido ou testado, e com que autorização.
+    validations:
+      required: true
+  - type: textarea
+    id: criteria
+    attributes:
+      label: Critérios para decidir
+    validations:
+      required: true
+  - type: textarea
+    id: deliverables
+    attributes:
+      label: Entregáveis esperados
+      description: Documento, ADR, PoC, decisão registrada.
+    validations:
+      required: true

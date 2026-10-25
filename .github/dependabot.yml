@@ -7,11 +7,16 @@
 # Node.js: o projeto fica na versão LTS em uso (hoje Node 24). Majors do Node (imagem `node`) e de
 # `@types/node` são ignorados: a migração para uma nova LTS é uma decisão planejada, não uma
 # atualização automática. Minor e patch continuam liberados. docs/development/dependencias.md
+#
+# Destino: atualizações de versão vão para `dev` (target-branch) e seguem o fluxo normal até a
+# `main`. Atualizações de segurança sempre usam a branch padrão (`main`), sem `target-branch`, e
+# seguem o procedimento de hotfix com propagação para homolog e dev. docs/governance/release-policy.md
 version: 2
 
 updates:
   - package-ecosystem: composer
     directory: /apps/api
+    target-branch: dev
     schedule:
       interval: weekly
       day: monday
@@ -26,6 +31,7 @@ updates:
 
   - package-ecosystem: npm # pnpm (apps/web/pnpm-lock.yaml)
     directory: /apps/web
+    target-branch: dev
     schedule:
       interval: weekly
       day: monday
@@ -44,6 +50,7 @@ updates:
 
   - package-ecosystem: github-actions
     directory: /
+    target-branch: dev
     schedule:
       interval: weekly
       day: monday
@@ -59,6 +66,7 @@ updates:
     directories:
       - /infra/docker/api
       - /infra/docker/web
+    target-branch: dev
     schedule:
       interval: weekly
       day: monday
@@ -73,6 +81,7 @@ updates:
 
   - package-ecosystem: docker-compose
     directory: /
+    target-branch: dev
     schedule:
       interval: weekly
       day: monday
