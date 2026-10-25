@@ -4,13 +4,13 @@ Plataforma SaaS para desenvolvimento de jogadores e equipes competitivas de Coun
 
 ## Status
 
-**Fase 2 — Academy**, etapas 2.0 a 2.6 concluídas; em andamento a **2.7** (revisão transversal de segurança, acessibilidade e desempenho), seguida da **2.8** (auditoria e fechamento da fase). Somente ambiente de desenvolvimento: **produção continua bloqueada** ([bloqueios de produção](docs/deploy/bloqueios-de-producao.md), P1–P4 e G1).
+**Fase 2 — Academy concluída** para desenvolvimento ([relatório](docs/development/fase-2-relatorio.md), [auditoria](docs/development/fase-2-auditoria.md)), com uma verificação manual pendente: leitor de tela (NVDA). Somente ambiente de desenvolvimento: **produção continua bloqueada** ([bloqueios de produção](docs/deploy/bloqueios-de-producao.md), P1–P4 e G1).
 
 | Fase | Situação | O que entrega |
 |---|---|---|
 | 0 — Fundação | concluída | Monorepo, Docker Compose no WSL2, CI, health check |
 | 1 — Identidade | concluída ([relatório](docs/development/fase-1-relatorio.md), [auditoria](docs/development/fase-1-auditoria.md)) | Cadastro, login, sessão, verificação de e-mail, recuperação de senha, conta, papéis de plataforma, painel, E2E, headers de segurança e CSP |
-| 2 — Academy | em andamento ([plano](docs/development/fase-2-plano.md)) | Catálogo público de cursos e aulas, importador de conteúdo, matrícula, progresso, quizzes com correção no servidor, painel com "continuar estudando" |
+| 2 — Academy | concluída ([plano](docs/development/fase-2-plano.md), [relatório](docs/development/fase-2-relatorio.md), [auditoria](docs/development/fase-2-auditoria.md)) | Catálogo público de cursos e aulas, importador de conteúdo, matrícula, progresso, quizzes com correção no servidor, painel com "continuar estudando" |
 | 3 — Teams | não iniciada | Equipes, membros, convites, estratégias |
 
 Etapas da Fase 2:
@@ -24,8 +24,8 @@ Etapas da Fase 2:
 | 2.4 | Learning: matrícula, conclusão de aula, progresso, "Meu progresso" | concluída |
 | 2.5 | Quizzes: tentativas, snapshot, correção, liberação do gabarito | concluída |
 | 2.6 | Painel com o cartão da Academy e cabeçalho público conforme a sessão | concluída |
-| 2.7 | Revisão transversal de segurança, acessibilidade e desempenho ([plano](docs/development/fase-2-etapa-2.7-plano.md)) | em andamento |
-| 2.8 | Auditoria e relatório de fechamento da Fase 2 | não iniciada |
+| 2.7 | Revisão transversal de segurança, acessibilidade e desempenho ([plano](docs/development/fase-2-etapa-2.7-plano.md), [desempenho](docs/development/desempenho.md)) | concluída (NVDA pendente) |
+| 2.8 | Auditoria e relatório de fechamento da Fase 2 | concluída |
 
 Iniciativas só em planejamento (nada implementado): **CS Tactical Training** ([docs/training](docs/training/visao-geral.md), [ADR 0021](docs/decisions/0021-arquitetura-do-cs-tactical-training.md), status Proposta) e busca com Elasticsearch ([proposta 2.3.1](docs/development/proposta-2.3.1-busca-elasticsearch.md), ADR 0020 reservada).
 
@@ -151,6 +151,7 @@ compose.yaml        Serviços: web, api, worker, postgres, redis, mailpit
 - [Relatório da Fase 0](docs/development/fase-0-relatorio.md)
 - [Relatório da Fase 1](docs/development/fase-1-relatorio.md) e [auditoria de fechamento](docs/development/fase-1-auditoria.md)
 - [Plano da Fase 2](docs/development/fase-2-plano.md) e [plano da etapa 2.7](docs/development/fase-2-etapa-2.7-plano.md)
+- [Relatório da Fase 2](docs/development/fase-2-relatorio.md) e [auditoria de fechamento](docs/development/fase-2-auditoria.md)
 - [CS Tactical Training (planejamento)](docs/training/visao-geral.md)
 - [Bloqueios de produção](docs/deploy/bloqueios-de-producao.md): requisitos obrigatórios antes do deploy público
 

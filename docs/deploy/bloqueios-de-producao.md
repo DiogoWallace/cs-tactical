@@ -4,8 +4,11 @@ Itens que **impedem o deploy público** até serem resolvidos e verificados. Cad
 risco, o que fazer e como verificar. Um item só sai desta lista com a verificação registrada.
 
 > Ainda não existe ambiente de produção nem configuração de deploy. Esta lista é o critério de
-> aceite para criá-los. A Fase 1 está concluída para **desenvolvimento**; **produção continua
-> bloqueada** por P1–P4 (auditoria: [fase-1-auditoria.md](../development/fase-1-auditoria.md)).
+> aceite para criá-los. As Fases 1 e 2 estão concluídas para **desenvolvimento**; **produção
+> continua bloqueada** por P1–P4 e G1, sem mudança de situação na Fase 2 (auditorias:
+> [fase-1-auditoria.md](../development/fase-1-auditoria.md),
+> [fase-2-auditoria.md](../development/fase-2-auditoria.md#preparação-para-produção), que lista
+> também o que a Academy pede da configuração de produção).
 
 Material preparado na etapa 1.8 (modelos, nada implantado):
 
