@@ -33,7 +33,7 @@ por milestone.
 | M0 Plano e ADR 0022 | concluída (ADR ainda Proposta: #55) |
 | M1 PoC do analisador | concluída; TypeScript |
 | M2 Vínculo Steam | concluída |
-| M3 Envio | concluída (PR #46 e #51: teste da cota e migration aplicada no banco de desenvolvimento); pendente: reserva de disco (#54) |
+| M3 Envio | concluída (PR #46, #51 e #54: reserva de disco com envios simultâneos e falhas de armazenamento); aguardando homologação conjunta de #51 e #54 |
 | M4 Análise | não iniciada (#55, #56, #57, #58) |
 | M5 Telas | não iniciada (#59, #60, #61) |
 | M6 Auditoria | não iniciada (#62) |
@@ -63,5 +63,5 @@ por milestone.
 
 ## Próximas entregas
 
-1. Fechar a M3 (#51, #54).
+1. Homologar a M3 (#51, #54) e fazer a release para a `main`.
 2. M4: decisões da ADR (#55), fixture (#56), analisador (#57), processamento (#58).
