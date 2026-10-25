@@ -24,6 +24,10 @@ return [
     // Espaço livre que precisa sobrar no disco além do arquivo (U3).
     'disk_reserve_bytes' => 2 * 1024 * 1024 * 1024,
 
+    // Espera sugerida (Retry-After) quando uma parte ou a conclusão encontra o disco sem espaço ou
+    // falhando (#54, decisão D4).
+    'storage_retry_after_seconds' => 60,
+
     // `matches:prune-uploads` só remove arquivos sem envio aberto com mais deste tempo.
     'orphan_retention_hours' => 24,
 

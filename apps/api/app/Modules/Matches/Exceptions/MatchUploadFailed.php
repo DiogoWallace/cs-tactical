@@ -39,9 +39,16 @@ final class MatchUploadFailed extends RuntimeException
         ]);
     }
 
-    public static function storageUnavailable(): self
+    /**
+     * Sem espaço ou com o disco falhando (I6, P6, #54). Partes e conclusão mandam `Retry-After`; o
+     * início não, porque não há previsão de quando os outros envios liberam espaço. O cliente
+     * repete poucas vezes, com espera crescente.
+     */
+    public static function storageUnavailable(?int $retryAfterSeconds = null): self
     {
-        return new self('match_upload_storage_unavailable', 503, 'Sem espaço para receber o arquivo agora.');
+        return new self('match_upload_storage_unavailable', 503, 'Sem espaço para receber o arquivo agora.', headers: $retryAfterSeconds === null ? [] : [
+            'Retry-After' => (string) $retryAfterSeconds,
+        ]);
     }
 
     public static function notOpen(): self

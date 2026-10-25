@@ -4,12 +4,14 @@ namespace App\Modules\Matches\Actions;
 
 use App\Modules\Matches\Enums\MatchUploadStatus;
 use App\Modules\Matches\Exceptions\MatchUploadFailed;
+use App\Modules\Matches\Exceptions\UploadStorageFailed;
 use App\Modules\Matches\Jobs\ExpireMatchUpload;
 use App\Modules\Matches\Models\MatchUpload;
 use App\Modules\Matches\Uploads\UploadStorage;
 use Closure;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Uma parte do envio (regras P2 a P5 de docs/training/mvp-m3-envio-de-demos.md; P1 fica com a
@@ -49,6 +51,17 @@ class StoreMatchUploadPart
                 throw MatchUploadFailed::partSizeInvalid();
             }
 
+            // P6 (#54, D2): espaço para a parte e a reserva, antes de ler o corpo. É só prevenção:
+            // outro processo pode ocupar o disco entre esta conferência e a gravação, tratada abaixo.
+            try {
+                $free = $this->storage->freeBytes();
+            } catch (UploadStorageFailed $exception) {
+                throw $this->unavailable($exception);
+            }
+            if ($free < $expected + (int) config('matches.disk_reserve_bytes')) {
+                throw MatchUploadFailed::storageUnavailable((int) config('matches.storage_retry_after_seconds'));
+            }
+
             $bytes = $body();
             if (strlen($bytes) !== $expected) {
                 throw MatchUploadFailed::partSizeInvalid();
@@ -59,7 +72,13 @@ class StoreMatchUploadPart
                 throw MatchUploadFailed::partCorrupted();
             }
 
-            $this->storage->writeAt($locked->id, ($number - 1) * $locked->part_size, $bytes);
+            // Gravação que falha (inclusive no meio) não conta a parte: a transação desfaz tudo e a
+            // retentativa grava de novo no mesmo trecho, sobrescrevendo o que tiver ficado.
+            try {
+                $this->storage->writeAt($locked->id, ($number - 1) * $locked->part_size, $bytes);
+            } catch (UploadStorageFailed $exception) {
+                throw $this->unavailable($exception);
+            }
 
             $now = Carbon::now();
             $locked->forceFill([
@@ -75,5 +94,12 @@ class StoreMatchUploadPart
         ExpireMatchUpload::scheduleFor($stored);
 
         return $stored;
+    }
+
+    private function unavailable(UploadStorageFailed $exception): MatchUploadFailed
+    {
+        Log::warning('matches.uploads.storage-failed', ['operation' => $exception->operation, 'upload' => $exception->uploadId]);
+
+        return MatchUploadFailed::storageUnavailable((int) config('matches.storage_retry_after_seconds'));
     }
 }

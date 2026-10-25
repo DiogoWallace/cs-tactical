@@ -5,11 +5,15 @@ namespace App\Modules\Matches\Actions;
 use App\Modules\Identity\Models\User;
 use App\Modules\Matches\Enums\MatchUploadStatus;
 use App\Modules\Matches\Exceptions\MatchUploadFailed;
+use App\Modules\Matches\Exceptions\UploadStorageFailed;
 use App\Modules\Matches\Jobs\ExpireMatchUpload;
 use App\Modules\Matches\Models\MatchUpload;
+use App\Modules\Matches\Uploads\UploadReservations;
 use App\Modules\Matches\Uploads\UploadStorage;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Início de um envio (regras I2 a I6 de docs/training/mvp-m3-envio-de-demos.md; I1 e I3 ficam com
@@ -17,7 +21,10 @@ use Illuminate\Support\Carbon;
  */
 class StartMatchUpload
 {
-    public function __construct(private readonly UploadStorage $storage) {}
+    public function __construct(
+        private readonly UploadStorage $storage,
+        private readonly UploadReservations $reservations,
+    ) {}
 
     /** @throws MatchUploadFailed */
     public function handle(User $user, string $name, int $size): MatchUpload
@@ -46,31 +53,45 @@ class StartMatchUpload
             throw MatchUploadFailed::quotaExceeded((int) ceil(Carbon::now()->diffInSeconds($oldest->copy()->addDay())));
         }
 
-        // I6: espaço para o arquivo e uma reserva.
-        if ($this->storage->freeBytes() < $size + (int) config('matches.disk_reserve_bytes')) {
-            throw MatchUploadFailed::storageUnavailable();
-        }
+        // I6 (#54, D1): o arquivo, o que os envios abertos ainda vão gravar e a reserva precisam
+        // caber no espaço livre. O lock de aviso serializa os inícios de todos os usuários, para que
+        // dois não contem o mesmo espaço; o único parcial continua decidindo o mesmo usuário (I4).
+        $upload = DB::transaction(function () use ($user, $name, $size): MatchUpload {
+            $this->reservations->lock();
+            try {
+                $free = $this->storage->freeBytes();
+            } catch (UploadStorageFailed $exception) {
+                Log::warning('matches.uploads.storage-failed', ['operation' => $exception->operation, 'upload' => null]);
 
-        $partSize = (int) config('matches.part_size_bytes');
-        $now = Carbon::now();
-        $upload = new MatchUpload;
-        $upload->forceFill([
-            'user_id' => $user->getKey(),
-            'status' => MatchUploadStatus::Uploading,
-            'name' => $name,
-            'size_bytes' => $size,
-            'part_size' => $partSize,
-            'parts_total' => (int) ceil($size / $partSize),
-            'parts_received' => 0,
-            'last_activity_at' => $now,
-            'expires_at' => $now->copy()->addMinutes((int) config('matches.idle_minutes')),
-        ]);
+                throw MatchUploadFailed::storageUnavailable();
+            }
+            if ($free - $this->reservations->pendingBytes() < $size + (int) config('matches.disk_reserve_bytes')) {
+                throw MatchUploadFailed::storageUnavailable();
+            }
 
-        try {
-            $upload->save();
-        } catch (UniqueConstraintViolationException) {
-            throw MatchUploadFailed::alreadyOpen();
-        }
+            $partSize = (int) config('matches.part_size_bytes');
+            $now = Carbon::now();
+            $upload = new MatchUpload;
+            $upload->forceFill([
+                'user_id' => $user->getKey(),
+                'status' => MatchUploadStatus::Uploading,
+                'name' => $name,
+                'size_bytes' => $size,
+                'part_size' => $partSize,
+                'parts_total' => (int) ceil($size / $partSize),
+                'parts_received' => 0,
+                'last_activity_at' => $now,
+                'expires_at' => $now->copy()->addMinutes((int) config('matches.idle_minutes')),
+            ]);
+
+            try {
+                $upload->save();
+            } catch (UniqueConstraintViolationException) {
+                throw MatchUploadFailed::alreadyOpen();
+            }
+
+            return $upload;
+        });
 
         ExpireMatchUpload::scheduleFor($upload);
 

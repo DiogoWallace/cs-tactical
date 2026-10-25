@@ -4,6 +4,7 @@ namespace App\Modules\Matches\Actions;
 
 use App\Modules\Matches\Enums\MatchUploadStatus;
 use App\Modules\Matches\Exceptions\MatchUploadFailed;
+use App\Modules\Matches\Exceptions\UploadStorageFailed;
 use App\Modules\Matches\Jobs\ExpireMatchUpload;
 use App\Modules\Matches\Models\MatchUpload;
 use App\Modules\Matches\Uploads\DemoSignature;
@@ -11,6 +12,7 @@ use App\Modules\Matches\Uploads\UploadStorage;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Conclusão de um envio (regras C1 a C6 de docs/training/mvp-m3-envio-de-demos.md), com a linha
@@ -19,6 +21,11 @@ use Illuminate\Support\Facades\DB;
  * Uma recusa do arquivo (tamanho, assinatura, repetido) é gravada **antes** de responder, para o
  * envio deixar de ser o aberto do usuário, e o arquivo é apagado. Na M4, a conclusão passa a
  * enfileirar a análise.
+ *
+ * Falha do disco ao medir, ler, calcular o hash ou renomear (#54) não é recusa: a transação desfaz o
+ * que foi gravado no banco, o arquivo fica onde estava e a resposta é 503, para nova tentativa. A
+ * promoção (`.part` → `.dem`) acontece antes do commit; se o commit não chegar a acontecer, a próxima
+ * tentativa recupera o `.dem` (`reclaimPromoted`).
  */
 class CompleteMatchUpload
 {
@@ -33,6 +40,10 @@ class CompleteMatchUpload
         } catch (UniqueConstraintViolationException) {
             // Mesmo arquivo concluído por outro caminho ao mesmo tempo (C6).
             $outcome = $this->close($upload, 'duplicate', MatchUploadFailed::duplicate());
+        } catch (UploadStorageFailed $exception) {
+            Log::warning('matches.uploads.storage-failed', ['operation' => $exception->operation, 'upload' => $exception->uploadId]);
+
+            throw MatchUploadFailed::storageUnavailable((int) config('matches.storage_retry_after_seconds'));
         }
 
         [$result, $failure] = $outcome;
@@ -63,6 +74,9 @@ class CompleteMatchUpload
         if (! $locked->user()->firstOrFail()->steamAccount()->exists()) {
             throw MatchUploadFailed::steamLinkRequired();
         }
+
+        // Uma tentativa anterior renomeou o arquivo, mas não gravou a conclusão.
+        $this->storage->reclaimPromoted($locked->id);
 
         // C4 e C5: o arquivo montado tem o tamanho declarado e é uma demo do Source 2.
         if ($this->storage->partSize($locked->id) !== $locked->size_bytes) {
