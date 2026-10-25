@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Política de issues
+    url: https://github.com/DiogoWallace/cs-tactical/blob/main/docs/governance/issue-policy.md
+    about: Estados, labels, definição de Ready e de Done.
+  - name: Vulnerabilidade de segurança
+    url: https://github.com/DiogoWallace/cs-tactical/security
+    about: Não abra issue pública para vulnerabilidades; use a aba Security.

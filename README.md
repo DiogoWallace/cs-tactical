@@ -4,6 +4,8 @@ Plataforma SaaS para desenvolvimento de jogadores e equipes competitivas de Coun
 
 ## Status
 
+Detalhe e pendências em [docs/STATUS.md](docs/STATUS.md).
+
 **Fase 2 — Academy concluída** para desenvolvimento ([relatório](docs/development/fase-2-relatorio.md), [auditoria](docs/development/fase-2-auditoria.md)), com uma verificação manual pendente: leitor de tela (NVDA). Somente ambiente de desenvolvimento: **produção continua bloqueada** ([bloqueios de produção](docs/deploy/bloqueios-de-producao.md), P1–P4 e G1).
 
 | Fase | Situação | O que entrega |
@@ -133,6 +135,8 @@ compose.yaml        Serviços: web, api, worker, postgres, redis, mailpit
 
 ## Documentação
 
+- [Situação do projeto (STATUS)](docs/STATUS.md)
+- [Governança: fluxo, branches, issues, PRs, releases e agentes](docs/governance/README.md) e [CONTRIBUTING](CONTRIBUTING.md)
 - [Visão geral da arquitetura](docs/architecture/visao-geral.md)
 - [Autenticação entre Next.js e Laravel](docs/architecture/autenticacao.md)
 - [Autorização (capacidades, Policies, regras para novos módulos)](docs/architecture/autorizacao.md)
@@ -158,6 +162,8 @@ compose.yaml        Serviços: web, api, worker, postgres, redis, mailpit
 ## Convenções
 
 - Commits no padrão [Conventional Commits](https://www.conventionalcommits.org/): `feat(api): ...`, `fix(web): ...`, `docs: ...`, `build(infra): ...`.
-- Branches curtas a partir de `main` (`feat/...`, `fix/...`, `docs/...`), integradas por PR com **merge commit** (sem squash, preservando os commits da branch), só com a CI (API, Web e E2E) verde.
+- Fluxo Issue → branch → PR → `dev` → `homolog` → `main` ([governança](docs/governance/README.md), [CONTRIBUTING](CONTRIBUTING.md)). Branches temporárias `tipo/numero-issue-descricao` a partir de `dev`, integradas por PR com **merge commit** (sem squash nem rebase), só com os checks `API (Laravel)`, `Web (Next.js)`, `E2E (Playwright)` e `Governance (PR)` verdes. Antes da implantação da governança (#77), os PRs iam direto para a `main`.
+- Situação corrente do projeto em [docs/STATUS.md](docs/STATUS.md), atualizada no mesmo PR que muda uma fase ou etapa.
+- Agentes de desenvolvimento seguem [AGENTS.md](AGENTS.md) e [docs/governance/agent-policy.md](docs/governance/agent-policy.md).
 - Código, nomes de tabelas e commits em inglês; documentação e interface em português.
 - Decisões relevantes viram ADR em `docs/decisions/`.

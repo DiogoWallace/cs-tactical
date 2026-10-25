@@ -1,0 +1,72 @@
+name: Bug
+description: Comportamento incorreto, com como reproduzir e o impacto.
+title: "[BUG] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Antes de abrir, procure uma issue igual. Política: `docs/governance/issue-policy.md`.
+        Não cole senhas, tokens, `.env` nem dados pessoais de jogadores.
+  - type: textarea
+    id: context
+    attributes:
+      label: Contexto
+      description: Onde o problema aparece (módulo, tela, rota, comando).
+    validations:
+      required: true
+  - type: textarea
+    id: current
+    attributes:
+      label: Comportamento atual
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Comportamento esperado
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Como reproduzir
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Ambiente
+      description: Branch e commit, stack (dev, E2E, CI), navegador quando for frontend.
+      placeholder: "dev @ abc1234, stack E2E, Chromium"
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidências
+      description: Logs, respostas HTTP, screenshots, link do run da CI.
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Impacto
+      options:
+        - Crítico (perda de dados, segurança, sistema indisponível)
+        - Alto (fluxo principal impedido)
+        - Médio (contorno possível)
+        - Baixo (cosmético ou raro)
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: Critérios de correção
+      description: Como saber que está corrigido; inclua o teste de regressão esperado.
+      value: |
+        - [ ] Teste que falha sem a correção
+        - [ ]
+    validations:
+      required: true

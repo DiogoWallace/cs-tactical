@@ -4,7 +4,12 @@ Configuração em [`.github/dependabot.yml`](../../.github/dependabot.yml): veri
 (segunda, 06:00, horário de Brasília) de Composer (`apps/api`), pnpm (`apps/web`), GitHub Actions,
 Dockerfiles (`infra/docker/api`, `infra/docker/web`) e imagens do `compose.yaml`.
 
-**Não há automerge.** Nenhum PR do Dependabot entra na `main` sem CI verde e revisão.
+**Não há automerge.** Nenhum PR do Dependabot é mesclado sem CI verde e revisão.
+
+**Destino** ([release-policy.md](../governance/release-policy.md#dependabot)): atualizações de versão
+vão para a `dev` (`target-branch: dev`) e seguem o ciclo até a `main`; atualizações de segurança
+sempre abrem contra a branch padrão (`main`) e seguem o procedimento de hotfix, com propagação
+para `homolog` e `dev`.
 
 ## Revisar um PR do Dependabot
 
@@ -64,7 +69,7 @@ Os três jobs de `.github/workflows/ci.yml` usam `runs-on: ubuntu-24.04` em vez 
 ## Alertas de segurança
 
 - Ativar em **Settings → Code security**: *Dependabot alerts* e *Dependabot security updates*
-  (disponíveis em repositórios privados no plano gratuito). Configuração do repositório, não do código.
+  (gratuitos em repositórios públicos; situação em #48). Configuração do repositório, não do código.
 - Alerta **crítico ou alto em dependência de runtime**: corrigir antes de qualquer deploy; abrir PR
   de correção mesmo sem o PR automático.
 - Alerta em **dependência só de desenvolvimento** sem correção publicada: registrar como risco
