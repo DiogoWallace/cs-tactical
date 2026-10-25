@@ -10,12 +10,11 @@ use Illuminate\Support\Facades\Schema;
 
 const IDENTITY_TABLES = ['users', 'profiles', 'password_reset_tokens', 'user_steam_accounts'];
 
-// As migrations da Academy e do Learning (Fase 2) vêm depois das do Identity, e a da Steam (M2, do
-// Identity) depois delas; o rollback por passos precisa desfazê-las primeiro.
-const MIGRATIONS_AFTER_IDENTITY = 10;
+// O rollback por passos desfaz também as migrations posteriores (Academy, Learning, Steam,
+// Matches...): `migrationsFrom()` (tests/Pest.php) conta quantas são.
 
 it('rolls back and re-applies the identity migrations', function () {
-    $this->artisan('migrate:rollback', ['--step' => 4 + MIGRATIONS_AFTER_IDENTITY])->assertSuccessful();
+    $this->artisan('migrate:rollback', ['--step' => migrationsFrom('2026_10_16_100000_create_users_table')])->assertSuccessful();
 
     foreach (IDENTITY_TABLES as $table) {
         expect(Schema::hasTable($table))->toBeFalse();
@@ -31,7 +30,7 @@ it('rolls back and re-applies the identity migrations', function () {
 });
 
 it('rolls back the pending e-mail column on its own', function () {
-    $this->artisan('migrate:rollback', ['--step' => 1 + MIGRATIONS_AFTER_IDENTITY])->assertSuccessful();
+    $this->artisan('migrate:rollback', ['--step' => migrationsFrom('2026_10_16_200000_add_pending_email_to_users_table')])->assertSuccessful();
     expect(Schema::hasColumn('users', 'pending_email'))->toBeFalse()
         ->and(Schema::hasTable('users'))->toBeTrue();
 

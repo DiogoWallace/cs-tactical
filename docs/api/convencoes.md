@@ -75,6 +75,11 @@ O health check (`/api/v1/health`) não é afetado: o `503` dele é uma resposta 
 | POST | `/api/v1/me/steam/link` | sim (+ CSRF) | Inicia o vínculo da conta Steam (URL de login da Steam) |
 | POST | `/api/v1/me/steam/link/complete` | sim (+ CSRF) | Conclui o vínculo com a resposta OpenID da Steam |
 | DELETE | `/api/v1/me/steam` | sim (+ CSRF) | Desfaz o vínculo; exige a senha atual |
+| POST | `/api/v1/matches/uploads` | sim (+ CSRF) | Inicia o envio de uma demo (exige conta Steam vinculada) |
+| PUT | `/api/v1/matches/uploads/{upload}/parts/{number}` | sim (+ CSRF) | Uma parte do arquivo, corpo binário |
+| POST | `/api/v1/matches/uploads/{upload}/complete` | sim (+ CSRF) | Conclui e confere o arquivo |
+| DELETE | `/api/v1/matches/uploads/{upload}` | sim (+ CSRF) | Cancela e apaga o arquivo |
+| GET | `/api/v1/matches/uploads/{upload}` | sim | Estado do envio |
 | GET | `/api/v1/academy/courses` | não | Catálogo de cursos públicos ([academy-v1.md](academy-v1.md)) |
 | GET | `/api/v1/academy/courses/{course}` | não | Curso público com módulos e aulas |
 | GET | `/api/v1/academy/courses/{course}/lessons/{lesson}` | não | Aula pública com o conteúdo resolvido |
@@ -209,3 +214,35 @@ Fluxo e regras em [mvp-m2-vinculo-steam.md](../training/mvp-m2-vinculo-steam.md)
 | 503 | `steam_unavailable` | a Steam não respondeu a tempo ou respondeu fora do protocolo |
 | 409 | `steam_already_linked` | o usuário já tem uma conta Steam vinculada |
 | 409 | `steam_account_in_use` | o SteamID já está vinculado a outra conta (sem dizer qual) |
+
+### Envio de demos (etapa M3)
+
+Regras completas em [mvp-m3-envio-de-demos.md](../training/mvp-m3-envio-de-demos.md#regras). Todas
+as rotas são do próprio usuário: envio de outro ou inexistente responde **404**.
+
+- `POST /api/v1/matches/uploads`: `{ "name": "partida.dem", "size": 241000000 }`. **201**
+  `{ "upload": { id, status, name, size_bytes, part_size, parts_total, parts_received,
+  rejection_code, expires_at, completed_at, created_at } }`. O tamanho das partes é da API (8 MiB).
+- `PUT …/{upload}/parts/{number}`: corpo binário (`application/octet-stream`) com o tamanho exato
+  da parte e o header `X-Content-SHA256` (hexadecimal). As partes vão na ordem; repetir a última com
+  o mesmo hash é uma retentativa (200, nada reescrito). **200** `{ upload }`.
+- `POST …/{upload}/complete`: **200** `{ upload }` com `status: completed`; o arquivo é apagado em
+  24 h se não for analisado.
+- `DELETE …/{upload}`: **204**, arquivo apagado. `GET …/{upload}`: **200** `{ upload }`.
+- Limites: início, conclusão e cancelamento 30/min por usuário (`match-upload`); partes 120/min
+  (`match-upload-parts`); 5 envios concluídos por 24 h.
+
+| Status | `code` | Quando |
+|---|---|---|
+| 409 | `steam_link_required` | sem conta Steam vinculada (no início ou na conclusão) |
+| 409 | `match_upload_already_open` | o usuário já tem um envio em andamento |
+| 429 | `match_upload_quota_exceeded` | 5 envios concluídos nas últimas 24 h (com `Retry-After`) |
+| 503 | `match_upload_storage_unavailable` | sem espaço em disco para o arquivo e a reserva |
+| 409 | `match_upload_not_open` | envio concluído, cancelado, recusado ou expirado |
+| 409 | `match_upload_part_out_of_order` | parte fora da ordem (ou a última repetida com outro conteúdo) |
+| 422 | `match_upload_part_size_invalid` | tamanho declarado ou recebido diferente do esperado |
+| 422 | `match_upload_part_corrupted` | o SHA-256 da parte não confere |
+| 409 | `match_upload_incomplete` | conclusão antes de todas as partes |
+| 422 | `match_upload_size_mismatch` | o arquivo montado tem outro tamanho (apagado) |
+| 422 | `match_upload_not_a_demo` | sem a assinatura `PBDEMS2` de demo do CS2 (apagado) |
+| 409 | `match_upload_duplicate` | o mesmo arquivo já concluído por este usuário (apagado) |

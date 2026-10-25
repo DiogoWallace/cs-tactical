@@ -161,6 +161,12 @@ make e2e-down
 - `academy-public-repro.sh`: esgota o limite `academy-public` lendo o catálogo como visitante e
   mostra, pelo log da API, qual chave cada caminho usa. Espere 60 s antes de rodar outra coisa na
   mesma stack.
+- `matches-upload-probe.sh` (etapa M3): envia um arquivo sintético de ~16 MiB em partes de 8 MiB
+  pelo proxy do Next (`http://localhost:3000/api`), conclui, confere a recusa de parte maior, sem
+  CSRF e o cancelamento, e então compara o SHA-256 do arquivo no disco da API com o enviado e
+  confere que só ele ficou. Conta `matches-probe@e2e.test`, que o `e2e:prepare` cria já com Steam
+  vinculada; uma execução por stack (cota de 5 envios por dia). O disco de envios fica em `tmpfs`
+  no `api` da stack E2E, como o da Academy.
 
 ## Depurar
 

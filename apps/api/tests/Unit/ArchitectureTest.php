@@ -76,6 +76,36 @@ arch('Learning policies are classes named *Policy')
     ->toBeClasses()
     ->toHaveSuffix('Policy');
 
+// Matches (ADR 0022, etapa M3): independente da Academy, do Learning e do Teams; ninguém usa os
+// models dele. Usa o User do Identity (dono do envio e vínculo Steam).
+arch('Matches models are Eloquent models')
+    ->expect('App\Modules\Matches\Models')
+    ->toExtend('Illuminate\Database\Eloquent\Model');
+
+arch('Matches enums are backed enums')
+    ->expect('App\Modules\Matches\Enums')
+    ->toBeStringBackedEnums();
+
+arch('only the Matches module uses Matches models')
+    ->expect('App\Modules\Matches\Models')
+    ->toOnlyBeUsedIn(['App\Modules\Matches', 'Database\Factories\Matches']);
+
+arch('Matches does not depend on Academy, Learning or Teams')
+    ->expect('App\Modules\Matches')
+    ->not->toUse(['App\Modules\Academy', 'App\Modules\Learning', 'App\Modules\Teams']);
+
+arch('Academy and Learning do not depend on Matches')
+    ->expect(['App\Modules\Academy', 'App\Modules\Learning'])
+    ->not->toUse('App\Modules\Matches');
+
+arch('Matches actions do not depend on HTTP')
+    ->expect('App\Modules\Matches\Actions')
+    ->not->toUse(['Illuminate\Http\Request', 'Illuminate\Http\JsonResponse']);
+
+arch('Matches controllers do not query the database directly')
+    ->expect('Illuminate\Support\Facades\DB')
+    ->not->toBeUsedIn('App\Modules\Matches\Http');
+
 // ADR 0015: o Learning depende da Academy, nunca o contrário (o uso de quizzes vem por contrato).
 arch('Academy does not depend on Learning, Teams or Identity')
     ->expect('App\Modules\Academy')

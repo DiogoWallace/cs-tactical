@@ -3,6 +3,7 @@
 use App\Modules\Academy\AcademyServiceProvider;
 use App\Modules\Identity\IdentityServiceProvider;
 use App\Modules\Learning\LearningServiceProvider;
+use App\Modules\Matches\MatchesServiceProvider;
 use App\Modules\System\SystemServiceProvider;
 use App\Providers\AppServiceProvider;
 
@@ -14,4 +15,5 @@ return [
     IdentityServiceProvider::class,
     AcademyServiceProvider::class,
     LearningServiceProvider::class,
+    MatchesServiceProvider::class,
 ];

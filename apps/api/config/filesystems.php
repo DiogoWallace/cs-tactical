@@ -56,6 +56,17 @@ return [
             'report' => false,
         ],
 
+        // Demos enviadas pelos jogadores (etapa M3), só até a análise ou o prazo. Sem URL pública:
+        // os arquivos nunca são servidos, e os caminhos saem só do UUID do envio.
+        'matches-uploads' => [
+            'driver' => 'local',
+            // MATCHES_UPLOADS_ROOT: volume próprio em produção; pasta temporária nos testes de
+            // concorrência (processos separados não usam o disco falso do Storage::fake).
+            'root' => env('MATCHES_UPLOADS_ROOT', storage_path('app/matches-uploads')),
+            'throw' => true,
+            'report' => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),
