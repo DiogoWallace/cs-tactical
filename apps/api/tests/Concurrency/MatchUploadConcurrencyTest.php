@@ -5,6 +5,7 @@ use App\Modules\Identity\Models\UserSteamAccount;
 use App\Modules\Matches\Enums\MatchUploadStatus;
 use App\Modules\Matches\Models\MatchUpload;
 use App\Modules\Matches\Uploads\DemoSignature;
+use App\Modules\Matches\Uploads\UploadReservations;
 use Illuminate\Database\Connection;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -170,6 +171,27 @@ it('opens a single upload when the same player starts two at the same time', fun
         fn ($userId) => matchesAction('StartMatchUpload', "\$a->handle(App\\Modules\\Identity\\Models\\User::findOrFail('{$userId}'), 'partida.dem', 3000);"),
         function (array $outputs, $db) {
             expect($outputs)->toBe(['OK', 'match_upload_already_open'])
+                ->and($db->table('match_uploads')->where('status', 'uploading')->count())->toBe(1);
+        },
+    );
+});
+
+it('reserves the space once when two players start at the same time (#54)', function () {
+    matchesRace(
+        fn () => [matchesPlayer()->id.','.matchesPlayer()->id, ''],
+        // A terceira conexão segura o lock de aviso dos inícios: os dois processos param nele.
+        fn ($lock) => $lock->select('select pg_advisory_xact_lock(?)', [UploadReservations::LOCK_KEY]),
+        // Mesmo espaço livre fixo nos dois processos (4.500 bytes, sem reserva): cabe um envio de
+        // 3.000, não dois. Sem descontar o envio do outro, os dois seriam aceitos.
+        function (string $userIds, string $uploadId, int $process) {
+            $userId = explode(',', $userIds)[$process - 1];
+
+            return "config(['matches.disk_reserve_bytes' => 0]); "
+                .'app()->instance(App\\Modules\\Matches\\Uploads\\UploadStorage::class, new Tests\\Support\\FakeUploadStorage(4500)); '
+                .matchesAction('StartMatchUpload', "\$a->handle(App\\Modules\\Identity\\Models\\User::findOrFail('{$userId}'), 'partida.dem', 3000);");
+        },
+        function (array $outputs, $db) {
+            expect($outputs)->toBe(['OK', 'match_upload_storage_unavailable'])
                 ->and($db->table('match_uploads')->where('status', 'uploading')->count())->toBe(1);
         },
     );
