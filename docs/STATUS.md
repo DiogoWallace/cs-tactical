@@ -50,7 +50,7 @@ por milestone.
 
 | Item | Situação |
 | --- | --- |
-| Fluxo `dev → homolog → main` ([governança](governance/README.md)) | ativo desde 2026-10-25 (#77); GitHub Project pendente (escopo `project` do token) |
+| Fluxo `dev → homolog → main` ([governança](governance/README.md)) | ativo desde 2026-10-25 (#77), com o [GitHub Project](https://github.com/users/DiogoWallace/projects/2) |
 | G1 — proteção da `main` | resolvido: rulesets `dev` e `main e homolog` (#47) |
 | Alertas de segurança do repositório | ativos desde 2026-10-25: Dependabot, atualizações de segurança, secret scanning com push protection, reporte privado (#48) |
 | Produção | bloqueada por P1–P4 ([bloqueios](deploy/bloqueios-de-producao.md); #68–#72) |
@@ -60,11 +60,9 @@ por milestone.
 - Verificação com NVDA (#65).
 - Autorizar a migration `match_uploads` no banco de desenvolvimento (#51).
 - Decisões D-M2, D-M4, D-M5 e D-M6 da ADR 0022 (#55).
-- Escopo `project` no token do GitHub para criar o GitHub Project (#77).
 - Destino dos PRs antigos do Dependabot (#26, #27, #28).
 
 ## Próximas entregas
 
-1. Criar o GitHub Project (#77).
-2. Fechar a M3 (#51, #54).
-3. M4: decisões da ADR (#55), fixture (#56), analisador (#57), processamento (#58).
+1. Fechar a M3 (#51, #54).
+2. M4: decisões da ADR (#55), fixture (#56), analisador (#57), processamento (#58).

@@ -137,9 +137,23 @@ não substitui o campo `Status`; mudança de escopo atualiza o corpo da issue e 
 
 ## GitHub Project
 
-O projeto "CS Tactical — Development" tem: campo `Status` com os seis estados; sem campo
-`Priority` (a label já é a fonte); visões Kanban por Status, Todas as issues, Por prioridade
-(agrupada pela label) e Bloqueadas (filtro `label:blocked`). Criá-lo exige o escopo `project` no
-token do GitHub; os passos e a situação estão na [issue #77](https://github.com/DiogoWallace/cs-tactical/issues/77).
-Enquanto ele não existir, o acompanhamento usa labels de prioridade, `blocked`, milestones e a
-situação dos PRs.
+[CS Tactical — Development](https://github.com/users/DiogoWallace/projects/2) (privado, ligado a
+este repositório).
+
+| Campo | Regra |
+| --- | --- |
+| `Status` | os seis [estados](#estados); fonte oficial do estado |
+| `Priority` | P0–P3, **espelho** da label `priority:*`, que continua sendo a fonte; existe porque quadros só agrupam colunas por campo. Ao mudar a label, mudar o campo |
+| `Size`, `Estimate`, `Start date`, `Target date` | opcionais, vindos do modelo do projeto; sem uso obrigatório |
+
+| Visão | Configuração |
+| --- | --- |
+| Kanban | quadro, colunas por `Status` |
+| Por prioridade | quadro, colunas por `Priority`, filtro `is:open` |
+| Todas as issues | tabela agrupada por `Status`, com `Priority`, `Labels`, `Milestone` e `Assignees` |
+| Bloqueadas | tabela, filtro `label:blocked is:open` |
+| Roadmap e Minhas issues | visões do modelo, opcionais |
+
+Issue nova entra no projeto (fluxo automático "Auto-add to project" do repositório, configurado na
+interface) em `Backlog`. Fechar a issue pelo PR de release leva o item a `Done` (fluxo "Item
+closed"). Os demais estados são movidos por quem trabalha na issue.
