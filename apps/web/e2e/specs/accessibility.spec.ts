@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright"
 import { expect, test, type Page } from "@playwright/test"
 
 import { expectNoSeriousA11yViolations } from "../support/a11y"
@@ -226,3 +227,31 @@ test.describe("navegação por teclado", () => {
     expect(focusIndicator).toBe(true)
   })
 })
+
+/*
+| O axe mede as cores do momento: no meio de uma transição (os botões têm `transition-all`), o
+| contraste sai baixo e o teste falha às vezes. O helper espera as transições terminarem. Página
+| montada aqui, sem a aplicação: o axe direto reprova no meio da transição (prova que o caso é
+| real) e o helper aprova depois dela.
+*/
+for (const [property, from, to] of [
+  ["color", "color: #ddd", "color: #111"],
+  ["opacity", "opacity: 0.2", "opacity: 1"],
+] as const) {
+  test(`axe só mede depois das transições (${property})`, async ({ page }) => {
+    await page.setContent(`<!doctype html><html lang="pt-BR"><head><title>Transição</title>
+      <style>
+        body { background: #fff; color: #111; }
+        button { background: #fff; color: #111; border: 1px solid #111; transition: all 6000ms linear; }
+        button.start { ${from}; }
+        button.done { ${to}; }
+      </style></head>
+      <body><main><h1>Transição</h1><button class="start">Enviar</button></main></body></html>`)
+    await page.locator("button").evaluate((button) => button.classList.replace("start", "done"))
+
+    const midway = await new AxeBuilder({ page }).withRules(["color-contrast"]).analyze()
+    expect(midway.violations.map((violation) => violation.id)).toEqual(["color-contrast"])
+
+    await expectNoSeriousA11yViolations(page, `transicao-${property}`)
+  })
+}
