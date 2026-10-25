@@ -27,7 +27,7 @@ Etapas da Fase 2:
 | 2.7 | Revisão transversal de segurança, acessibilidade e desempenho ([plano](docs/development/fase-2-etapa-2.7-plano.md), [desempenho](docs/development/desempenho.md)) | concluída (NVDA pendente) |
 | 2.8 | Auditoria e relatório de fechamento da Fase 2 | concluída |
 
-Iniciativas só em planejamento (nada implementado): **CS Tactical Training** ([docs/training](docs/training/visao-geral.md), [ADR 0021](docs/decisions/0021-arquitetura-do-cs-tactical-training.md), status Proposta) e busca com Elasticsearch ([proposta 2.3.1](docs/development/proposta-2.3.1-busca-elasticsearch.md), ADR 0020 reservada).
+Iniciativas só em planejamento (nada implementado): **CS Tactical Training** ([docs/training](docs/training/visao-geral.md), [ADR 0021](docs/decisions/0021-arquitetura-do-cs-tactical-training.md), status Proposta) e busca com Elasticsearch ([proposta 2.3.1](docs/development/proposta-2.3.1-busca-elasticsearch.md), ADR 0020 reservada). Da **análise de partidas por demos** ([plano do MVP](docs/training/mvp-analise-de-demos.md), [ADR 0022](docs/decisions/0022-analise-de-partidas-por-demos.md)), só a M2 está implementada: [vínculo da conta Steam](docs/training/mvp-m2-vinculo-steam.md) em `/painel/conta`.
 
 ## Stack
 

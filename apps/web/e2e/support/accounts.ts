@@ -28,6 +28,9 @@ export const ACCOUNTS = {
   dashboard: { email: "dashboard@e2e.test", nickname: "e2e_dashboard" },
   // Concluiu "historico-e2e" antes de o scripts/e2e.sh arquivá-lo (e2e:prepare --seed-history).
   history: { email: "history@e2e.test", nickname: "e2e_history" },
+  // Vínculo da conta Steam com o provedor OpenID falso (etapa M2).
+  steam: { email: "steam@e2e.test", nickname: "e2e_steam" },
+  steamOther: { email: "steam-other@e2e.test", nickname: "e2e_steam_other" },
   // probe-a, probe-b e probe-c: só para scripts/security-probe.sh (fora do Playwright).
 } as const
 

@@ -20,7 +20,15 @@ export type CurrentUser = {
     timezone: string
     bio: string | null
   } | null
+  /** Conta Steam vinculada (etapa M2), ou null. */
+  steam: SteamAccount | null
   created_at: string | null
+}
+
+/** Conta Steam vinculada: só o SteamID64 e a data do vínculo, vistos só pelo próprio usuário. */
+export type SteamAccount = {
+  steam_id: string
+  linked_at: string
 }
 
 export type CurrentUserResponse = { data: CurrentUser }

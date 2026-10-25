@@ -28,6 +28,9 @@ Models em `app/Modules/Identity/Models`; migrations `2026_10_16_1000xx_*`.
   - `user_id` não é preenchível em massa.
   - Avatar e links externos ficam para quando forem implementados (arquivos no storage, ver princípios).
 - **password_reset_tokens**: tabela técnica do broker do Laravel (`email` como chave, hash do token, `created_at`).
+- **user_steam_accounts** (1:0..1 com users, etapa M2): `id` (UUIDv7), `user_id` (único, FK com `ON DELETE CASCADE`), `steam_id` (SteamID64, único, check `^7656119[0-9]{10}$`), `linked_at`, timestamps com fuso.
+  - Uma conta Steam por usuário e um usuário por conta Steam. Só o SteamID64 é guardado; desvincular apaga a linha.
+  - Nada é preenchível em massa: a linha só nasce de uma resposta OpenID confirmada pela Steam.
 
 ## Academy — catálogo global (Fase 2) — implementado na etapa 2.1
 
@@ -82,6 +85,7 @@ O progresso é **do jogador** e sobrevive a mudanças no conteúdo ([ADR 0017](.
 
 ```
 users 1─1 profiles
+users 1─0..1 user_steam_accounts
 users 1─N team_members N─1 teams 1─N team_invitations
 users 1─N enrollments N─1 courses 1─N course_modules 1─N lessons 1─0..1 quizzes
 users 1─N lesson_progress N─1 lessons

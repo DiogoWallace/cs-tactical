@@ -52,6 +52,7 @@ class CheckProductionConfigCommand extends Command
         $mailer = (string) config('mail.default');
         $appUrl = (string) config('app.url');
         $frontendUrl = (string) config('app.frontend_url');
+        $steamEndpoint = (string) config('steam.openid_endpoint');
 
         /** @var list<string> $stateful */
         $stateful = (array) config('sanctum.stateful', []);
@@ -92,6 +93,12 @@ class CheckProductionConfigCommand extends Command
             ],
             ['LOG_LEVEL diferente de debug', $logLevel !== 'debug', $logLevel],
             ['MAIL_MAILER envia e-mails de verdade', ! in_array($mailer, ['log', 'array'], true), $mailer],
+            // Um endpoint trocado aceitaria asserções de um provedor falso (etapa M2).
+            [
+                'Vínculo Steam no endpoint oficial (https://steamcommunity.com)',
+                $steamEndpoint === config('steam.official_endpoint'),
+                $steamEndpoint,
+            ],
         ];
     }
 }

@@ -276,8 +276,9 @@ describe('me', function () {
 
         $data = $session->get('/api/v1/me')->assertOk()->json('data');
 
-        expect(array_keys($data))->toBe(['id', 'name', 'email', 'email_verified', 'pending_email', 'platform_role', 'abilities', 'profile', 'created_at'])
+        expect(array_keys($data))->toBe(['id', 'name', 'email', 'email_verified', 'pending_email', 'platform_role', 'abilities', 'profile', 'steam', 'created_at'])
             ->and(array_keys($data['profile']))->toBe(['nickname', 'country_code', 'timezone', 'bio'])
+            ->and($data['steam'])->toBeNull()
             ->and($data['email_verified'])->toBeTrue()
             ->and($data['created_at'])->toEndWith('Z');
     });

@@ -52,7 +52,7 @@ PLAYWRIGHT_RAN=0
 trap cleanup EXIT
 
 echo "1/4 Subindo a stack E2E (o build de produção do frontend leva alguns minutos)"
-compose up -d --wait postgres redis mailpit api worker web
+compose up -d --wait postgres redis mailpit steam-openid api worker web
 
 echo "2/4 Recriando o banco E2E e importando o conteúdo de teste da Academy"
 compose exec -T api php artisan e2e:prepare

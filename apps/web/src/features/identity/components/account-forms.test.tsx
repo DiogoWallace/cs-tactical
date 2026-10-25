@@ -33,6 +33,7 @@ const user: CurrentUser = {
   platform_role: "user",
   abilities: [],
   profile: { nickname: "AnaAWP", country_code: "BR", timezone: "America/Sao_Paulo", bio: null },
+  steam: null,
   created_at: null,
 }
 

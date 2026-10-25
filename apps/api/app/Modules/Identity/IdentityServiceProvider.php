@@ -147,6 +147,11 @@ class IdentityServiceProvider extends ServiceProvider
         RateLimiter::for('api', fn (Request $request) => Limit::perMinute(120)->by(
             $request->user()?->getAuthIdentifier() ?: $request->ip(),
         ));
+
+        // Início e conclusão do vínculo com a Steam (etapa M2): cada conclusão chama a Steam.
+        RateLimiter::for('steam-link', fn (Request $request) => Limit::perMinute(10)->by(
+            $request->user()?->getAuthIdentifier() ?: $request->ip(),
+        ));
     }
 
     /** E-mail normalizado para chave de limite. Só texto entra; outros tipos são barrados por EnsureStringFields. */

@@ -58,6 +58,9 @@ class PrepareE2eDatabaseCommand extends Command
         'navigation-a11y@e2e.test' => ['nickname' => 'e2e_navigation_a11y', 'verified' => true],
         'dashboard@e2e.test' => ['nickname' => 'e2e_dashboard', 'verified' => true],
         'history@e2e.test' => ['nickname' => 'e2e_history', 'verified' => true],
+        // Vínculo da conta Steam com o provedor OpenID falso (etapa M2).
+        'steam@e2e.test' => ['nickname' => 'e2e_steam', 'verified' => true],
+        'steam-other@e2e.test' => ['nickname' => 'e2e_steam_other', 'verified' => true],
         // Sondagem de segurança (scripts/security-probe.sh), fora do Playwright.
         'probe-a@e2e.test' => ['nickname' => 'e2e_probe_a', 'verified' => true],
         'probe-b@e2e.test' => ['nickname' => 'e2e_probe_b', 'verified' => true],

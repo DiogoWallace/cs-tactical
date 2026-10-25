@@ -53,7 +53,7 @@ Nunca compare o papel (`platform_role`) fora do módulo Identity: o teste de arq
 ## Policies por recurso
 
 - Uma Policy por model, em `app/Modules/<Modulo>/Policies/<Model>Policy.php`, registrada com `Gate::policy()` no provider do módulo.
-- A Policy decide por **posse ou participação**, não por papel de plataforma. `ProfilePolicy` e `UserPolicy` só permitem o próprio usuário, para qualquer papel.
+- A Policy decide por **posse ou participação**, não por papel de plataforma. `ProfilePolicy` e `UserPolicy` só permitem o próprio usuário, para qualquer papel. `UserPolicy@manageSteamLink` (etapa M2) segue a mesma regra para vincular e desvincular a conta Steam: nenhum papel abre o vínculo de outra conta.
 - Recursos de equipe (Fase 3) ficam em rotas aninhadas com `scopeBindings()` (`/teams/{team}/strategies/{strategy}`): recurso de outra equipe responde 404, e a `TeamPolicy` decide pelo `TeamRole` do membro. **`administer-platform` não abre dados privados de equipes.**
 - Negar acesso responde 403 com `code: forbidden` (ou um `code` específico, como `email_not_verified`). Recurso de outra equipe responde 404, para não revelar que existe.
 

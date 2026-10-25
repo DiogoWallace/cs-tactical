@@ -73,7 +73,8 @@ Material preparado na etapa 1.8 (modelos, nada implantado):
 - **O que fazer:** partir de `infra/deploy/production.env.example`: `APP_ENV=production`,
   `APP_DEBUG=false`, `SESSION_SECURE_COOKIE=true`, `HEALTH_EXPOSE_DETAILS=false`,
   `SANCTUM_STATEFUL_DOMAINS` só com o domínio público, URLs em HTTPS, `LOG_LEVEL` diferente de
-  `debug`, e-mail real. Imagem de produção sem dependências de desenvolvimento
+  `debug`, e-mail real, vínculo Steam no endpoint oficial (sem `STEAM_OPENID_ENDPOINT`; em
+  produção ele é ignorado). Imagem de produção sem dependências de desenvolvimento
   (`composer install --no-dev`, frontend sem `devDependencies` em runtime) e sem pcov/Xdebug.
 - **Verificação:** `php artisan system:check-production-config` passa no ambiente;
   `verify-edge.sh` confirma cookies `Secure`, health sem `checks` e erros sem detalhes internos.
