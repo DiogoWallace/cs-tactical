@@ -68,8 +68,14 @@ Os três jobs de `.github/workflows/ci.yml` usam `runs-on: ubuntu-24.04` em vez 
 
 ## Alertas de segurança
 
-- Ativar em **Settings → Code security**: *Dependabot alerts* e *Dependabot security updates*
-  (gratuitos em repositórios públicos; situação em #48). Configuração do repositório, não do código.
+- **Ativos desde 2026-10-25** (#48), em **Settings → Code security**: *Dependabot alerts*,
+  *Dependabot security updates*, *secret scanning* com *push protection* e *private vulnerability
+  reporting* (canal descrito em [SECURITY.md](../../SECURITY.md)). Configuração do repositório,
+  não do código; conferir com `gh api repos/DiogoWallace/cs-tactical --jq .security_and_analysis`.
+- PRs de atualização de segurança abrem contra a `main` e seguem o procedimento de hotfix
+  ([release-policy.md](../governance/release-policy.md#dependabot)).
+- Segredo bloqueado pelo push protection: remover o segredo do commit, revogá-lo se já tiver
+  saído da máquina, e nunca usar o desvio (*bypass*) para publicar credencial real.
 - Alerta **crítico ou alto em dependência de runtime**: corrigir antes de qualquer deploy; abrir PR
   de correção mesmo sem o PR automático.
 - Alerta em **dependência só de desenvolvimento** sem correção publicada: registrar como risco
