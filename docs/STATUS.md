@@ -50,8 +50,8 @@ por milestone.
 
 | Item | Situação |
 | --- | --- |
-| Fluxo `dev → homolog → main` ([governança](governance/README.md)) | em implantação (#77) |
-| G1 — proteção da `main` | em implantação (#47, #77) |
+| Fluxo `dev → homolog → main` ([governança](governance/README.md)) | ativo desde 2026-10-25 (#77); GitHub Project pendente (escopo `project` do token) |
+| G1 — proteção da `main` | resolvido: rulesets `dev` e `main e homolog` (#47) |
 | Alertas de segurança do repositório | desligados (#48) |
 | Produção | bloqueada por P1–P4 ([bloqueios](deploy/bloqueios-de-producao.md); #68–#72) |
 
@@ -65,6 +65,6 @@ por milestone.
 
 ## Próximas entregas
 
-1. Concluir a governança (#77) e ativar os alertas (#48).
+1. Ativar os alertas de segurança (#48) e criar o GitHub Project (#77).
 2. Fechar a M3 (#51, #54).
 3. M4: decisões da ADR (#55), fixture (#56), analisador (#57), processamento (#58).

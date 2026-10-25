@@ -38,7 +38,7 @@ combinações de origem e destino não previstas:
 | --- | --- |
 | `dev` | `feat`, `fix`, `docs`, `refactor`, `test`, `infra`, `research` (`tipo/<n>-...`), `hotfix/<n>-...`, `main`, `homolog`, `dependabot/*` |
 | `homolog` | `dev`, `fix/<n>-...`, `hotfix/<n>-...`, `main` |
-| `main` | `homolog`, `hotfix/<n>-...`, `dependabot/*`, bootstrap #77 |
+| `main` | `homolog`, `hotfix/<n>-...`, `dependabot/*` |
 
 ## Proteção (rulesets)
 
