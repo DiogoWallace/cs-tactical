@@ -115,6 +115,10 @@ test-concurrency: ## Testes de concorrência (último admin, matrícula e conclu
 e2e: ## Testes E2E (Playwright) numa stack isolada e descartável (ex.: make e2e a="--project=chromium-desktop")
 	./scripts/e2e.sh $(a)
 
+.PHONY: perf
+perf: ## Linha de base de desempenho numa stack descartável, cenários pequeno e ampliado (docs/development/desempenho.md)
+	./scripts/perf.sh
+
 .PHONY: e2e-down
 e2e-down: ## Derruba a stack E2E e descarta os dados dela (não toca a de desenvolvimento)
 	docker compose -p cs-tactical-e2e -f compose.yaml -f compose.e2e.yaml --profile e2e-runner down --volumes --remove-orphans

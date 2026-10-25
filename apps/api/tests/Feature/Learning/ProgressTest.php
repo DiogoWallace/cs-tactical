@@ -129,6 +129,25 @@ describe('GET /api/v1/me/enrollments', function () {
             ->assertJsonPath('data.0.next_lesson', null);
     });
 
+    it('counts each enrollment with its own course only, archived and published side by side', function () {
+        [$archived] = LearningFixtures::course();
+        LearningFixtures::course('avancado');
+        $user = User::factory()->create();
+        LearningFixtures::complete($user, 'peek');
+        LearningFixtures::complete($user, 'mira');
+        $this->travel(1)->hour();
+        LearningFixtures::complete($user, 'peek', 'avancado');
+        LearningFixtures::setStatus($archived, PublicationStatus::Archived);
+
+        // As aulas e conclusões vêm de uma consulta só para todos os cursos (etapa 2.7d).
+        LearningFixtures::enrollments($user)->assertOk()
+            ->assertJsonPath('data.0.course.slug', 'avancado')
+            ->assertJsonPath('data.0.progress', ['completed_lessons' => 1, 'total_lessons' => 3, 'percent' => 33.33])
+            ->assertJsonPath('data.0.next_lesson.slug', 'counter-strafe')
+            ->assertJsonPath('data.1.course.slug', 'fundamentos')
+            ->assertJsonPath('data.1.progress', ['completed_lessons' => 2, 'total_lessons' => null, 'percent' => null]);
+    });
+
     it('never shows enrollments of other players, whatever their role', function (string $role) {
         LearningFixtures::course();
         $owner = User::factory()->create();
