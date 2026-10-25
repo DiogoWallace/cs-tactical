@@ -52,6 +52,13 @@ Models em `app/Modules/Learning/Models`; migrations `2026_10_17_2000xx_*` (2.4) 
 
 O progresso é **do jogador** e sobrevive a mudanças no conteúdo ([ADR 0017](../decisions/0017-progresso-diante-de-mudancas-no-conteudo.md)). Nenhuma equipe lê essas tabelas diretamente; o acesso passa pelas atribuições (abaixo).
 
+## Matches — envio de demos (telemetria, MVP) — implementado na etapa M3
+
+- **match_uploads**: `id` (UUIDv7, também o nome do arquivo no disco `matches-uploads`), `user_id` (FK com `ON DELETE CASCADE`), `status` (`uploading`, `completed`, `rejected`, `cancelled`, `expired`), `name` (só para exibir), `size_bytes` (1 byte a 600 MiB), `part_size`, `parts_total`, `parts_received`, `last_part_sha256`, `sha256` (do arquivo, na conclusão), `rejection_code`, `last_activity_at`, `expires_at`, `completed_at`, timestamps com fuso ([plano da M3](../training/mvp-m3-envio-de-demos.md#banco)).
+  - Únicos parciais: um envio `uploading` por usuário; um `sha256` por usuário entre os `completed`.
+  - Checks: estado, tamanho, partes, hashes em hexadecimal, `rejection_code` só em `rejected`, `completed` com `sha256` e `completed_at`.
+  - Nada da partida é guardado além do tamanho e do hash; o arquivo some ao cancelar, recusar ou expirar.
+
 ## Teams (Fase 3)
 
 - **teams**: nome, slug, tag, `created_by`.
@@ -86,6 +93,7 @@ O progresso é **do jogador** e sobrevive a mudanças no conteúdo ([ADR 0017](.
 ```
 users 1─1 profiles
 users 1─0..1 user_steam_accounts
+users 1─N match_uploads
 users 1─N team_members N─1 teams 1─N team_invitations
 users 1─N enrollments N─1 courses 1─N course_modules 1─N lessons 1─0..1 quizzes
 users 1─N lesson_progress N─1 lessons

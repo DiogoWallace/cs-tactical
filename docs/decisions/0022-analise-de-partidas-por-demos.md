@@ -44,7 +44,9 @@ sem isolamento.
    o proxy do Next e para os limites do Nginx; a API monta o arquivo num disco próprio
    (`matches-uploads`, local em desenvolvimento, S3 depois, como o disco `academy`). O arquivo é
    conferido pelo conteúdo (assinatura de demo do Source 2, tamanho, leitura do cabeçalho) antes de
-   entrar na fila.
+   entrar na fila. **Implementado na M3** ([plano](../training/mvp-m3-envio-de-demos.md)), com a
+   decisão U4: a API confere só assinatura e tamanho; o cabeçalho é lido pelo analisador isolado
+   (item 4), para a API não interpretar o arquivo do usuário.
 4. **Análise isolada**: um **serviço de análise** separado da API, sem acesso à internet, ao banco
    ou ao Redis, que recebe o caminho de um arquivo num volume compartilhado **só leitura**, roda o
    parser com limites de CPU, memória e tempo, e devolve **só agregados do SteamID pedido**. A API

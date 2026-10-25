@@ -422,7 +422,7 @@ describe('database', function () {
     it('cascades from the user and rolls back cleanly', function () {
         expect(DB::scalar("select confdeltype from pg_constraint where conname = 'user_steam_accounts_user_id_foreign'"))->toBe('c');
 
-        $this->artisan('migrate:rollback', ['--step' => 1])->assertSuccessful();
+        $this->artisan('migrate:rollback', ['--step' => migrationsFrom('2026_10_24_100000_create_user_steam_accounts_table')])->assertSuccessful();
         expect(Schema::hasTable('user_steam_accounts'))->toBeFalse();
 
         $this->artisan('migrate')->assertSuccessful();

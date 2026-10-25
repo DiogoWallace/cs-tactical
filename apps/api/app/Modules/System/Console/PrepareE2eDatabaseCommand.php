@@ -3,6 +3,7 @@
 namespace App\Modules\System\Console;
 
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Models\UserSteamAccount;
 use App\Modules\Learning\Actions\CompleteLesson;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -33,7 +34,10 @@ class PrepareE2eDatabaseCommand extends Command
      * Uma conta por fluxo que altera dados, para os testes rodarem em paralelo sem interferir.
      * Igual a ACCOUNTS em apps/web/e2e/support/accounts.ts.
      *
-     * @var array<string, array{nickname: string, verified: bool}>
+     * Com `steam_id`, a conta já nasce com a conta Steam vinculada (sondagem do envio de demos,
+     * etapa M3; o vínculo pelo fluxo OpenID usa as contas `steam*`).
+     *
+     * @var array<string, array{nickname: string, verified: bool, steam_id?: string}>
      */
     private const ACCOUNTS = [
         'login@e2e.test' => ['nickname' => 'e2e_login', 'verified' => true],
@@ -61,6 +65,8 @@ class PrepareE2eDatabaseCommand extends Command
         // Vínculo da conta Steam com o provedor OpenID falso (etapa M2).
         'steam@e2e.test' => ['nickname' => 'e2e_steam', 'verified' => true],
         'steam-other@e2e.test' => ['nickname' => 'e2e_steam_other', 'verified' => true],
+        // Sondagem do envio de demos (scripts/matches-upload-probe.sh), fora do Playwright.
+        'matches-probe@e2e.test' => ['nickname' => 'e2e_matches_probe', 'verified' => true, 'steam_id' => '76561198000000101'],
         // Sondagem de segurança (scripts/security-probe.sh), fora do Playwright.
         'probe-a@e2e.test' => ['nickname' => 'e2e_probe_a', 'verified' => true],
         'probe-b@e2e.test' => ['nickname' => 'e2e_probe_b', 'verified' => true],
@@ -112,6 +118,14 @@ class PrepareE2eDatabaseCommand extends Command
                 'country_code' => 'BR',
                 'timezone' => 'America/Sao_Paulo',
             ]);
+
+            if (isset($account['steam_id'])) {
+                (new UserSteamAccount)->forceFill([
+                    'user_id' => $user->id,
+                    'steam_id' => $account['steam_id'],
+                    'linked_at' => now(),
+                ])->save();
+            }
         }
 
         $this->info(count(self::ACCOUNTS).' contas E2E criadas em '.self::DATABASE.'.');

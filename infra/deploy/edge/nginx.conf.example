@@ -55,6 +55,13 @@ server {
     location /api/ {
         proxy_pass http://cs_api;
     }
+    # Partes do envio de demos (etapa M3, decisão U1): 8 MiB cada. Só PUT nesta rota passa de 2 MB;
+    # o resto do site continua com o limite acima.
+    location ~ ^/api/v1/matches/uploads/[0-9a-f-]{36}/parts/[0-9]+$ {
+        client_max_body_size 9m;
+        limit_except PUT { deny all; }
+        proxy_pass http://cs_api;
+    }
     location /sanctum/ {
         proxy_pass http://cs_api;
     }

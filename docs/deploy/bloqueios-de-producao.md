@@ -36,6 +36,8 @@ Material preparado na etapa 1.8 (modelos, nada implantado):
   - Remover dos pedidos do cliente: `Forwarded`, `X-Forwarded-Host`, `X-Forwarded-Port`,
     `X-Forwarded-Prefix`, `X-Real-IP`, `Client-IP`, `True-Client-IP`, `CF-Connecting-IP`.
   - Encaminhar `/api/*` e `/sanctum/*` direto para a API e o restante para o Next.js.
+  - Corpo limitado a 2 MB, com uma única exceção de 9 MB para `PUT` das partes do envio de demos
+    (`/api/v1/matches/uploads/{id}/parts/{n}`, etapa M3, decisão U1), já no modelo da borda.
   - Com CDN: restaurar o IP do cliente só a partir das faixas publicadas pela CDN.
   - HSTS na borda (a aplicação não o envia, ADR 0014).
   - Ponto de partida: `infra/deploy/edge/nginx.conf.example`.
@@ -74,7 +76,9 @@ Material preparado na etapa 1.8 (modelos, nada implantado):
   `APP_DEBUG=false`, `SESSION_SECURE_COOKIE=true`, `HEALTH_EXPOSE_DETAILS=false`,
   `SANCTUM_STATEFUL_DOMAINS` só com o domínio público, URLs em HTTPS, `LOG_LEVEL` diferente de
   `debug`, e-mail real, vínculo Steam no endpoint oficial (sem `STEAM_OPENID_ENDPOINT`; em
-  produção ele é ignorado). Imagem de produção sem dependências de desenvolvimento
+  produção ele é ignorado), disco de envios de demos (`MATCHES_UPLOADS_ROOT`) num volume
+  compartilhado entre `api` e `worker` (os jobs de expiração apagam os arquivos) e fila Redis
+  persistente. Imagem de produção sem dependências de desenvolvimento
   (`composer install --no-dev`, frontend sem `devDependencies` em runtime) e sem pcov/Xdebug.
 - **Verificação:** `php artisan system:check-production-config` passa no ambiente;
   `verify-edge.sh` confirma cookies `Secure`, health sem `checks` e erros sem detalhes internos.

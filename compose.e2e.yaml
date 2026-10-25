@@ -51,8 +51,11 @@ services:
     # mesma pasta da stack de desenvolvimento.
     volumes:
       - ./apps/web/e2e/fixtures/academy:/var/www/e2e-content/academy:ro
+    # Demos enviadas (etapa M3) também em tmpfs: a sondagem não grava em apps/api/storage. Só no
+    # `api`: os jobs de expiração do worker vencem em horas, depois de a stack ser derrubada.
     tmpfs:
       - /var/www/html/storage/app/academy:uid=${HOST_UID:-1000},gid=${HOST_GID:-1000},mode=0755
+      - /var/www/html/storage/app/matches-uploads:uid=${HOST_UID:-1000},gid=${HOST_GID:-1000},mode=0755
     environment: &e2e-api-environment
       # Ambiente próprio: só nele existe o comando e2e:prepare.
       APP_ENV: e2e

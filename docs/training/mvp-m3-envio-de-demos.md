@@ -1,7 +1,8 @@
 # M3 — Envio de demos (plano de implementação)
 
 > Planejamento (2026-10-25, branch `docs/m3-upload-plan`); decisões U1–U6 **aprovadas pelo
-> responsável em 2026-10-25**. **Nada implementado.** Etapa M3 do
+> responsável em 2026-10-25**. **Implementado em 2026-10-25** (branch `feat/m3-demo-uploads`; ver
+> [Execução](#execução-2026-10-25)). Etapa M3 do
 > [plano do MVP](mvp-analise-de-demos.md); decisões de base na
 > [ADR 0022](../decisions/0022-analise-de-partidas-por-demos.md) (itens 1, 3 e 5) e nas decisões
 > D-M2 a D-M4 do plano do MVP. Depende da [M2](mvp-m2-vinculo-steam.md) (concluída: sem vínculo não
@@ -40,8 +41,8 @@ CSRF, pelo `apiClient` (mesma origem, proxy `/api` do Next).
 |---|---|---|
 | Nginx da API aceita corpo até 100 MB; PHP `post_max_size` 100 MB, `memory_limit` 256 MB | **Confirmada** | ambiente do container `api` (`NGINX_CLIENT_MAX_BODY_SIZE`, `PHP_POST_MAX_SIZE`) |
 | A borda de referência de produção limita o corpo a **2 MB** (`client_max_body_size 2m`) | **Confirmada** | `infra/deploy/edge/nginx.conf.example`, linha 35; ver **U1** |
-| O proxy `/api` do Next (rewrite) repassa uma parte de 8 MiB sem cortar nem bufferizar tudo | **Provável** | conferir no início com a sondagem pelo proxy da stack E2E |
-| Demos do CS2 (Source 2) começam com os 8 bytes `PBDEMS2\0` | **Provável** | formato público do Source 2; conferir no início com uma demo real (ler a pasta do jogo só com autorização) |
+| O proxy `/api` do Next (rewrite) repassa uma parte de 8 MiB sem cortar nem bufferizar tudo | **Confirmada** | `scripts/matches-upload-probe.sh` na stack E2E: três partes (8 MiB, 8 MiB, resto) em ~240 ms cada, hash igual no disco |
+| Demos do CS2 (Source 2) começam com os 8 bytes `PBDEMS2\0` | **Confirmada** (fontes públicas) | o `demo_file_stamp` de uma demo do CS2 aparece como `PBDEMS2` seguido de um byte nulo no [awpy](https://awpy.readthedocs.io/en/latest/examples/parse_demo.html), e o parser [Boon](https://boon.readthedocs.io/en/latest/internals/parsing-flow.html) confere esses bytes antes de ler o arquivo; conferir com uma demo do responsável continua opcional |
 | Não há agendador (`schedule:work`) na stack; há um worker de filas (`queue:work`, Redis) | **Confirmada** | `compose.yaml`; ver **U2** |
 
 ## Regras
@@ -85,8 +86,8 @@ Escrita no offset `(number − 1) × part_size` de `uploads/{id}.part`, com a li
 | C1 | Sessão, CSRF, posse (P1); envio em `uploading` (linha travada: duas conclusões simultâneas → uma conclui, a outra recebe 409) | 409 `match_upload_not_open` |
 | C2 | Todas as partes recebidas | 409 `match_upload_incomplete` |
 | C3 | Conta Steam ainda vinculada | 409 `steam_link_required` |
-| C4 | Tamanho do arquivo no disco = `size` declarado | 422 `match_upload_rejected` (`rejection_code: size_mismatch`), arquivo apagado |
-| C5 | Assinatura `PBDEMS2\0` nos 8 primeiros bytes (U4) | 422 `match_upload_rejected` (`not_a_demo`), arquivo apagado |
+| C4 | Tamanho do arquivo no disco = `size` declarado | 422 `match_upload_size_mismatch`, arquivo apagado |
+| C5 | Assinatura `PBDEMS2\0` nos 8 primeiros bytes (U4) | 422 `match_upload_not_a_demo`, arquivo apagado |
 | C6 | SHA-256 do arquivo inteiro (lido em blocos) diferente dos envios **concluídos** do mesmo usuário (ADR 0022, item 5) | 409 `match_upload_duplicate`, arquivo apagado |
 
 Sucesso: `uploads/{id}.part` vira `uploads/{id}.dem` (rename atômico no mesmo disco), status
@@ -240,3 +241,25 @@ continua exigindo autorização própria).
 | U4 | Conferência do conteúdo na M3 | **Aprovada**: só assinatura e tamanho; a leitura do cabeçalho (mapa, servidor, build) fica com o analisador isolado da M4. A ADR 0022 (item 3) cita o cabeçalho antes da fila; ler protobuf de arquivo do usuário dentro da API iria contra o isolamento do item 4 |
 | U5 | Envio repetido | **Aprovada**: recusar o mesmo arquivo (SHA-256) **do mesmo usuário** enquanto houver envio concluído ou análise dele; o mesmo arquivo de outro jogador da partida é aceito (cada um analisa a própria participação) |
 | U6 | Envio concluído antes de a M4 existir | **Aprovada**: fica `completed` e expira em 24 h (arquivo apagado), como previsto em D-M4; na M4 a conclusão passa a enfileirar a análise |
+
+## Execução (2026-10-25)
+
+Implementado como planejado, com estes ajustes:
+
+| Ponto do plano | Implementado | Motivo |
+|---|---|---|
+| Recusa do arquivo como `match_upload_rejected` + `rejection_code` | O motivo vai no próprio `code` (`match_upload_size_mismatch`, `match_upload_not_a_demo`, `match_upload_duplicate`); o envio guarda `rejection_code` e a consulta o mostra | O formatador de erros da API (`ApiErrorResponse`) mantém só `message`, `code` e `errors` |
+| Expiração por job | Um job atrasado no início, a cada parte e na conclusão; ele não se reagenda e só age se o prazo **gravado** venceu | Evita laço na fila síncrona dos testes; um job antigo, de antes de uma parte nova, não faz nada |
+| `Retry-After` da cota | Arredondado para cima | O banco guarda os horários sem fração de segundo; o cliente não deve tentar antes da hora |
+| Disco | `MATCHES_UPLOADS_ROOT` opcional (padrão `storage/app/matches-uploads`) | Pasta temporária nos testes de concorrência; volume próprio em produção |
+| Stack E2E | `tmpfs` só no `api` | Os jobs de expiração do worker vencem em horas, depois de a stack ser derrubada. Em produção, `api` e `worker` precisam do mesmo volume (registrado em P4) |
+| Sondagem | Conta `matches-probe@e2e.test`, criada pelo `e2e:prepare` já com Steam vinculada | O vínculo pelo fluxo OpenID já tem E2E próprio (M2) |
+| Testes de rollback | Contam as migrations posteriores pela tabela `migrations` (`migrationsFrom()` em `tests/Pest.php`) | Cada migration nova quebrava cinco testes por número fixo |
+
+| Critério de aceite | Resultado |
+|---|---|
+| Regras com teste; contraprova em P3, P5 e C5 | `MatchUploadTest` (43 testes). Contraprovas: sem a ordem das partes, 1 falha; sem o hash da parte, 3; sem a assinatura, 4. Arquivos restaurados |
+| Pest, concorrência, Vitest, lint, build e E2E verdes; nenhuma rota sem autenticação ou limite | ver o PR; `MatchUploadConcurrencyTest` (3 casos) |
+| Sondagem pelo proxy da stack E2E | `matches-upload-probe.sh`: 9/9 e o hash no disco igual ao enviado |
+| Nada sobra no disco depois de cancelar, recusar ou expirar | testes de cancelamento, recusa, expiração e `matches:prune-uploads`; sondagem (só o concluído no disco) |
+| Migration no banco de desenvolvimento com o procedimento | **pendente** (autorização própria) |

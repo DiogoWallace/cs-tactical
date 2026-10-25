@@ -36,12 +36,8 @@ function violates(string $constraint, Closure $write): void
     throw new RuntimeException("A escrita deveria violar {$constraint}.");
 }
 
-// As do Learning (2.4 e 2.5) vêm depois e referenciam o catálogo: são desfeitas primeiro, junto
-// com a da Steam (M2), que é a mais recente.
-const MIGRATIONS_AFTER_ACADEMY = 5;
-
 it('rolls back and re-applies the academy migrations', function () {
-    $this->artisan('migrate:rollback', ['--step' => 5 + MIGRATIONS_AFTER_ACADEMY])->assertSuccessful();
+    $this->artisan('migrate:rollback', ['--step' => migrationsFrom('2026_10_17_100000_create_academy_media_table')])->assertSuccessful();
     foreach (ACADEMY_TABLES as $table) {
         expect(Schema::hasTable($table))->toBeFalse();
     }
