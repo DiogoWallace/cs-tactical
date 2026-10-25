@@ -158,6 +158,28 @@ describe('start (I1 to I6)', function () {
             ->assertHeader('Retry-After', (string) 3600);
     });
 
+    it('keeps counting a completed upload after it is cancelled', function () {
+        $this->freezeTime();
+        $this->actingAs($this->user);
+        $ids = [];
+        foreach (range(1, 5) as $ignored) {
+            $ids[] = $id = uploadParts(demoBytes(2500));
+            completeUpload($id)->assertOk();
+        }
+
+        // Cancelar um concluído apaga o arquivo, mas o envio já gastou a cota: contar pelo status
+        // atual (só `completed`) devolveria a vaga e permitiria concluir, cancelar e repetir.
+        $this->deleteJson("/api/v1/matches/uploads/{$ids[0]}")->assertNoContent();
+
+        expect(MatchUpload::query()->find($ids[0]))
+            ->status->toBe(MatchUploadStatus::Cancelled)
+            ->completed_at->not->toBeNull();
+        startUpload(3000)->assertStatus(429)
+            ->assertJsonPath('code', 'match_upload_quota_exceeded')
+            ->assertHeader('Retry-After', (string) 86400);
+        expect(MatchUpload::query()->where('status', MatchUploadStatus::Uploading)->count())->toBe(0);
+    });
+
     it('refuses when the disk would run out of space', function () {
         config(['matches.disk_reserve_bytes' => PHP_INT_MAX - 10_000]);
         $this->actingAs($this->user);
