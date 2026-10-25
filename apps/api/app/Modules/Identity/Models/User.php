@@ -37,6 +37,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Profile|null $profile
+ * @property-read UserSteamAccount|null $steamAccount
  */
 #[UseFactory(UserFactory::class)]
 class User extends Authenticatable implements MustVerifyEmail
@@ -76,6 +77,12 @@ class User extends Authenticatable implements MustVerifyEmail
     public function profile(): HasOne
     {
         return $this->hasOne(Profile::class);
+    }
+
+    /** @return HasOne<UserSteamAccount, $this> */
+    public function steamAccount(): HasOne
+    {
+        return $this->hasOne(UserSteamAccount::class);
     }
 
     public function hasPlatformRole(PlatformRole $role): bool

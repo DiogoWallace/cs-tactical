@@ -35,7 +35,8 @@ sem isolamento.
    itens 6–9 (tipo da métrica, versões, comparabilidade), num formato reaproveitável pelos dois
    módulos.
 2. **Identidade**: o jogador vincula a conta Steam por **OpenID 2.0 verificado no backend**
-   (`user_steam_accounts`, um SteamID por conta e vice-versa). Sem vínculo, não há envio. Uma demo
+   (`user_steam_accounts`, um SteamID por conta e vice-versa; implementado na M2,
+   [mvp-m2-vinculo-steam.md](../training/mvp-m2-vinculo-steam.md#execução-2026-10-24)). Sem vínculo, não há envio. Uma demo
    só é analisada se o SteamID vinculado **estiver entre os jogadores da partida**; caso contrário,
    é recusada sem análise.
 3. **Envio**: upload **manual** de um arquivo `.dem` (até 600 MB no MVP), **em partes** pela mesma

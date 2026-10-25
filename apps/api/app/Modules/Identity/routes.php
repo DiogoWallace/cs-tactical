@@ -3,6 +3,7 @@
 use App\Modules\Identity\Http\Controllers\ChangePasswordController;
 use App\Modules\Identity\Http\Controllers\EmailChangeController;
 use App\Modules\Identity\Http\Controllers\MeController;
+use App\Modules\Identity\Http\Controllers\SteamLinkController;
 use App\Modules\Identity\Http\Controllers\UpdateProfileController;
 use App\Modules\Identity\Http\Middleware\EnsureFrontendSession;
 use App\Modules\Identity\Http\Middleware\EnsureStringFields;
@@ -82,4 +83,17 @@ Route::prefix('me')->name('me.')->middleware('auth:sanctum')->group(function () 
     Route::get('/email/confirm/{id}/{hash}', [EmailChangeController::class, 'confirm'])
         ->middleware([ValidateSignature::relative(), 'throttle:verification'])
         ->name('email.confirm');
+
+    // Vínculo da conta Steam por OpenID (etapa M2). Desvincular exige a senha atual (decisão S2).
+    Route::post('/steam/link', [SteamLinkController::class, 'start'])
+        ->middleware('throttle:steam-link')
+        ->name('steam.link');
+
+    Route::post('/steam/link/complete', [SteamLinkController::class, 'complete'])
+        ->middleware('throttle:steam-link')
+        ->name('steam.link.complete');
+
+    Route::delete('/steam', [SteamLinkController::class, 'destroy'])
+        ->middleware('throttle:credentials')
+        ->name('steam.unlink');
 });

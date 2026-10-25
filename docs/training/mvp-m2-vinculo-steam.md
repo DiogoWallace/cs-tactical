@@ -1,10 +1,10 @@
 # M2 — Vínculo da conta Steam (plano de implementação)
 
-> Planejamento (2026-10-23, branch `docs/demo-analysis-m2-plan`). **Nada implementado.** Etapa M2 do
+> Planejamento de 2026-10-23 (branch `docs/demo-analysis-m2-plan`), **implementado em 2026-10-24**
+> (branch `feat/m2-steam-link`; ver [Execução](#execução-2026-10-24)). Etapa M2 do
 > [plano do MVP](mvp-analise-de-demos.md); decisões de base na
 > [ADR 0022](../decisions/0022-analise-de-partidas-por-demos.md) (item 2) e na
-> [ADR 0021](../decisions/0021-arquitetura-do-cs-tactical-training.md) (item 4). A implementação só
-> começa com autorização própria.
+> [ADR 0021](../decisions/0021-arquitetura-do-cs-tactical-training.md) (item 4).
 
 ## Objetivo
 
@@ -196,3 +196,30 @@ autorização própria).
 | S2 | Desvincular exige a senha | **Aprovada**: sim, como trocar e-mail e senha (ação que muda a identidade usada nas análises) |
 | S3 | SteamID64 completo na tela da conta | **Aprovada**: só para o próprio usuário (é o identificador público da Steam); nunca em telas de outros |
 | S4 | Ordem | **Aprovada**: M2 antes da M3 (sem vínculo não há envio) |
+
+## Execução (2026-10-24)
+
+Implementado como planejado, com as adaptações abaixo.
+
+| Ponto do plano | Implementado | Motivo |
+|---|---|---|
+| `return_to` e `realm` a partir de `APP_URL` | `FRONTEND_URL` (`config('app.frontend_url')`), o mesmo dos links de e-mail; nunca o `Host` da requisição | A página de volta é do Next; o `APP_URL` da API aponta para a própria API |
+| Corpo do `complete` com `openid.*` | `{ state, openid: { ns, mode, … } }`, sem o prefixo; o servidor remonta `openid.*` para conferir e para o `check_authentication` | A validação do Laravel lê o ponto como aninhamento; o conjunto enviado à Steam continua idêntico ao recebido |
+| Confirmação de desvínculo em diálogo | Seção de confirmação no próprio cartão (`form` com nome acessível, foco na senha, confirmar e cancelar) | O projeto não tem componente de diálogo e o `<dialog>` nativo não roda no jsdom dos testes |
+| Provedor falso (S1) | Serviço `steam-openid` só no `compose.e2e.yaml`, script Node sem dependências na mesma imagem do `web` ([e2e.md](../development/e2e.md#vínculo-da-conta-steam)) | Sem download de imagem nova; o endpoint só é configurável fora de produção (`config/steam.php`) |
+| Erros com `code` | Exceção `SteamLinkFailed` com `render()` (status e `code` próprios, mensagem fixa); códigos em [convencoes.md](../api/convencoes.md#vínculo-da-conta-steam-etapa-m2) | Mesmo formato `{message, code}` do resto da API |
+
+Arquivos: `app/Modules/Identity/Steam/{SteamOpenId,SteamOpenIdVerifier,SteamLinkFailed}.php`,
+`Actions/{StartSteamLink,CompleteSteamLink,UnlinkSteamAccount}.php`,
+`Http/Controllers/SteamLinkController.php`, `Http/Requests/{CompleteSteamLinkRequest,UnlinkSteamRequest}.php`,
+`Http/Resources/SteamAccountResource.php`, `Models/UserSteamAccount.php`, `config/steam.php`,
+migration `2026_10_24_100000_create_user_steam_accounts_table`, `UserPolicy@manageSteamLink`,
+limitador `steam-link`, item novo no `system:check-production-config`; no frontend,
+`steam-link-card.tsx`, `steam-link-return.tsx`, `/painel/conta/steam`, `lib/steam-link.ts`.
+
+| Critério de aceite | Resultado |
+|---|---|
+| Regras 1–10 com teste; contraprova em `state`, `return_to` e `check_authentication` | `SteamLinkTest` (44 testes). Contraprovas: sem a conferência do `state`, 1 teste falha; sem a regra 5, 2 falham; sem o `check_authentication`, 2 falham. Arquivos restaurados |
+| Pest, concorrência, Vitest, lint, build e E2E verdes; nenhuma rota sem autenticação ou limite | ver o PR; `SteamLinkConcurrencyTest` (dois usuários, o mesmo SteamID); `steam.spec.ts` (3 testes) |
+| Vínculo real feito uma vez no desenvolvimento pelo responsável | **feito em 2026-10-25**, com a migration aplicada no banco de desenvolvimento (backup e `--pretend` antes) e a conta Steam do responsável: a Steam respondeu com o `op_endpoint` da configuração (regra 4 confirmada) e só o SteamID64 foi gravado. Na primeira tentativa a sessão do CS Tactical não valia mais na volta da Steam (`/me` → 401, novo login) e a conclusão foi recusada com `steam_state_invalid`, como previsto pela regra 2; a segunda tentativa vinculou. Causa não comprovada pelos logs: hipótese de o navegador não ter enviado o cookie de sessão (`SameSite=Lax`) na volta depois do formulário de login da Steam. Investigar se repetir |
+| Só o SteamID64 gravado; desvínculo e exclusão de conta removem o vínculo | sim (testes de gravação, desvínculo e CASCADE) |

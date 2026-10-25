@@ -31,8 +31,19 @@ class UserResource extends JsonResource
             'platform_role' => $this->platform_role->value,
             'abilities' => $this->effectiveAbilities(),
             'profile' => new ProfileResource($this->whenLoaded('profile')),
+            // Conta Steam vinculada (etapa M2), ou null. Carregada aqui para valer em todas as
+            // respostas com o usuário (login, cadastro, conta), não só em /me.
+            'steam' => $this->steamAccount(),
             'created_at' => $this->created_at?->toIso8601ZuluString(),
         ];
+    }
+
+    /** @return array<string, mixed>|null */
+    private function steamAccount(): ?array
+    {
+        $account = $this->resource->loadMissing('steamAccount')->steamAccount;
+
+        return $account === null ? null : (new SteamAccountResource($account))->resolve();
     }
 
     /**

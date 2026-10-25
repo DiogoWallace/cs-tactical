@@ -72,6 +72,9 @@ O health check (`/api/v1/health`) não é afetado: o `503` dele é uma resposta 
 | POST | `/api/v1/me/email` | sim (+ CSRF) | Pede a troca de e-mail (link ao novo endereço) |
 | DELETE | `/api/v1/me/email` | sim (+ CSRF) | Cancela a troca pendente |
 | GET | `/api/v1/me/email/confirm/{id}/{hash}?expires&signature` | sim + assinatura | Conclui a troca de e-mail |
+| POST | `/api/v1/me/steam/link` | sim (+ CSRF) | Inicia o vínculo da conta Steam (URL de login da Steam) |
+| POST | `/api/v1/me/steam/link/complete` | sim (+ CSRF) | Conclui o vínculo com a resposta OpenID da Steam |
+| DELETE | `/api/v1/me/steam` | sim (+ CSRF) | Desfaz o vínculo; exige a senha atual |
 | GET | `/api/v1/academy/courses` | não | Catálogo de cursos públicos ([academy-v1.md](academy-v1.md)) |
 | GET | `/api/v1/academy/courses/{course}` | não | Curso público com módulos e aulas |
 | GET | `/api/v1/academy/courses/{course}/lessons/{lesson}` | não | Aula pública com o conteúdo resolvido |
@@ -124,12 +127,13 @@ Sem corpo. Resposta **204**. Invalida a sessão e troca o token CSRF (o cookie `
     "platform_role": "user",
     "abilities": [],
     "profile": { "nickname": "AnaAWP", "country_code": "BR", "timezone": "America/Sao_Paulo", "bio": null },
+    "steam": { "steam_id": "76561198000000001", "linked_at": "2026-10-24T15:00:00Z" },
     "created_at": "2026-10-16T05:12:30Z"
   }
 }
 ```
 
-Lista fechada de campos (`UserResource`): senha, `remember_token` e datas internas nunca saem. `pending_email` (desde a etapa 1.5) é o novo e-mail aguardando confirmação, ou `null`. `abilities` (etapa 1.6) lista as capacidades de plataforma efetivas (`manage-academy-content`, `administer-platform`), calculadas pelos Gates; serve só para a interface, nunca como autorização ([ADR 0012](../decisions/0012-autorizacao-por-capacidades-e-policies.md)). Sem sessão: 401. Limite: 120/min por usuário.
+Lista fechada de campos (`UserResource`): senha, `remember_token` e datas internas nunca saem. `pending_email` (desde a etapa 1.5) é o novo e-mail aguardando confirmação, ou `null`. `steam` (etapa M2) é a conta Steam vinculada, ou `null`; o SteamID64 só aparece para o próprio usuário. `abilities` (etapa 1.6) lista as capacidades de plataforma efetivas (`manage-academy-content`, `administer-platform`), calculadas pelos Gates; serve só para a interface, nunca como autorização ([ADR 0012](../decisions/0012-autorizacao-por-capacidades-e-policies.md)). Sem sessão: 401. Limite: 120/min por usuário.
 
 ### `GET /api/v1/health`
 
@@ -179,3 +183,29 @@ Corpo do POST: `{ "email", "current_password" }`. Resposta **202** com o usuári
 ### `GET /api/v1/me/email/confirm/{id}/{hash}`
 
 Chamado pela página `/confirmar-email/{id}/{hash}?expires&signature` do frontend. Resposta **200** com o usuário (e-mail novo, verificado). Link expirado, adulterado, substituído por pedido mais novo, cancelado ou de outra conta: **403**. Endereço tomado por outra conta nesse meio-tempo: **422** em `email`. Sem sessão: 401.
+
+### Vínculo da conta Steam (etapa M2)
+
+Fluxo e regras em [mvp-m2-vinculo-steam.md](../training/mvp-m2-vinculo-steam.md) e em
+[autenticacao.md](../architecture/autenticacao.md#9-vínculo-da-conta-steam-etapa-m2).
+
+- `POST /api/v1/me/steam/link`: sem corpo. **200** `{ "redirect_url" }` (login da Steam, com o
+  `state` desta sessão na volta). Já vinculado: **409** `steam_already_linked`.
+- `POST /api/v1/me/steam/link/complete`: `{ "state", "openid": { "ns", "mode", "op_endpoint",
+  "claimed_id", "identity", "return_to", "response_nonce", "assoc_handle", "signed", "sig" } }` (os
+  campos `openid.*` da volta, sem o prefixo; qualquer outro reprova com 422 `validation_failed`).
+  **200** `{ "steam": { "steam_id", "linked_at" } }`.
+- `DELETE /api/v1/me/steam`: `{ "current_password" }`. **204**; senha errada: 422 em
+  `current_password`.
+- Limites: início e conclusão 10/min por usuário (`steam-link`); desvínculo 5/min (`credentials`).
+
+| Status | `code` | Quando |
+|---|---|---|
+| 422 | `steam_state_invalid` | `state` ausente, diferente do da sessão, vencido (10 min) ou já usado |
+| 422 | `steam_cancelled` | o jogador cancelou na Steam |
+| 422 | `steam_response_invalid` | resposta fora do perfil da Steam (endpoint, `return_to`, `claimed_id`, assinatura) |
+| 422 | `steam_replay` | nonce repetido ou fora de ±5 min |
+| 422 | `steam_not_verified` | a Steam não confirmou a resposta (`is_valid:false`) |
+| 503 | `steam_unavailable` | a Steam não respondeu a tempo ou respondeu fora do protocolo |
+| 409 | `steam_already_linked` | o usuário já tem uma conta Steam vinculada |
+| 409 | `steam_account_in_use` | o SteamID já está vinculado a outra conta (sem dizer qual) |

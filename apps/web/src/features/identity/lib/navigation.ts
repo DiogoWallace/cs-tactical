@@ -8,3 +8,11 @@
 export function navigateAfterSessionChange(path: string): void {
   window.location.assign(path)
 }
+
+/**
+ * Ida para o login de um provedor externo (Steam, etapa M2). Por navegação, não por formulário:
+ * a CSP tem `form-action 'self'`, que bloquearia um envio para outro domínio.
+ */
+export function navigateToProvider(url: string): void {
+  window.location.assign(url)
+}

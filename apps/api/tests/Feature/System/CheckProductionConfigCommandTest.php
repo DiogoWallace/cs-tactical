@@ -19,6 +19,7 @@ function productionConfig(array $overrides = []): void
         'logging.default' => 'stack',
         'logging.channels.stack.level' => 'info',
         'mail.default' => 'smtp',
+        'steam.openid_endpoint' => 'https://steamcommunity.com/openid/login',
         ...$overrides,
     ]);
 }
@@ -54,6 +55,8 @@ it('fails on each unsafe item', function (array $overrides, string $item) {
     'broad proxy range' => [['trustedproxy.proxies' => ['10.0.0.0/8']], 'TRUSTED_PROXIES sem faixas'],
     'debug log level' => [['logging.channels.stack.level' => 'debug'], 'LOG_LEVEL'],
     'log mailer' => [['mail.default' => 'log'], 'MAIL_MAILER'],
+    'fake Steam provider' => [['steam.openid_endpoint' => 'http://steam-openid:8090/openid/login'], 'Vínculo Steam no endpoint oficial'],
+    'Steam over http' => [['steam.openid_endpoint' => 'http://steamcommunity.com/openid/login'], 'Vínculo Steam no endpoint oficial'],
 ]);
 
 it('only reads the configuration', function () {

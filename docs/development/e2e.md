@@ -62,6 +62,19 @@ Next.js. Assim o navegador acessa `http://localhost:3000`, a mesma origem do uso
 host-only, `SANCTUM_STATEFUL_DOMAINS=localhost:3000`, proxy `/api` do Next para a API), e ainda
 resolve `mailpit` pelo DNS da rede da stack. Validado na prática (`e2e/specs/smoke.spec.ts`).
 
+### Vínculo da conta Steam
+
+A stack E2E não tem internet. O serviço `steam-openid` (só no `compose.e2e.yaml`, decisão S1 da
+[M2](../training/mvp-m2-vinculo-steam.md)) faz o papel do login da Steam: `infra/e2e/steam-openid/server.mjs`,
+sem dependências, rodando na mesma imagem do `web` (nada é baixado). Ele mostra uma página onde o
+teste escolhe o SteamID64 e autoriza ou cancela, volta para `http://localhost:3000/painel/conta/steam`
+com uma resposta assinada (HMAC) e responde ao `check_authentication` da API, recusando assinatura
+alterada e nonce repetido. Só redireciona para o frontend.
+
+O navegador e a API chegam a ele por `http://steam-openid:8090`; a API usa esse endereço por
+`STEAM_OPENID_ENDPOINT`, lido só fora de produção. Contas próprias: `steam@e2e.test` e
+`steam-other@e2e.test`.
+
 ## Esperas
 
 Nenhum `sleep` ou `waitForTimeout`. A sincronização usa as esperas automáticas do Playwright
@@ -95,8 +108,9 @@ Nenhum `sleep` ou `waitForTimeout`. A sincronização usa as esperas automática
 | `academy` | catálogo com cursos publicados, capa pela rota de mídia e filtro por nível (inclusive vazio); curso com módulos e aulas públicos em ordem; aula com Markdown, imagem, callout e quiz (sem gabarito no HTML) e navegação anterior/próxima entre módulos; vídeo só depois do clique, pelo `youtube-nocookie.com` (interceptado: sem internet); 404 com `noindex` para rascunho, ancestral em rascunho, aula de outro curso e slug inválido; CSP com o player só nas aulas e sem violações; axe nos dois temas; teclado; `@mobile`: lista de aulas recolhível e nenhuma rolagem horizontal |
 | `learning` | etapa 2.4: visitante lê curso e aula com convite para entrar no lugar das ações; jogador se matricula, conclui uma aula (progresso anunciado), sai, entra de novo e encontra o progresso e o "continuar" em Meu progresso; curso arquivado (2.7a): continua no histórico de Meu progresso com as conclusões e sem link, conta no painel sem "continuar", URL antiga responde 404 e o catálogo não o lista; axe nas telas do Learning nos dois temas |
 | `quiz` | etapa 2.5: reprova sem ver o gabarito (só acerto/erro por pergunta), aprova na segunda tentativa e só então vê a revisão com explicações; axe no quiz respondendo e no resultado, nos dois temas, terminando com as tentativas esgotadas: gabarito e explicação liberados, nenhuma tentativa nova, também depois de recarregar (2.7a) |
+| `steam` | etapa M2, com o provedor OpenID falso: vincula pela "Steam", a volta apaga a resposta da barra de endereço e anuncia o resultado com foco no título, o SteamID aparece na conta, desvincular recusa senha errada e aceita a certa; cancelar na Steam não vincula; SteamID de outra conta é recusado sem revelar qual; axe na volta e na conta vinculada nos dois temas |
 
-Total: 61 testes em 16 arquivos: 57 no `chromium-desktop` (os que rodam na CI) e 4 no
+Total: 64 testes em 17 arquivos: 60 no `chromium-desktop` (os que rodam na CI) e 4 no
 `chromium-mobile` (`academy` 2, `mobile-nav` 1, `navigation` 1). Conferir com
 `docker compose exec web pnpm exec playwright test --list`.
 

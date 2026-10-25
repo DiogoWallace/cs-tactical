@@ -17,8 +17,8 @@ use Tests\Support\LearningFixtures;
 const LEARNING_TABLES = ['enrollments', 'lesson_progress'];
 
 it('rolls back and re-applies the learning migrations without touching the catalog', function () {
-    // As tentativas de quiz (2.5) vêm depois e são desfeitas junto.
-    $this->artisan('migrate:rollback', ['--step' => 4])->assertSuccessful();
+    // As tentativas de quiz (2.5) e a da Steam (M2) vêm depois e são desfeitas junto.
+    $this->artisan('migrate:rollback', ['--step' => 5])->assertSuccessful();
     foreach (LEARNING_TABLES as $table) {
         expect(Schema::hasTable($table))->toBeFalse();
     }

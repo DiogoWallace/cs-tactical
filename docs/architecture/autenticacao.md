@@ -191,6 +191,31 @@ Navegador abre o link ─► página do Next ─► GET /api/v1/auth/email/verif
 - **Senha** (`PUT /api/v1/me/password`): exige a senha atual. A sessão atual é refeita com `login()` (novo ID e, se havia, novo cookie "lembrar-me") e recebe o hash da nova senha; as demais caem na próxima requisição pelo `AuthenticateSession` do Sanctum, e o `remember_token` novo invalida os cookies "lembrar-me" dos outros dispositivos.
 - **E-mail** (`POST /api/v1/me/email`): exige a senha atual e só vale depois da confirmação pelo link enviado ao novo endereço ([ADR 0011](../decisions/0011-troca-de-email-com-confirmacao.md)). As sessões continuam.
 
+### 9. Vínculo da conta Steam (etapa M2)
+
+O jogador logado prova, pelo OpenID 2.0 da Steam, que é dono de uma conta Steam
+([plano e regras](../training/mvp-m2-vinculo-steam.md)). Não é login pela Steam: a sessão continua
+a do CS Tactical.
+
+1. `/painel/conta` → `POST /api/v1/me/steam/link` (CSRF). A API guarda um `state` de 32 bytes na
+   sessão (10 min) e devolve a URL de login da Steam, com volta em
+   `FRONTEND_URL/painel/conta/steam?state=…` (da configuração, nunca do `Host`).
+2. O navegador vai à Steam por **navegação** (`window.location.assign`): a CSP tem
+   `form-action 'self'`, que bloquearia um formulário para outro domínio.
+3. A Steam volta para `/painel/conta/steam` (área protegida pelo `proxy.ts`) com os campos
+   `openid.*`. A página apaga a query do histórico e envia `{ state, openid }` a
+   `POST /api/v1/me/steam/link/complete` (CSRF).
+4. A API confere, nesta ordem: `state` da própria sessão (consumido na primeira tentativa), modo,
+   endpoint, `return_to` idêntico, `claimed_id` da Steam, campos assinados, nonce (data e
+   unicidade no Redis) e, por fim, pergunta à própria Steam (`check_authentication`, só ao endpoint
+   da configuração, sem seguir redirecionamentos, 5 s). Só então grava `user_steam_accounts`, onde
+   os únicos decidem "já vinculado" e "SteamID de outra conta".
+5. Desvincular (`DELETE /api/v1/me/steam`) exige a senha atual, como trocar e-mail e senha.
+
+O endpoint da Steam é fixo em produção (`config/steam.php`; `system:check-production-config`
+confere). Fora de produção, `STEAM_OPENID_ENDPOINT` aponta para o provedor falso da stack E2E
+([e2e.md](../development/e2e.md#vínculo-da-conta-steam)).
+
 ## Autorização
 
 - `auth:sanctum` garante quem é o usuário; Policies decidem o que ele pode fazer.
@@ -204,6 +229,8 @@ Navegador abre o link ─► página do Next ─► GET /api/v1/auth/email/verif
 | login, recuperação de senha | 5/min | e-mail + IP real ([ADR 0009](../decisions/0009-ip-real-do-cliente-e-proxies-confiaveis.md)) |
 | cadastro | 3/min | IP |
 | API autenticada (`/me`, logout) | 120/min | ID do usuário |
+| vínculo da Steam: início e conclusão (`steam-link`) | 10/min | ID do usuário |
+| senha atual: troca de senha e de e-mail, desvínculo da Steam (`credentials`) | 5/min | ID do usuário |
 
 Os contadores ficam no Redis.
 

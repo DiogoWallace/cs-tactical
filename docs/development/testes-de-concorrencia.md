@@ -9,6 +9,7 @@ própria conexão ao PostgreSQL, chegando ao mesmo ponto ao mesmo tempo.
 | `LastAdminDemotionTest` | rebaixar os dois últimos admins ao mesmo tempo deixa um admin (ADR 0012, `lockForUpdate`) |
 | `LearningConcurrencyTest` — matrícula | duas matrículas simultâneas do mesmo jogador geram uma linha (`ON CONFLICT` no único `(user_id, course_id)`) |
 | `LearningConcurrencyTest` — conclusão | duas conclusões simultâneas da mesma aula geram uma conclusão e uma matrícula (`ON CONFLICT` em `(user_id, lesson_id)`) |
+| `SteamLinkConcurrencyTest` | dois usuários concluindo o vínculo do mesmo SteamID ao mesmo tempo: um grava, o outro recebe `steam_account_in_use` (único de `steam_id`; etapa M2). A sincronização é uma terceira conexão com o mesmo SteamID num INSERT ainda não confirmado |
 
 ## Como funcionam
 

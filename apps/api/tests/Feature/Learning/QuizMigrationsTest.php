@@ -16,7 +16,8 @@ use Tests\Support\LearningFixtures;
 const QUIZ_ATTEMPT_TABLES = ['quiz_attempts', 'quiz_attempt_answers'];
 
 it('rolls back and re-applies the quiz attempt migrations', function () {
-    $this->artisan('migrate:rollback', ['--step' => 2])->assertSuccessful();
+    // A da Steam (M2) é a mais recente e é desfeita junto.
+    $this->artisan('migrate:rollback', ['--step' => 3])->assertSuccessful();
     foreach (QUIZ_ATTEMPT_TABLES as $table) {
         expect(Schema::hasTable($table))->toBeFalse();
     }

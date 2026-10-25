@@ -59,6 +59,8 @@ services:
       DB_DATABASE: cs_tactical_e2e
       TRUSTED_PROXIES: 172.31.251.10
       HEALTH_EXPOSE_DETAILS: "false"
+      # Vínculo Steam contra o provedor falso abaixo (etapa M2, decisão S1). Ignorado em produção.
+      STEAM_OPENID_ENDPOINT: http://steam-openid:8090/openid/login
 
   worker:
     restart: "no"
@@ -83,6 +85,32 @@ services:
     restart: "no"
     ports: !override
       - "127.0.0.1:${E2E_MAILPIT_UI_PORT:-8026}:8025"
+
+  # Provedor OpenID falso no lugar do login da Steam (etapa M2, decisão S1): sem internet, o
+  # navegador do Playwright e a API falam com ele por http://steam-openid:8090. Mesma imagem do
+  # `web` (nada é baixado); só o script em infra/e2e/steam-openid.
+  steam-openid:
+    build:
+      context: ./infra/docker/web
+      args:
+        HOST_UID: ${HOST_UID:-1000}
+        HOST_GID: ${HOST_GID:-1000}
+    image: cs-tactical-web:dev
+    restart: "no"
+    volumes:
+      - ./infra/e2e/steam-openid:/srv:ro
+    environment:
+      STEAM_OPENID_ENDPOINT: http://steam-openid:8090/openid/login
+      FRONTEND_ORIGIN: http://localhost:3000
+    command: ["node", "/srv/server.mjs"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8090/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - internal
 
   playwright:
     image: mcr.microsoft.com/playwright:v1.64.1-noble

@@ -70,9 +70,10 @@ final class FrontendSession
         return $this->send('PUT', $uri, $data);
     }
 
-    public function delete(string $uri): TestResponse
+    /** @param  array<string, mixed>  $data  corpo opcional (ex.: senha atual para desvincular a Steam) */
+    public function delete(string $uri, array $data = []): TestResponse
     {
-        return $this->send('DELETE', $uri);
+        return $this->send('DELETE', $uri, $data);
     }
 
     public function withXsrfHeader(): self
