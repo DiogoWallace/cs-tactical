@@ -348,4 +348,4 @@ na stack E2E continua como pendência separada.
 | 2.5 | Quizzes: tentativa, snapshot, envio, correção, liberação do gabarito (R20), histórico, limites |
 | 2.6 | Painel: cartão da Academy com "continuar de onde parou"; cabeçalho das páginas públicas conforme a sessão (implementada) |
 | 2.7 | Revisão transversal de segurança, acessibilidade e desempenho (plano aprovado em [fase-2-etapa-2.7-plano.md](fase-2-etapa-2.7-plano.md); execução por subetapa, 2.7a → 2.7d, cada uma com autorização própria) |
-| 2.8 | Auditoria e fechamento da Fase 2 |
+| 2.8 | Auditoria e fechamento da Fase 2: [auditoria](fase-2-auditoria.md) e [relatório](fase-2-relatorio.md) (concluída em 2026-10-24) |
