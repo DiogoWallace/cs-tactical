@@ -31,8 +31,6 @@ jobs:
           work_re='^(feat|fix|docs|refactor|test|infra|research)/([0-9]+)-[a-z0-9]+(-[a-z0-9]+)*$'
           hotfix_re='^hotfix/([0-9]+)-[a-z0-9]+(-[a-z0-9]+)*$'
           homolog_fix_re='^fix/([0-9]+)-[a-z0-9]+(-[a-z0-9]+)*$'
-          # Exceção única do bootstrap da governança (#77), removida no primeiro ciclo completo.
-          bootstrap='infra/77-development-governance'
 
           fail() { echo "::error::$1"; echo "❌ $1" >> "$GITHUB_STEP_SUMMARY"; exit 1; }
           ok() { echo "$1"; echo "✅ $1" >> "$GITHUB_STEP_SUMMARY"; exit 0; }
@@ -91,8 +89,6 @@ jobs:
                 needs_scope; ok "Release homolog → main."
               elif [[ "$HEAD" =~ $hotfix_re ]]; then
                 needs_issue "${BASH_REMATCH[1]}"; ok "Hotfix → main."
-              elif $same_repo && [ "$HEAD" = "$bootstrap" ]; then
-                needs_issue 77; ok "Bootstrap da governança (exceção única, #77)."
               fi
               ;;
           esac

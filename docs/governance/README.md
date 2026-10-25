@@ -1,7 +1,7 @@
 # Governança de desenvolvimento
 
 Como o trabalho entra no CS Tactical: da issue à release. Vale para pessoas e para agentes de
-desenvolvimento. Implantada na issue #77; o histórico anterior (PRs direto na `main`) continua
+desenvolvimento. Implantada na issue #77 (bootstrap no PR #78); o histórico anterior (PRs direto na `main`) continua
 válido como registro e não é reescrito.
 
 | Documento | Conteúdo |
