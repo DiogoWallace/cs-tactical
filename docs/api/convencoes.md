@@ -237,7 +237,7 @@ as rotas são do próprio usuário: envio de outro ou inexistente responde **404
 | 409 | `steam_link_required` | sem conta Steam vinculada (no início ou na conclusão) |
 | 409 | `match_upload_already_open` | o usuário já tem um envio em andamento |
 | 429 | `match_upload_quota_exceeded` | 5 envios concluídos nas últimas 24 h (com `Retry-After`) |
-| 503 | `match_upload_storage_unavailable` | sem espaço em disco para o arquivo e a reserva |
+| 503 | `match_upload_storage_unavailable` | sem espaço para o arquivo, o que os envios abertos ainda vão gravar e a reserva (início, sem `Retry-After`); sem espaço ou falha do disco numa parte ou na conclusão (`Retry-After: 60`; o envio continua aberto e nada é contado). O cliente repete poucas vezes, com espera crescente, nunca em laço |
 | 409 | `match_upload_not_open` | envio concluído, cancelado, recusado ou expirado |
 | 409 | `match_upload_part_out_of_order` | parte fora da ordem (ou a última repetida com outro conteúdo) |
 | 422 | `match_upload_part_size_invalid` | tamanho declarado ou recebido diferente do esperado |

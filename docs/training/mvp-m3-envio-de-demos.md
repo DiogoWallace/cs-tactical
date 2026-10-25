@@ -59,7 +59,7 @@ um `code` estável no corpo `{message, code}`.
 | I3 | `size` inteiro entre 1 byte e 600 MiB; `name` texto de até 255, terminando em `.dem` (só para exibir; nunca vira caminho) | 422 `validation_failed` |
 | I4 | Nenhum envio aberto do usuário (único parcial no banco decide a disputa) | 409 `match_upload_already_open` |
 | I5 | Cota: menos de 5 envios **concluídos** nas últimas 24 h (D-M3) | 429 `match_upload_quota_exceeded` (com `Retry-After`) |
-| I6 | Espaço livre no disco ≥ `size` + reserva de 2 GiB | 503 `match_upload_storage_unavailable` |
+| I6 | Espaço livre no disco − espaço que os envios abertos e não vencidos ainda vão gravar ≥ `size` + reserva de 2 GiB, com os inícios serializados por um lock de aviso (#54) | 503 `match_upload_storage_unavailable` (sem `Retry-After`) |
 
 Resposta 201: `{ upload: { id, status, part_size, parts_total, parts_received, expires_at } }`.
 `part_size` é decidido pela API (U1), `parts_total = ceil(size / part_size)`.
@@ -74,6 +74,7 @@ Resposta 201: `{ upload: { id, status, part_size, parts_total, parts_received, e
 | P3 | `number` = partes recebidas + 1. Repetir a **última** recebida com o mesmo SHA-256 responde 200 sem reescrever (retentativa depois de falha de rede); com outro SHA-256, ou qualquer outro número | 409 `match_upload_part_out_of_order` |
 | P4 | `Content-Length` = `part_size` (a última parte: o resto exato), conferido **antes** de ler o corpo | 422 `match_upload_part_size_invalid` |
 | P5 | SHA-256 do corpo = `X-Content-SHA256` | 422 `match_upload_part_corrupted` |
+| P6 | Espaço livre ≥ tamanho da parte + reserva, conferido antes de ler o corpo; falha real do disco na gravação também cai aqui, sem contar a parte (#54) | 503 `match_upload_storage_unavailable` (`Retry-After: 60`) |
 
 Escrita no offset `(number − 1) × part_size` de `uploads/{id}.part`, com a linha do envio travada
 (`FOR UPDATE`): duas partes simultâneas do mesmo envio são serializadas. Cada parte aceita renova
@@ -237,7 +238,7 @@ continua exigindo autorização própria).
 |---|---|---|
 | U1 | Tamanho das partes × borda de produção (2 MB) | **Aprovada**: partes de 8 MiB (D-M3) e, na borda de referência, uma exceção só para `PUT /api/v1/matches/uploads/*/parts/*` com `client_max_body_size 9m`, mantendo 2 MB no resto (mudança da borda aprovada para esta rota; registrar em [bloqueios-de-producao.md](../deploy/bloqueios-de-producao.md) na implementação) |
 | U2 | Limpeza sem agendador | **Aprovada**: jobs atrasados na fila existente (`ExpireMatchUpload`) mais o comando `matches:prune-uploads` como rede de segurança; sem serviço `scheduler` novo |
-| U3 | Limites (D-M3) | **Aprovada**: 600 MiB por arquivo, um envio aberto, **5 envios concluídos por 24 h**, expiração em 2 h sem atividade, reserva de 2 GiB de disco; limites por minuto de 30 (envio) e 120 (partes). Revisar na M6 |
+| U3 | Limites (D-M3) | **Aprovada**: 600 MiB por arquivo, um envio aberto, **5 envios concluídos por 24 h**, expiração em 2 h sem atividade, reserva de 2 GiB de disco; limites por minuto de 30 (envio) e 120 (partes). Revisar na M6. **Complemento de 2026-10-25 (#54, D1–D4):** a reserva desconta o que os envios abertos ainda vão gravar (`max(0, size_bytes − min(size_bytes, parts_received × part_size))`, só `uploading` não vencidos), com `pg_advisory_xact_lock` em volta da leitura e da criação; espaço conferido antes de cada parte; falhas do disco viram 503 com o envio intacto (`Retry-After: 60` em partes e conclusão, nada no início); teto global de envios simultâneos adiado para a M6 (#62) |
 | U4 | Conferência do conteúdo na M3 | **Aprovada**: só assinatura e tamanho; a leitura do cabeçalho (mapa, servidor, build) fica com o analisador isolado da M4. A ADR 0022 (item 3) cita o cabeçalho antes da fila; ler protobuf de arquivo do usuário dentro da API iria contra o isolamento do item 4 |
 | U5 | Envio repetido | **Aprovada**: recusar o mesmo arquivo (SHA-256) **do mesmo usuário** enquanto houver envio concluído ou análise dele; o mesmo arquivo de outro jogador da partida é aceito (cada um analisa a própria participação) |
 | U6 | Envio concluído antes de a M4 existir | **Aprovada**: fica `completed` e expira em 24 h (arquivo apagado), como previsto em D-M4; na M4 a conclusão passa a enfileirar a análise |
@@ -262,4 +263,6 @@ Implementado como planejado, com estes ajustes:
 | Pest, concorrência, Vitest, lint, build e E2E verdes; nenhuma rota sem autenticação ou limite | ver o PR; `MatchUploadConcurrencyTest` (3 casos) |
 | Sondagem pelo proxy da stack E2E | `matches-upload-probe.sh`: 9/9 e o hash no disco igual ao enviado |
 | Nada sobra no disco depois de cancelar, recusar ou expirar | testes de cancelamento, recusa, expiração e `matches:prune-uploads`; sondagem (só o concluído no disco) |
-| Migration no banco de desenvolvimento com o procedimento | **pendente** (autorização própria) |
+| Migration no banco de desenvolvimento com o procedimento | **feita em 2026-10-25** (#51), com autorização: banco `cs_tactical` do Compose local, `--pretend` conferido, backup `~/backups/cs_tactical-pre-match-uploads-m3-20261025-123906.dump` validado por restauração numa base temporária (mesmas contagens), lote 8; estrutura conferida (4 índices, 7 checks, FK em CASCADE) |
+| Reserva de disco e falhas de armazenamento (#54) | `UploadReservations` (soma do que falta chegar + lock de aviso) e `UploadStorageFailed`: medir, ler, calcular o hash, gravar e renomear nunca devolvem valor vazio nem viram recusa; a conclusão recupera um `.dem` cujo registro não foi gravado (`reclaimPromoted`); remover o arquivo é melhor esforço (o `matches:prune-uploads` apaga o que sobrar). Testes: 16 no `MatchUploadTest` e 1 de concorrência (dois jogadores, espaço para um: um 201 e um 503), com sete contraprovas |
+| Cota depois de cancelar um envio concluído | teste de regressão (#51): cinco concluídos, um cancelado, o sexto início continua em 429; contraprova: contando pelo status atual, o teste falha (201) |

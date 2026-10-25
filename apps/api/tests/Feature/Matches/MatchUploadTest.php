@@ -3,9 +3,11 @@
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Models\UserSteamAccount;
 use App\Modules\Matches\Enums\MatchUploadStatus;
+use App\Modules\Matches\Exceptions\UploadStorageFailed;
 use App\Modules\Matches\Jobs\ExpireMatchUpload;
 use App\Modules\Matches\Models\MatchUpload;
 use App\Modules\Matches\Uploads\DemoSignature;
+use App\Modules\Matches\Uploads\UploadReservations;
 use App\Modules\Matches\Uploads\UploadStorage;
 use Illuminate\Database\QueryException;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -15,7 +17,9 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
+use Tests\Support\FakeUploadStorage;
 use Tests\Support\FrontendSession;
 
 /*
@@ -156,6 +160,28 @@ describe('start (I1 to I6)', function () {
         startUpload(3000)->assertStatus(429)
             ->assertJsonPath('code', 'match_upload_quota_exceeded')
             ->assertHeader('Retry-After', (string) 3600);
+    });
+
+    it('keeps counting a completed upload after it is cancelled', function () {
+        $this->freezeTime();
+        $this->actingAs($this->user);
+        $ids = [];
+        foreach (range(1, 5) as $ignored) {
+            $ids[] = $id = uploadParts(demoBytes(2500));
+            completeUpload($id)->assertOk();
+        }
+
+        // Cancelar um concluído apaga o arquivo, mas o envio já gastou a cota: contar pelo status
+        // atual (só `completed`) devolveria a vaga e permitiria concluir, cancelar e repetir.
+        $this->deleteJson("/api/v1/matches/uploads/{$ids[0]}")->assertNoContent();
+
+        expect(MatchUpload::query()->find($ids[0]))
+            ->status->toBe(MatchUploadStatus::Cancelled)
+            ->completed_at->not->toBeNull();
+        startUpload(3000)->assertStatus(429)
+            ->assertJsonPath('code', 'match_upload_quota_exceeded')
+            ->assertHeader('Retry-After', (string) 86400);
+        expect(MatchUpload::query()->where('status', MatchUploadStatus::Uploading)->count())->toBe(0);
     });
 
     it('refuses when the disk would run out of space', function () {
@@ -464,5 +490,160 @@ describe('database', function () {
         expect(Schema::hasTable('match_uploads'))->toBeFalse();
         $this->artisan('migrate')->assertSuccessful();
         expect(Schema::hasTable('match_uploads'))->toBeTrue();
+    });
+});
+
+describe('storage reservation and failures (#54)', function () {
+    beforeEach(function () {
+        $this->actingAs($this->user);
+        $this->storage = new FakeUploadStorage;
+        $this->app->instance(UploadStorage::class, $this->storage);
+    });
+
+    it('counts only what open, unexpired uploads still have to write', function () {
+        $this->freezeTime();
+        $open = fn (array $attributes) => MatchUpload::factory()->create([
+            'size_bytes' => 2500, 'part_size' => UPLOAD_PART, 'parts_total' => 3, ...$attributes,
+        ]);
+        $open(['parts_received' => 0]);                                    // falta tudo: 2500
+        $open(['parts_received' => 1]);                                    // falta 2500 − 1024 = 1476
+        $open(['parts_received' => 3]);                                    // 3 × 1024 > 2500: falta 0, nunca negativo
+        $open(['parts_received' => 0, 'expires_at' => now()->subSecond()]); // vencido: não recebe mais partes
+        MatchUpload::factory()->completed()->create(['size_bytes' => 2500, 'part_size' => UPLOAD_PART, 'parts_total' => 3]);
+        MatchUpload::factory()->create(['status' => MatchUploadStatus::Cancelled, 'size_bytes' => 2500, 'part_size' => UPLOAD_PART, 'parts_total' => 3]);
+
+        expect(app(UploadReservations::class)->pendingBytes())->toBe(2500 + 1476);
+    });
+
+    it('starts only when the file fits beside the open uploads and the reserve (I6)', function () {
+        config(['matches.disk_reserve_bytes' => 1000]);
+        MatchUpload::factory()->create(['size_bytes' => 3000, 'part_size' => UPLOAD_PART, 'parts_total' => 3]);
+
+        // 6.499 livres − 3.000 de outro envio aberto < 2.500 + 1.000.
+        $this->storage->free = 6499;
+        $refused = startUpload(2500)->assertStatus(503)->assertJsonPath('code', 'match_upload_storage_unavailable');
+        expect($refused->headers->has('Retry-After'))->toBeFalse()
+            ->and(MatchUpload::query()->where('user_id', $this->user->id)->count())->toBe(0);
+
+        $this->storage->free = 6500;
+        startUpload(2500)->assertCreated();
+    });
+
+    it('answers 503 when the free space cannot be measured at the start', function () {
+        $this->storage->failNext('freeBytes');
+
+        startUpload(2500)->assertStatus(503)->assertJsonPath('code', 'match_upload_storage_unavailable');
+        expect(MatchUpload::query()->count())->toBe(0);
+    });
+
+    it('checks the space before writing a part (P6)', function () {
+        $bytes = demoBytes(2500);
+        $id = startUpload(2500)->json('upload.id');
+        config(['matches.disk_reserve_bytes' => 1000]);
+        $this->storage->free = UPLOAD_PART + 999;
+
+        putPart($id, 1, substr($bytes, 0, UPLOAD_PART))->assertStatus(503)
+            ->assertJsonPath('code', 'match_upload_storage_unavailable')
+            ->assertHeader('Retry-After', '60');
+
+        expect(MatchUpload::query()->find($id)->parts_received)->toBe(0)
+            ->and(uploadFiles())->toBe([]);
+    });
+
+    it('does not count a part whose write fails midway, and the retry overwrites it', function () {
+        $this->freezeTime();
+        $bytes = demoBytes(2500);
+        $id = startUpload(2500)->json('upload.id');
+        [$p1, $p2, $p3] = str_split($bytes, UPLOAD_PART);
+        putPart($id, 1, $p1)->assertOk();
+        $before = MatchUpload::query()->find($id);
+        $this->travel(5)->minutes();
+
+        // Metade da parte 2 chega ao disco, com bytes diferentes dos verdadeiros, e a escrita falha.
+        $this->storage->partialBytes = 512;
+        $this->storage->failNext('writeAt');
+        putPart($id, 2, str_repeat("\0", UPLOAD_PART), hash('sha256', str_repeat("\0", UPLOAD_PART)))
+            ->assertStatus(503)
+            ->assertJsonPath('code', 'match_upload_storage_unavailable')
+            ->assertHeader('Retry-After', '60');
+
+        $after = MatchUpload::query()->find($id);
+        expect($after->parts_received)->toBe(1)
+            ->and($after->last_part_sha256)->toBe($before->last_part_sha256)
+            ->and($after->expires_at->equalTo($before->expires_at))->toBeTrue()
+            ->and($after->status)->toBe(MatchUploadStatus::Uploading);
+
+        putPart($id, 2, $p2)->assertOk()->assertJsonPath('upload.parts_received', 2);
+        putPart($id, 3, $p3)->assertOk();
+        completeUpload($id)->assertOk()->assertJsonPath('upload.status', 'completed');
+
+        expect(Storage::disk('matches-uploads')->get("uploads/{$id}.dem"))->toBe($bytes)
+            ->and(MatchUpload::query()->find($id)->sha256)->toBe(hash('sha256', $bytes));
+    });
+
+    it('keeps the upload and its file when the disk fails during completion', function (string $operation) {
+        $bytes = demoBytes(2500);
+        $id = uploadParts($bytes);
+        $this->storage->failNext($operation);
+
+        completeUpload($id)->assertStatus(503)
+            ->assertJsonPath('code', 'match_upload_storage_unavailable')
+            ->assertHeader('Retry-After', '60');
+
+        $upload = MatchUpload::query()->find($id);
+        expect($upload->status)->toBe(MatchUploadStatus::Uploading)
+            ->and($upload->sha256)->toBeNull()
+            ->and($upload->rejection_code)->toBeNull()
+            ->and(uploadFiles())->toBe(["uploads/{$id}.part"]);
+
+        completeUpload($id)->assertOk()->assertJsonPath('upload.status', 'completed');
+        expect(Storage::disk('matches-uploads')->get("uploads/{$id}.dem"))->toBe($bytes);
+    })->with(['partSize', 'head', 'sha256', 'promote']);
+
+    it('recovers a promoted file whose completion was not saved', function () {
+        $bytes = demoBytes(2500);
+        $id = uploadParts($bytes);
+        // Rename feito, commit perdido: o banco ainda diz `uploading`, o disco já tem o `.dem`.
+        Storage::disk('matches-uploads')->move("uploads/{$id}.part", "uploads/{$id}.dem");
+
+        completeUpload($id)->assertOk()->assertJsonPath('upload.status', 'completed');
+        expect(uploadFiles())->toBe(["uploads/{$id}.dem"])
+            ->and(MatchUpload::query()->find($id)->sha256)->toBe(hash('sha256', $bytes));
+    });
+
+    it('closes a cancelled upload even if the file cannot be deleted', function () {
+        $id = uploadParts(demoBytes(2500));
+        $this->storage->failNext('delete');
+
+        $this->deleteJson("/api/v1/matches/uploads/{$id}")->assertNoContent();
+
+        // O arquivo fica para o `matches:prune-uploads`, que só preserva arquivo de envio vivo.
+        expect(MatchUpload::query()->find($id)->status)->toBe(MatchUploadStatus::Cancelled)
+            ->and(uploadFiles())->toBe(["uploads/{$id}.part"]);
+    });
+});
+
+describe('storage errors become UploadStorageFailed (#54)', function () {
+    it('never returns an empty value that looks like content', function (Closure $call) {
+        $storage = new UploadStorage;
+        $id = (string) Str::uuid7();
+
+        expect(fn () => $call($storage, $id))->toThrow(UploadStorageFailed::class);
+    })->with([
+        'head sem arquivo' => [fn (UploadStorage $s, string $id) => $s->head($id, 8)],
+        'hash sem arquivo' => [fn (UploadStorage $s, string $id) => $s->sha256($id)],
+        'promoção sem arquivo' => [fn (UploadStorage $s, string $id) => $s->promote($id)],
+        'gravação num diretório' => [function (UploadStorage $s, string $id) {
+            Storage::disk('matches-uploads')->makeDirectory("uploads/{$id}.part");
+            $s->writeAt($id, 0, 'x');
+        }],
+    ]);
+
+    it('treats a missing assembled file as size zero and deletes quietly', function () {
+        $storage = new UploadStorage;
+        $id = (string) Str::uuid7();
+
+        expect($storage->partSize($id))->toBe(0);
+        $storage->delete($id);
     });
 });
