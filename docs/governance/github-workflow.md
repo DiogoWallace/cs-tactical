@@ -87,7 +87,7 @@ nem desativa proteção.
 
 | Exceção | Regra |
 | --- | --- |
-| Bootstrap da governança (#77) | PR único `infra/77-development-governance → main`, aceito pela verificação de governança só para esse nome; removido no primeiro ciclo completo |
+| Bootstrap da governança (#77) | encerrado: o PR #78 foi direto para a `main` antes de `dev` e `homolog` existirem; a exceção saiu do `governance.yml` no primeiro ciclo (#47) |
 | Dependabot | atualizações de versão → `dev`; de segurança → `main` como hotfix ([release-policy.md](release-policy.md#dependabot)) |
 | Sincronização | PRs `main → homolog`, `main → dev` e `homolog → dev` sem issue própria |
 | Recuperação técnica | branch sem issue só para recuperar dados ou histórico, registrada numa issue aberta logo depois |
