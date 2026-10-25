@@ -6,7 +6,7 @@ Plataforma SaaS para desenvolvimento de jogadores e equipes competitivas de Coun
 
 Detalhe e pendências em [docs/STATUS.md](docs/STATUS.md).
 
-**Fase 2 — Academy concluída** para desenvolvimento ([relatório](docs/development/fase-2-relatorio.md), [auditoria](docs/development/fase-2-auditoria.md)), com uma verificação manual pendente: leitor de tela (NVDA). Somente ambiente de desenvolvimento: **produção continua bloqueada** ([bloqueios de produção](docs/deploy/bloqueios-de-producao.md), P1–P4 e G1).
+**Fase 2 — Academy concluída** para desenvolvimento ([relatório](docs/development/fase-2-relatorio.md), [auditoria](docs/development/fase-2-auditoria.md)), com uma verificação manual pendente: leitor de tela (NVDA). Somente ambiente de desenvolvimento: **produção continua bloqueada** ([bloqueios de produção](docs/deploy/bloqueios-de-producao.md), P1–P4; G1 resolvido em 2026-10-25).
 
 | Fase | Situação | O que entrega |
 |---|---|---|

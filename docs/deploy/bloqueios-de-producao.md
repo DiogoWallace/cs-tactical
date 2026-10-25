@@ -5,7 +5,7 @@ risco, o que fazer e como verificar. Um item só sai desta lista com a verifica�
 
 > Ainda não existe ambiente de produção nem configuração de deploy. Esta lista é o critério de
 > aceite para criá-los. As Fases 1 e 2 estão concluídas para **desenvolvimento**; **produção
-> continua bloqueada** por P1–P4 e G1, sem mudança de situação na Fase 2 (auditorias:
+> continua bloqueada** por P1–P4 (G1 resolvido em 2026-10-25), sem mudança de situação na Fase 2 (auditorias:
 > [fase-1-auditoria.md](../development/fase-1-auditoria.md),
 > [fase-2-auditoria.md](../development/fase-2-auditoria.md#preparação-para-produção), que lista
 > também o que a Academy pede da configuração de produção).
@@ -85,22 +85,22 @@ Material preparado na etapa 1.8 (modelos, nada implantado):
 
 ## Riscos de governança
 
-### G1 — `main` sem proteção automática
-
-- **Origem:** etapa 1.7 (PR #5).
-- **Situação:** o repositório é privado numa conta gratuita, e o GitHub recusa branch protection
-  e rulesets ("Upgrade to GitHub Pro or make this repository public"). Não há checks obrigatórios
-  (API, Web, E2E) nem bloqueio técnico de push direto, force push ou exclusão da `main`: essas
-  regras valem só por processo.
-- **Risco:** uma mudança entrar na `main` sem CI verde ou sem revisão, ou o histórico ser reescrito
-  por engano.
-- **O que fazer:** decidir entre GitHub Pro, repositório público ou organização com plano Team; em
-  seguida, criar um ruleset na `main` exigindo PR, os checks `API (Laravel)`, `Web (Next.js)` e
-  `E2E (Playwright)`, e bloqueando force push e exclusão.
-- **Verificação:** um push direto de teste à `main` é recusado; um PR com check falhando não pode
-  ser mesclado.
-- Não bloqueia o desenvolvimento; deve ser resolvido antes do primeiro deploy de produção.
+Nenhum aberto.
 
 ## Resolvidos
 
-Nenhum ainda.
+### G1 — `main` sem proteção automática (resolvido em 2026-10-25)
+
+- **Origem:** etapa 1.7 (PR #5). O impedimento registrado (repositório privado em conta gratuita)
+  deixou de existir quando o repositório passou a ser público.
+- **Solução:** fluxo `dev → homolog → main` ([governança](../governance/branch-policy.md#proteção-rulesets),
+  issues #47 e #77) com dois rulesets ativos e sem bypass: `dev` (branch atualizada antes do merge)
+  e `main e homolog`. Os dois exigem PR e os checks `API (Laravel)`, `Web (Next.js)`,
+  `E2E (Playwright)` e `Governance (PR)`, aceitam só merge commit e bloqueiam force push e exclusão.
+- **Verificação (2026-10-25):** `gh api repos/DiogoWallace/cs-tactical/rules/branches/<branch>` nas
+  três branches lista `deletion`, `non_fast_forward`, `pull_request` e `required_status_checks`
+  com os quatro checks; um push direto para a `dev` foi recusado (`GH013: Changes must be made
+  through a pull request`); este registro chegou à `main` pelo fluxo completo (PR para `dev`,
+  promoção para `homolog`, release para a `main`), cada PR mesclado só depois dos checks verdes.
+  Force push e exclusão não foram testados com push real; ficam garantidos pelas regras
+  `non_fast_forward` e `deletion` confirmadas na API.
